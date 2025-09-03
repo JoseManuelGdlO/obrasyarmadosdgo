@@ -31,7 +31,6 @@ const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Órdenes de Trabajo", url: "/ordenes", icon: ClipboardList },
   { title: "Proyectos", url: "/proyectos", icon: FolderOpen },
-  { title: "Maquinarias", url: "/maquinarias", icon: Truck },
   { title: "Asignaciones", url: "/asignaciones", icon: GitBranch },
   { title: "Trabajadores", url: "/trabajadores", icon: UserCheck },
   { title: "Proveedores", url: "/proveedores", icon: Building },
@@ -39,6 +38,7 @@ const mainItems = [
 
 const inventoryItems = [
   { title: "Inventario", url: "/inventario", icon: Package },
+  { title: "Maquinarias", url: "/maquinarias", icon: Truck },
 ]
 
 const accessItems = [
@@ -48,7 +48,6 @@ const accessItems = [
 
 const configItems = [
   { title: "Nomenclaturas", url: "/nomenclaturas", icon: Settings },
-  { title: "Configuración", url: "/configuracion", icon: Settings },
 ]
 
 export function AppSidebar() {
