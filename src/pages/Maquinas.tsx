@@ -131,13 +131,13 @@ const maquinas = [
 ];
 
 const clientes = ["Constructora ABC", "Municipalidad", "Industrias DEF", "Inmobiliaria XYZ"];
+const clienteActual = "Constructora ABC"; // En producción esto vendría del contexto de autenticación
 const tiposMaquina = ["Excavadora", "Grúa", "Bulldozer", "Pavimentadora", "Compactadora", "Montacargas", "Camión", "Retroexcavadora"];
 const marcas = ["Caterpillar", "Liebherr", "Volvo", "Toyota", "JCB", "Komatsu", "John Deere"];
 const estados = ["Operativa", "Disponible", "Mantenimiento", "Fuera de Servicio"];
 
 export default function Maquinas() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCliente, setSelectedCliente] = useState("");
   const [selectedTipo, setSelectedTipo] = useState("");
   const [selectedEstado, setSelectedEstado] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -149,7 +149,7 @@ export default function Maquinas() {
     modelo: "",
     placas: "",
     numeroSerie: "",
-    cliente: "",
+    cliente: clienteActual, // Se asigna automáticamente al cliente actual
     horometroInicial: "",
     horometroFinal: "",
     disponibilidad: "",
@@ -168,7 +168,7 @@ export default function Maquinas() {
       modelo: "",
       placas: "",
       numeroSerie: "",
-      cliente: "",
+      cliente: clienteActual, // Se mantiene el cliente actual
       horometroInicial: "",
       horometroFinal: "",
       disponibilidad: "",
@@ -177,16 +177,17 @@ export default function Maquinas() {
     });
   };
 
-  const filteredMaquinas = maquinas.filter((maquina) => {
+  // Filtrar solo las máquinas del cliente actual
+  const maquinasDelCliente = maquinas.filter(m => m.cliente === clienteActual);
+  
+  const filteredMaquinas = maquinasDelCliente.filter((maquina) => {
     const matchesSearch = 
       maquina.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       maquina.tipo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      maquina.placas.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      maquina.cliente.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCliente = !selectedCliente || maquina.cliente === selectedCliente;
+      maquina.placas.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTipo = !selectedTipo || maquina.tipo === selectedTipo;
     const matchesEstado = !selectedEstado || maquina.estado === selectedEstado;
-    return matchesSearch && matchesCliente && matchesTipo && matchesEstado;
+    return matchesSearch && matchesTipo && matchesEstado;
   });
 
   const getStatusColor = (status: string) => {
@@ -210,20 +211,22 @@ export default function Maquinas() {
     return Math.min(Math.max(progreso, 0), 100);
   };
 
-  // Estadísticas
-  const totalMaquinas = maquinas.length;
-  const maquinasOperativas = maquinas.filter(m => m.estado === "Operativa").length;
-  const maquinasDisponibles = maquinas.filter(m => m.estado === "Disponible").length;
-  const promedioDisponibilidad = Math.round(maquinas.reduce((sum, m) => sum + m.disponibilidad, 0) / totalMaquinas);
+  // Estadísticas basadas en las máquinas del cliente actual
+  const totalMaquinas = maquinasDelCliente.length;
+  const maquinasOperativas = maquinasDelCliente.filter(m => m.estado === "Operativa").length;
+  const maquinasDisponibles = maquinasDelCliente.filter(m => m.estado === "Disponible").length;
+  const promedioDisponibilidad = maquinasDelCliente.length > 0 
+    ? Math.round(maquinasDelCliente.reduce((sum, m) => sum + m.disponibilidad, 0) / maquinasDelCliente.length)
+    : 0;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Máquinas</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Mis Máquinas</h1>
           <p className="text-gray-600 mt-1">
-            Inventario de máquinas por cliente
+            Inventario de máquinas de {clienteActual}
           </p>
         </div>
         
@@ -309,21 +312,6 @@ export default function Maquinas() {
                     onChange={(e) => setFormData({ ...formData, numeroSerie: e.target.value })}
                     required
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cliente">Cliente</Label>
-                  <Select value={formData.cliente} onValueChange={(value) => setFormData({ ...formData, cliente: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar cliente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clientes.map((cliente) => (
-                        <SelectItem key={cliente} value={cliente}>
-                          {cliente}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="ubicacion">Ubicación</Label>
@@ -434,31 +422,17 @@ export default function Maquinas() {
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Buscar por nombre, tipo, placas o cliente..."
+                  placeholder="Buscar por nombre, tipo o placas..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
                 />
               </div>
             </div>
-            <div className="w-full sm:w-40">
-              <Select value={selectedCliente} onValueChange={setSelectedCliente}>
-                <SelectTrigger>
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clientes.map((cliente) => (
-                    <SelectItem key={cliente} value={cliente}>
-                      {cliente}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
             <div className="w-full sm:w-36">
               <Select value={selectedTipo} onValueChange={setSelectedTipo}>
                 <SelectTrigger>
+                  <Filter className="h-4 w-4 mr-2" />
                   <SelectValue placeholder="Tipo" />
                 </SelectTrigger>
                 <SelectContent>
@@ -500,7 +474,6 @@ export default function Maquinas() {
             <TableHeader>
               <TableRow>
                 <TableHead>Máquina</TableHead>
-                <TableHead>Cliente</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Horómetro</TableHead>
                 <TableHead>Vida Útil</TableHead>
@@ -525,11 +498,6 @@ export default function Maquinas() {
                           Placas: {maquina.placas}
                         </div>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="text-xs">
-                        {maquina.cliente}
-                      </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(maquina.estado)}>
