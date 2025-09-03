@@ -187,7 +187,6 @@ export default function Nomenclaturas() {
                   <SelectValue placeholder="Todas las categorías" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas las categorías</SelectItem>
                   {categorias.map((categoria) => (
                     <SelectItem key={categoria} value={categoria}>
                       {categoria}
