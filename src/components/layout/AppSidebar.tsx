@@ -30,7 +30,6 @@ import {
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Órdenes de Trabajo", url: "/ordenes", icon: ClipboardList },
-  { title: "Proyectos", url: "/proyectos", icon: FolderOpen },
   { title: "Asignaciones", url: "/asignaciones", icon: GitBranch },
   { title: "Trabajadores", url: "/trabajadores", icon: UserCheck },
   { title: "Proveedores", url: "/proveedores", icon: Building },
@@ -47,6 +46,7 @@ const accessItems = [
 ]
 
 const configItems = [
+  { title: "Proyectos", url: "/proyectos", icon: FolderOpen },
   { title: "Nomenclaturas", url: "/nomenclaturas", icon: Settings },
 ]
 
