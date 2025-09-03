@@ -1,8 +1,10 @@
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import NuevaOrdenModal from "@/components/modals/NuevaOrdenModal"
 import { 
   Plus, 
   Search, 
@@ -14,6 +16,8 @@ import {
 } from "lucide-react"
 
 const OrdenesTrabajo = () => {
+  const [modalOpen, setModalOpen] = useState(false)
+  
   const ordenes = [
     {
       id: "OT-2024-001",
@@ -99,7 +103,10 @@ const OrdenesTrabajo = () => {
           <h1 className="text-3xl font-bold text-foreground">Órdenes de Trabajo</h1>
           <p className="text-muted-foreground">Gestiona todas las órdenes de mantenimiento</p>
         </div>
-        <Button className="bg-gradient-to-r from-primary to-accent text-white shadow-lg hover:shadow-xl transition-all">
+        <Button 
+          onClick={() => setModalOpen(true)}
+          className="bg-gradient-to-r from-primary to-accent text-white shadow-lg hover:shadow-xl transition-all"
+        >
           <Plus className="w-4 h-4 mr-2" />
           Nueva Orden
         </Button>
@@ -211,6 +218,9 @@ const OrdenesTrabajo = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Modal para nueva orden */}
+      <NuevaOrdenModal open={modalOpen} onOpenChange={setModalOpen} />
     </div>
   )
 }
