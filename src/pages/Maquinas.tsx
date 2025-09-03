@@ -270,18 +270,13 @@ export default function Maquinas() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="marca">Marca</Label>
-                  <Select value={formData.marca} onValueChange={(value) => setFormData({ ...formData, marca: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar marca" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {marcas.map((marca) => (
-                        <SelectItem key={marca} value={marca}>
-                          {marca}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    id="marca"
+                    placeholder="Ej: Caterpillar"
+                    value={formData.marca}
+                    onChange={(e) => setFormData({ ...formData, marca: e.target.value })}
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="modelo">Modelo</Label>
