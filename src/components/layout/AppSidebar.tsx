@@ -44,11 +44,22 @@ export function AppSidebar() {
   const location = useLocation()
   const currentPath = location.pathname
 
-  const isActive = (path: string) => currentPath === path
-  const getNavCls = ({ isActive }: { isActive: boolean }) =>
-    isActive 
+  console.log("Current path:", currentPath)
+  console.log("Sidebar state:", state)
+
+  const isActive = (path: string) => {
+    const active = currentPath === path
+    console.log(`Path ${path} is active:`, active)
+    return active
+  }
+  
+  const getNavCls = ({ isActive }: { isActive: boolean }) => {
+    const classes = isActive 
       ? "bg-blue-600 text-white font-medium shadow-lg" 
       : "text-gray-900 hover:bg-gray-100 hover:text-gray-900"
+    console.log("Nav classes:", classes, "isActive:", isActive)
+    return classes
+  }
 
   return (
     <Sidebar
@@ -75,12 +86,18 @@ export function AppSidebar() {
             <SidebarMenu>
               {mainItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end className={getNavCls}>
-                      <item.icon className="h-4 w-4" />
-                      <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
+                  <NavLink 
+                    to={item.url} 
+                    end 
+                    className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors w-full ${getNavCls({ isActive: isActive(item.url) })}`}
+                    style={{ 
+                      backgroundColor: isActive(item.url) ? '#2563eb' : 'transparent',
+                      color: isActive(item.url) ? 'white' : '#111827'
+                    }}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
+                  </NavLink>
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
@@ -91,12 +108,17 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink to="/configuracion" className={getNavCls}>
-                    <Settings className="h-4 w-4" />
-                    <span className="group-data-[collapsible=icon]:hidden">Configuración</span>
-                  </NavLink>
-                </SidebarMenuButton>
+                <NavLink 
+                  to="/configuracion" 
+                  className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors w-full ${getNavCls({ isActive: isActive("/configuracion") })}`}
+                  style={{ 
+                    backgroundColor: isActive("/configuracion") ? '#2563eb' : 'transparent',
+                    color: isActive("/configuracion") ? 'white' : '#111827'
+                  }}
+                >
+                  <Settings className="h-4 w-4" />
+                  <span className="group-data-[collapsible=icon]:hidden">Configuración</span>
+                </NavLink>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
