@@ -45,29 +45,31 @@ export function AppSidebar() {
   const currentPath = location.pathname
 
   const isActive = (path: string) => currentPath === path
-  const isExpanded = mainItems.some((i) => isActive(i.url))
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
-    isActive ? "bg-primary text-primary-foreground font-medium shadow-lg" : "hover:bg-muted/50"
+    isActive 
+      ? "bg-primary text-primary-foreground font-medium shadow-lg" 
+      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
 
   return (
     <Sidebar
       collapsible="icon"
+      className="border-r border-sidebar-border bg-sidebar"
     >
-      <SidebarHeader className="p-4">
+      <SidebarHeader className="p-4 border-b border-sidebar-border">
         <div className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
           <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
             <Truck className="w-5 h-5 text-white" />
           </div>
           <div className="group-data-[collapsible=icon]:hidden">
-            <h2 className="text-lg font-bold text-foreground">MantPro</h2>
-            <p className="text-xs text-muted-foreground">Gestión Industrial</p>
+            <h2 className="text-lg font-bold text-sidebar-foreground">MantPro</h2>
+            <p className="text-xs text-sidebar-foreground/70">Gestión Industrial</p>
           </div>
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Gestión</SidebarGroupLabel>
+      <SidebarContent className="px-2">
+        <SidebarGroup className="py-2">
+          <SidebarGroupLabel className="text-sidebar-foreground/70">Gestión</SidebarGroupLabel>
           
           <SidebarGroupContent>
             <SidebarMenu>
@@ -85,7 +87,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup className="mt-auto">
+        <SidebarGroup className="mt-auto py-2">
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
