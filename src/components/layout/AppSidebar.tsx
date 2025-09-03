@@ -30,7 +30,6 @@ import {
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Órdenes de Trabajo", url: "/ordenes", icon: ClipboardList },
-  { title: "Inventario", url: "/inventario", icon: Package },
   { title: "Proyectos", url: "/proyectos", icon: FolderOpen },
   { title: "Maquinarias", url: "/maquinarias", icon: Truck },
   { title: "Asignaciones", url: "/asignaciones", icon: GitBranch },
@@ -38,9 +37,18 @@ const mainItems = [
   { title: "Proveedores", url: "/proveedores", icon: Building },
 ]
 
+const inventoryItems = [
+  { title: "Inventario", url: "/inventario", icon: Package },
+]
+
 const accessItems = [
   { title: "Clientes", url: "/clientes", icon: Users },
   { title: "Gestión Usuarios", url: "/gestion-usuarios", icon: UserCheck },
+]
+
+const configItems = [
+  { title: "Nomenclaturas", url: "/nomenclaturas", icon: Settings },
+  { title: "Configuración", url: "/configuracion", icon: Settings },
 ]
 
 export function AppSidebar() {
@@ -65,7 +73,7 @@ export function AppSidebar() {
     return classes
   }
 
-  const allItems = [...mainItems, ...accessItems]
+  const allItems = [...mainItems, ...inventoryItems, ...accessItems, ...configItems]
 
   return (
     <Sidebar
@@ -111,6 +119,31 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup className="py-2">
+          <SidebarGroupLabel className="text-gray-600 font-medium">Inventarios</SidebarGroupLabel>
+          
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {inventoryItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <NavLink 
+                    to={item.url} 
+                    end 
+                    className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors w-full ${getNavCls({ isActive: isActive(item.url) })}`}
+                    style={{ 
+                      backgroundColor: isActive(item.url) ? '#2563eb' : 'transparent',
+                      color: isActive(item.url) ? 'white' : '#111827'
+                    }}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
+                  </NavLink>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup className="py-2">
           <SidebarGroupLabel className="text-gray-600 font-medium">Accesos</SidebarGroupLabel>
           
           <SidebarGroupContent>
@@ -136,21 +169,26 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup className="mt-auto py-2">
+          <SidebarGroupLabel className="text-gray-600 font-medium">Configuraciones</SidebarGroupLabel>
+          
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <NavLink 
-                  to="/configuracion" 
-                  className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors w-full ${getNavCls({ isActive: isActive("/configuracion") })}`}
-                  style={{ 
-                    backgroundColor: isActive("/configuracion") ? '#2563eb' : 'transparent',
-                    color: isActive("/configuracion") ? 'white' : '#111827'
-                  }}
-                >
-                  <Settings className="h-4 w-4" />
-                  <span className="group-data-[collapsible=icon]:hidden">Configuración</span>
-                </NavLink>
-              </SidebarMenuItem>
+              {configItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <NavLink 
+                    to={item.url} 
+                    end 
+                    className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors w-full ${getNavCls({ isActive: isActive(item.url) })}`}
+                    style={{ 
+                      backgroundColor: isActive(item.url) ? '#2563eb' : 'transparent',
+                      color: isActive(item.url) ? 'white' : '#111827'
+                    }}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
+                  </NavLink>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
