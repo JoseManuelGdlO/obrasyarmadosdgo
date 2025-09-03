@@ -9,6 +9,7 @@ import OrdenesTrabajo from "./pages/OrdenesTrabajo";
 import Asignaciones from "./pages/Asignaciones";
 import Trabajadores from "./pages/Trabajadores";
 import Maquinas from "./pages/Maquinas";
+import Proveedores from "./pages/Proveedores";
 import Inventario from "./pages/Inventario";
 import Proyectos from "./pages/Proyectos";
 import Clientes from "./pages/Clientes";
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/asignaciones" element={<Asignaciones />} />
             <Route path="/trabajadores" element={<Trabajadores />} />
             <Route path="/maquinas" element={<Maquinas />} />
+            <Route path="/proveedores" element={<Proveedores />} />
             <Route path="/inventario" element={<Inventario />} />
             <Route path="/proyectos" element={<Proyectos />} />
             <Route path="/clientes" element={<Clientes />} />
