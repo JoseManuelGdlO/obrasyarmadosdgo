@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { 
@@ -115,72 +116,86 @@ const OrdenesTrabajo = () => {
         </CardContent>
       </Card>
 
-      {/* Orders Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {ordenes.map((orden) => (
-          <Card key={orden.id} className="border-none shadow-md hover:shadow-lg transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <CardTitle className="text-lg font-semibold text-foreground">
-                    {orden.id}
-                  </CardTitle>
-                  <h3 className="text-sm font-medium text-primary">{orden.titulo}</h3>
-                </div>
-                <div className="flex gap-2">
-                  <Badge className={getPriorityColor(orden.prioridad)}>
-                    {orden.prioridad}
-                  </Badge>
-                  <Badge className={getStatusColor(orden.estado)}>
-                    {orden.estado}
-                  </Badge>
-                </div>
-              </div>
-            </CardHeader>
-            
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {orden.descripcion}
-              </p>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                <div className="flex items-center gap-2">
-                  <Truck className="w-4 h-4 text-primary" />
-                  <span className="text-muted-foreground">Máquina:</span>
-                  <span className="font-medium text-foreground">{orden.maquina}</span>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <User className="w-4 h-4 text-primary" />
-                  <span className="text-muted-foreground">Técnico:</span>
-                  <span className="font-medium text-foreground">{orden.tecnico}</span>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <ClipboardList className="w-4 h-4 text-primary" />
-                  <span className="text-muted-foreground">Cliente:</span>
-                  <span className="font-medium text-foreground">{orden.cliente}</span>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-primary" />
-                  <span className="text-muted-foreground">Vencimiento:</span>
-                  <span className="font-medium text-foreground">{orden.fechaVencimiento}</span>
-                </div>
-              </div>
-              
-              <div className="flex gap-2 pt-2">
-                <Button variant="outline" size="sm" className="flex-1">
-                  Ver Detalles
-                </Button>
-                <Button variant="default" size="sm" className="flex-1">
-                  Editar
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Orders Table */}
+      <Card className="border-none shadow-md">
+        <CardHeader>
+          <CardTitle>Lista de Órdenes de Trabajo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Título</TableHead>
+                <TableHead>Máquina</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Técnico</TableHead>
+                <TableHead>Fecha Vencimiento</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Prioridad</TableHead>
+                <TableHead>Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {ordenes.map((orden) => (
+                <TableRow key={orden.id} className="hover:bg-muted/50">
+                  <TableCell className="font-medium">{orden.id}</TableCell>
+                  <TableCell>
+                    <div className="max-w-xs">
+                      <p className="font-medium text-primary">{orden.titulo}</p>
+                      <p className="text-sm text-muted-foreground truncate">{orden.descripcion}</p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Truck className="w-4 h-4 text-primary" />
+                      <span className="text-sm">{orden.maquina}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <ClipboardList className="w-4 h-4 text-primary" />
+                      <span className="text-sm">{orden.cliente}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-primary" />
+                      <span className="text-sm">{orden.tecnico}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-primary" />
+                      <span className="text-sm">{orden.fechaVencimiento}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={getStatusColor(orden.estado)}>
+                      {orden.estado}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={getPriorityColor(orden.prioridad)}>
+                      {orden.prioridad}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm">
+                        Ver
+                      </Button>
+                      <Button variant="default" size="sm">
+                        Editar
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   )
 }

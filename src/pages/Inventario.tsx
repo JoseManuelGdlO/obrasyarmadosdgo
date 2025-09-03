@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { StatCard } from "@/components/ui/stat-card"
@@ -175,90 +176,96 @@ const Inventario = () => {
         </CardContent>
       </Card>
 
-      {/* Inventory Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {inventario.map((item) => {
-          const IconComponent = getCategoryIcon(item.categoria)
-          return (
-            <Card key={item.id} className="border-none shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <CardTitle className="text-lg font-semibold text-foreground">
-                      {item.id}
-                    </CardTitle>
-                    <h3 className="text-sm font-medium text-primary">{item.nombre}</h3>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <IconComponent className="w-5 h-5 text-primary" />
-                    <Badge className={getStatusColor(item.estado)}>
-                      {item.estado}
-                    </Badge>
-                  </div>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Categoría:</span>
-                    <p className="font-medium text-foreground">{item.categoria}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Stock:</span>
-                    <p className="font-medium text-foreground">{item.stock} uds</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Stock Mín:</span>
-                    <p className="font-medium text-foreground">{item.stockMinimo} uds</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Precio:</span>
-                    <p className="font-medium text-foreground">${item.precio}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Ubicación:</span>
-                    <p className="font-medium text-foreground">{item.ubicacion}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Proveedor:</span>
-                    <p className="font-medium text-foreground text-xs">{item.proveedor}</p>
-                  </div>
-                </div>
-                
-                {/* Stock Progress Bar */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Nivel de stock</span>
-                    <span className="text-foreground">{Math.round((item.stock / (item.stockMinimo * 2)) * 100)}%</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full transition-all ${
-                        item.stock > item.stockMinimo 
-                          ? 'bg-success' 
-                          : item.stock > 0 
-                            ? 'bg-warning' 
-                            : 'bg-destructive'
-                      }`}
-                      style={{ width: `${Math.min((item.stock / (item.stockMinimo * 2)) * 100, 100)}%` }}
-                    />
-                  </div>
-                </div>
-                
-                <div className="flex gap-2 pt-2">
-                  <Button variant="outline" size="sm" className="flex-1">
-                    Ver Detalles
-                  </Button>
-                  <Button variant="default" size="sm" className="flex-1">
-                    Editar
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
+      {/* Inventory Table */}
+      <Card className="border-none shadow-md">
+        <CardHeader>
+          <CardTitle>Lista de Inventario</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Artículo</TableHead>
+                <TableHead>Categoría</TableHead>
+                <TableHead>Stock</TableHead>
+                <TableHead>Stock Min</TableHead>
+                <TableHead>Precio</TableHead>
+                <TableHead>Ubicación</TableHead>
+                <TableHead>Proveedor</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {inventario.map((item) => {
+                const IconComponent = getCategoryIcon(item.categoria)
+                return (
+                  <TableRow key={item.id} className="hover:bg-muted/50">
+                    <TableCell className="font-medium">{item.id}</TableCell>
+                    <TableCell>
+                      <div className="max-w-xs">
+                        <p className="font-medium text-primary">{item.nombre}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <IconComponent className="w-4 h-4 text-primary" />
+                          <span className="text-xs text-muted-foreground">{item.categoria}</span>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{item.categoria}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <span className="font-medium">{item.stock} uds</span>
+                        <div className="w-20 bg-muted rounded-full h-1">
+                          <div 
+                            className={`h-1 rounded-full transition-all ${
+                              item.stock > item.stockMinimo 
+                                ? 'bg-success' 
+                                : item.stock > 0 
+                                  ? 'bg-warning' 
+                                  : 'bg-destructive'
+                            }`}
+                            style={{ width: `${Math.min((item.stock / (item.stockMinimo * 2)) * 100, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground">{item.stockMinimo} uds</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-medium">${item.precio}</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">{item.ubicacion}</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-xs text-muted-foreground">{item.proveedor}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(item.estado)}>
+                        {item.estado}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm">
+                          Ver
+                        </Button>
+                        <Button variant="default" size="sm">
+                          Editar
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   )
 }

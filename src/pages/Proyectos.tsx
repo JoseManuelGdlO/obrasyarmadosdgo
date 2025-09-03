@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { StatCard } from "@/components/ui/stat-card"
@@ -163,110 +164,112 @@ const Proyectos = () => {
         </CardContent>
       </Card>
 
-      {/* Projects Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {proyectos.map((proyecto) => (
-          <Card key={proyecto.id} className="border-none shadow-md hover:shadow-lg transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <CardTitle className="text-lg font-semibold text-foreground">
-                    {proyecto.id}
-                  </CardTitle>
-                  <h3 className="text-sm font-medium text-primary">{proyecto.nombre}</h3>
-                </div>
-                <Badge className={getStatusColor(proyecto.estado)}>
-                  {proyecto.estado}
-                </Badge>
-              </div>
-            </CardHeader>
-            
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {proyecto.descripcion}
-              </p>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-primary" />
-                  <div>
-                    <span className="text-muted-foreground">Cliente:</span>
-                    <p className="font-medium text-foreground text-xs">{proyecto.cliente}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-primary" />
-                  <div>
-                    <span className="text-muted-foreground">Ubicación:</span>
-                    <p className="font-medium text-foreground text-xs">{proyecto.ubicacion}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-primary" />
-                  <div>
-                    <span className="text-muted-foreground">Inicio:</span>
-                    <p className="font-medium text-foreground">{proyecto.fechaInicio}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-primary" />
-                  <div>
-                    <span className="text-muted-foreground">Fin:</span>
-                    <p className="font-medium text-foreground">{proyecto.fechaFin}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-primary" />
-                  <div>
-                    <span className="text-muted-foreground">Presupuesto:</span>
-                    <p className="font-medium text-foreground text-xs">{formatCurrency(proyecto.presupuesto)}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <FolderOpen className="w-4 h-4 text-primary" />
-                  <div>
-                    <span className="text-muted-foreground">Máquinas:</span>
-                    <p className="font-medium text-foreground">{proyecto.maquinasAsignadas}</p>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Progress Bar */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Progreso del proyecto</span>
-                  <span className="text-foreground">{proyecto.progreso}%</span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div 
-                    className="h-2 bg-gradient-to-r from-primary to-accent rounded-full transition-all"
-                    style={{ width: `${proyecto.progreso}%` }}
-                  />
-                </div>
-              </div>
-              
-              <div className="text-xs text-muted-foreground">
-                <span>Responsable: </span>
-                <span className="font-medium text-foreground">{proyecto.responsable}</span>
-              </div>
-              
-              <div className="flex gap-2 pt-2">
-                <Button variant="outline" size="sm" className="flex-1">
-                  Ver Detalles
-                </Button>
-                <Button variant="default" size="sm" className="flex-1">
-                  Gestionar
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Projects Table */}
+      <Card className="border-none shadow-md">
+        <CardHeader>
+          <CardTitle>Lista de Proyectos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Proyecto</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Ubicación</TableHead>
+                <TableHead>Fechas</TableHead>
+                <TableHead>Presupuesto</TableHead>
+                <TableHead>Progreso</TableHead>
+                <TableHead>Máquinas</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {proyectos.map((proyecto) => (
+                <TableRow key={proyecto.id} className="hover:bg-muted/50">
+                  <TableCell className="font-medium">{proyecto.id}</TableCell>
+                  <TableCell>
+                    <div className="max-w-xs">
+                      <p className="font-medium text-primary">{proyecto.nombre}</p>
+                      <p className="text-sm text-muted-foreground truncate">{proyecto.descripcion}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Responsable: {proyecto.responsable}
+                      </p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-primary" />
+                      <span className="text-sm">{proyecto.cliente}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-primary" />
+                      <span className="text-sm">{proyecto.ubicacion}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3 text-primary" />
+                        <span className="text-xs text-muted-foreground">Inicio:</span>
+                        <span className="text-xs">{proyecto.fechaInicio}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3 text-primary" />
+                        <span className="text-xs text-muted-foreground">Fin:</span>
+                        <span className="text-xs">{proyecto.fechaFin}</span>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-medium">{formatCurrency(proyecto.presupuesto)}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">{proyecto.progreso}%</span>
+                      </div>
+                      <div className="w-20 bg-muted rounded-full h-2">
+                        <div 
+                          className="h-2 bg-gradient-to-r from-primary to-accent rounded-full transition-all"
+                          style={{ width: `${proyecto.progreso}%` }}
+                        />
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <FolderOpen className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-medium">{proyecto.maquinasAsignadas}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={getStatusColor(proyecto.estado)}>
+                      {proyecto.estado}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm">
+                        Ver
+                      </Button>
+                      <Button variant="default" size="sm">
+                        Gestionar
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   )
 }
