@@ -83,6 +83,14 @@ const OrdenesTrabajo = () => {
     }
   }
 
+  const calculateDaysOpen = (fechaCreacion: string) => {
+    const creationDate = new Date(fechaCreacion)
+    const today = new Date()
+    const diffTime = Math.abs(today.getTime() - creationDate.getTime())
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return diffDays
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -131,6 +139,7 @@ const OrdenesTrabajo = () => {
                 <TableHead>Cliente</TableHead>
                 <TableHead>Técnico</TableHead>
                 <TableHead>Fecha Vencimiento</TableHead>
+                <TableHead>Días Abierta</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Prioridad</TableHead>
                 <TableHead>Acciones</TableHead>
@@ -168,6 +177,12 @@ const OrdenesTrabajo = () => {
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-primary" />
                       <span className="text-sm">{orden.fechaVencimiento}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-accent" />
+                      <span className="text-sm font-medium">{calculateDaysOpen(orden.fechaCreacion)} días</span>
                     </div>
                   </TableCell>
                   <TableCell>
