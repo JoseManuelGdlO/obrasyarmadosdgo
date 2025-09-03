@@ -32,12 +32,15 @@ const mainItems = [
   { title: "Órdenes de Trabajo", url: "/ordenes", icon: ClipboardList },
   { title: "Inventario", url: "/inventario", icon: Package },
   { title: "Proyectos", url: "/proyectos", icon: FolderOpen },
-  { title: "Clientes", url: "/clientes", icon: Users },
-  { title: "Gestión Usuarios", url: "/gestion-usuarios", icon: UserCheck },
   { title: "Maquinarias", url: "/maquinarias", icon: Truck },
   { title: "Asignaciones", url: "/asignaciones", icon: GitBranch },
   { title: "Trabajadores", url: "/trabajadores", icon: UserCheck },
   { title: "Proveedores", url: "/proveedores", icon: Building },
+]
+
+const accessItems = [
+  { title: "Clientes", url: "/clientes", icon: Users },
+  { title: "Gestión Usuarios", url: "/gestion-usuarios", icon: UserCheck },
 ]
 
 export function AppSidebar() {
@@ -61,6 +64,8 @@ export function AppSidebar() {
     console.log("Nav classes:", classes, "isActive:", isActive)
     return classes
   }
+
+  const allItems = [...mainItems, ...accessItems]
 
   return (
     <Sidebar
@@ -86,6 +91,31 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {mainItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <NavLink 
+                    to={item.url} 
+                    end 
+                    className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors w-full ${getNavCls({ isActive: isActive(item.url) })}`}
+                    style={{ 
+                      backgroundColor: isActive(item.url) ? '#2563eb' : 'transparent',
+                      color: isActive(item.url) ? 'white' : '#111827'
+                    }}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
+                  </NavLink>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup className="py-2">
+          <SidebarGroupLabel className="text-gray-600 font-medium">Accesos</SidebarGroupLabel>
+          
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {accessItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <NavLink 
                     to={item.url} 
