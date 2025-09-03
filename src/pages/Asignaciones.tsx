@@ -3,103 +3,182 @@ import { Plus, Search, Filter, Settings, Truck, Building, Calendar, Users } from
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatCard } from "@/components/ui/stat-card";
 
-// Datos de ejemplo
-const proyectos = [
+// Datos de ejemplo - Máquinas con sus asignaciones
+const maquinas = [
   {
     id: 1,
-    nombre: "Construcción Edificio Central",
-    cliente: "Constructora ABC",
-    estado: "Activo",
-    fechaInicio: "2024-01-15",
-    fechaFin: "2024-06-30",
-    maquinasAsignadas: [
-      { id: 1, nombre: "Excavadora CAT 320", tipo: "Excavadora", estado: "Operativa" },
-      { id: 2, nombre: "Grúa Tower Crane 50", tipo: "Grúa", estado: "Operativa" },
-      { id: 3, nombre: "Bulldozer D6", tipo: "Bulldozer", estado: "Mantenimiento" },
-    ]
+    nombre: "Excavadora CAT 320",
+    tipo: "Excavadora",
+    modelo: "CAT 320 GC",
+    placas: "MX-123-ABC",
+    estado: "Operativa",
+    proyectoAsignado: {
+      id: 1,
+      nombre: "Construcción Edificio Central",
+      cliente: "Constructora ABC",
+      fechaAsignacion: "2024-01-15",
+      tiempoAsignada: "2 meses, 18 días"
+    }
   },
   {
     id: 2,
-    nombre: "Reparación Carretera Norte",
-    cliente: "Municipalidad",
-    estado: "Activo",
-    fechaInicio: "2024-02-01",
-    fechaFin: "2024-04-15",
-    maquinasAsignadas: [
-      { id: 4, nombre: "Pavimentadora P385", tipo: "Pavimentadora", estado: "Operativa" },
-      { id: 5, nombre: "Compactadora CS-533", tipo: "Compactadora", estado: "Operativa" },
-    ]
+    nombre: "Grúa Tower Crane 50",
+    tipo: "Grúa",
+    modelo: "Liebherr 150 EC-B",
+    placas: "MX-456-DEF", 
+    estado: "Operativa",
+    proyectoAsignado: {
+      id: 1,
+      nombre: "Construcción Edificio Central",
+      cliente: "Constructora ABC",
+      fechaAsignacion: "2024-01-20",
+      tiempoAsignada: "2 meses, 13 días"
+    }
   },
   {
     id: 3,
-    nombre: "Desarrollo Residencial Sur",
-    cliente: "Inmobiliaria XYZ",
-    estado: "Planificado",
-    fechaInicio: "2024-03-01",
-    fechaFin: "2024-08-30",
-    maquinasAsignadas: []
+    nombre: "Bulldozer D6",
+    tipo: "Bulldozer",
+    modelo: "CAT D6T",
+    placas: "MX-789-GHI",
+    estado: "Mantenimiento",
+    proyectoAsignado: {
+      id: 1,
+      nombre: "Construcción Edificio Central",
+      cliente: "Constructora ABC",
+      fechaAsignacion: "2024-01-10",
+      tiempoAsignada: "2 meses, 23 días"
+    }
   },
   {
     id: 4,
-    nombre: "Mantenimiento Planta Industrial",
-    cliente: "Industrias DEF",
-    estado: "Completado",
-    fechaInicio: "2023-12-01",
-    fechaFin: "2024-01-15",
-    maquinasAsignadas: [
-      { id: 6, nombre: "Montacargas FL-200", tipo: "Montacargas", estado: "Disponible" },
-    ]
+    nombre: "Pavimentadora P385",
+    tipo: "Pavimentadora",
+    modelo: "Volvo P6820D",
+    placas: "MX-101-JKL",
+    estado: "Operativa",
+    proyectoAsignado: {
+      id: 2,
+      nombre: "Reparación Carretera Norte",
+      cliente: "Municipalidad",
+      fechaAsignacion: "2024-02-01",
+      tiempoAsignada: "1 mes, 2 días"
+    }
+  },
+  {
+    id: 5,
+    nombre: "Compactadora CS-533",
+    tipo: "Compactadora",
+    modelo: "CAT CS-533E",
+    placas: "MX-202-MNO",
+    estado: "Operativa",
+    proyectoAsignado: {
+      id: 2,
+      nombre: "Reparación Carretera Norte",
+      cliente: "Municipalidad",
+      fechaAsignacion: "2024-02-05",
+      tiempoAsignada: "29 días"
+    }
+  },
+  {
+    id: 6,
+    nombre: "Montacargas FL-200",
+    tipo: "Montacargas",
+    modelo: "Toyota 8FD25",
+    placas: "MX-303-PQR",
+    estado: "Disponible",
+    proyectoAsignado: null
+  },
+  {
+    id: 7,
+    nombre: "Excavadora JCB 8080",
+    tipo: "Excavadora", 
+    modelo: "JCB 8080 Midi",
+    placas: "MX-404-STU",
+    estado: "Disponible",
+    proyectoAsignado: null
+  },
+  {
+    id: 8,
+    nombre: "Camión Volvo FH16",
+    tipo: "Camión",
+    modelo: "Volvo FH16 750",
+    placas: "MX-505-VWX",
+    estado: "Disponible",
+    proyectoAsignado: null
+  },
+  {
+    id: 9,
+    nombre: "Retroexcavadora 420F",
+    tipo: "Retroexcavadora",
+    modelo: "CAT 420F2",
+    placas: "MX-606-YZA",
+    estado: "Fuera de Servicio",
+    proyectoAsignado: null
+  },
+  {
+    id: 10,
+    nombre: "Soldadora Miller 350",
+    tipo: "Soldadora",
+    modelo: "Miller Trailblazer 325",
+    placas: "MX-707-BCD",
+    estado: "Disponible",
+    proyectoAsignado: null
   }
 ];
 
-const maquinasDisponibles = [
-  { id: 7, nombre: "Excavadora JCB 8080", tipo: "Excavadora", estado: "Disponible" },
-  { id: 8, nombre: "Camión Volvo FH16", tipo: "Camión", estado: "Disponible" },
-  { id: 9, nombre: "Retroexcavadora 420F", tipo: "Retroexcavadora", estado: "Disponible" },
-  { id: 10, nombre: "Soldadora Miller 350", tipo: "Soldadora", estado: "Disponible" },
+const proyectosDisponibles = [
+  { id: 1, nombre: "Construcción Edificio Central", cliente: "Constructora ABC" },
+  { id: 2, nombre: "Reparación Carretera Norte", cliente: "Municipalidad" },
+  { id: 3, nombre: "Desarrollo Residencial Sur", cliente: "Inmobiliaria XYZ" },
+  { id: 4, nombre: "Mantenimiento Planta Industrial", cliente: "Industrias DEF" }
 ];
+
+const tiposMaquina = ["Excavadora", "Grúa", "Bulldozer", "Pavimentadora", "Compactadora", "Montacargas", "Camión", "Retroexcavadora", "Soldadora"];
 
 export default function Asignaciones() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedTipo, setSelectedTipo] = useState("");
   const [selectedEstado, setSelectedEstado] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<number | null>(null);
+  const [selectedMachine, setSelectedMachine] = useState<number | null>(null);
   
   const [formData, setFormData] = useState({
-    proyectoId: "",
     maquinaId: "",
+    proyectoId: "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Asignar máquina:", formData);
+    console.log("Asignar máquina a proyecto:", formData);
     setIsDialogOpen(false);
-    setFormData({ proyectoId: "", maquinaId: "" });
+    setFormData({ maquinaId: "", proyectoId: "" });
   };
 
-  const filteredProyectos = proyectos.filter((proyecto) => {
+  const filteredMaquinas = maquinas.filter((maquina) => {
     const matchesSearch = 
-      proyecto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      proyecto.cliente.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesEstado = !selectedEstado || proyecto.estado === selectedEstado;
-    return matchesSearch && matchesEstado;
+      maquina.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      maquina.tipo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      maquina.placas.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (maquina.proyectoAsignado?.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || false);
+    const matchesTipo = !selectedTipo || maquina.tipo === selectedTipo;
+    const matchesEstado = !selectedEstado || maquina.estado === selectedEstado;
+    return matchesSearch && matchesTipo && matchesEstado;
   });
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Activo": return "bg-green-100 text-green-800";
-      case "Planificado": return "bg-blue-100 text-blue-800";
-      case "Completado": return "bg-gray-100 text-gray-800";
-      case "Pausado": return "bg-yellow-100 text-yellow-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
 
   const getMachineStatusColor = (status: string) => {
     switch (status) {
@@ -112,9 +191,10 @@ export default function Asignaciones() {
   };
 
   // Estadísticas
-  const proyectosActivos = proyectos.filter(p => p.estado === "Activo").length;
-  const totalMaquinasAsignadas = proyectos.reduce((sum, p) => sum + p.maquinasAsignadas.length, 0);
-  const maquinasEnUso = proyectos.flatMap(p => p.maquinasAsignadas.filter(m => m.estado === "Operativa")).length;
+  const maquinasAsignadas = maquinas.filter(m => m.proyectoAsignado !== null).length;
+  const maquinasDisponibles = maquinas.filter(m => m.proyectoAsignado === null && m.estado === "Disponible").length;
+  const maquinasOperativas = maquinas.filter(m => m.estado === "Operativa").length;
+  const maquinasMantenimiento = maquinas.filter(m => m.estado === "Mantenimiento").length;
 
   return (
     <div className="space-y-6">
@@ -123,7 +203,7 @@ export default function Asignaciones() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Asignaciones</h1>
           <p className="text-gray-600 mt-1">
-            Gestiona las asignaciones de máquinas a proyectos
+            Gestiona las asignaciones de máquinas y proyectos
           </p>
         </div>
         
@@ -140,28 +220,13 @@ export default function Asignaciones() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="proyecto">Proyecto</Label>
-                <Select value={formData.proyectoId} onValueChange={(value) => setFormData({ ...formData, proyectoId: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar proyecto" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {proyectos.filter(p => p.estado === "Activo" || p.estado === "Planificado").map((proyecto) => (
-                      <SelectItem key={proyecto.id} value={proyecto.id.toString()}>
-                        {proyecto.nombre}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="maquina">Máquina Disponible</Label>
+                <Label htmlFor="maquina">Máquina</Label>
                 <Select value={formData.maquinaId} onValueChange={(value) => setFormData({ ...formData, maquinaId: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar máquina" />
                   </SelectTrigger>
                   <SelectContent>
-                    {maquinasDisponibles.map((maquina) => (
+                    {maquinas.filter(m => m.proyectoAsignado === null && m.estado === "Disponible").map((maquina) => (
                       <SelectItem key={maquina.id} value={maquina.id.toString()}>
                         {maquina.nombre} - {maquina.tipo}
                       </SelectItem>
@@ -169,9 +234,24 @@ export default function Asignaciones() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="proyecto">Proyecto</Label>
+                <Select value={formData.proyectoId} onValueChange={(value) => setFormData({ ...formData, proyectoId: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar proyecto" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {proyectosDisponibles.map((proyecto) => (
+                      <SelectItem key={proyecto.id} value={proyecto.id.toString()}>
+                        {proyecto.nombre} - {proyecto.cliente}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex gap-2 pt-4">
                 <Button type="submit" className="flex-1">
-                  Asignar Máquina
+                  Asignar
                 </Button>
                 <Button 
                   type="button" 
@@ -189,28 +269,28 @@ export default function Asignaciones() {
       {/* Estadísticas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatCard
-          title="Proyectos Activos"
-          value={proyectosActivos}
-          icon={Building}
-          trend={{ value: 12, isPositive: true }}
-        />
-        <StatCard
           title="Máquinas Asignadas"
-          value={totalMaquinasAsignadas}
+          value={maquinasAsignadas}
           icon={Truck}
           trend={{ value: 8, isPositive: true }}
         />
         <StatCard
-          title="Máquinas en Uso"
-          value={maquinasEnUso}
+          title="Disponibles"
+          value={maquinasDisponibles}
+          icon={Users}
+          trend={{ value: 3, isPositive: true }}
+        />
+        <StatCard
+          title="Operativas"
+          value={maquinasOperativas}
           icon={Settings}
           trend={{ value: 5, isPositive: false }}
         />
         <StatCard
-          title="Disponibles"
-          value={maquinasDisponibles.length}
-          icon={Users}
-          trend={{ value: 3, isPositive: true }}
+          title="En Mantenimiento"
+          value={maquinasMantenimiento}
+          icon={Building}
+          trend={{ value: 2, isPositive: false }}
         />
       </div>
 
@@ -222,24 +302,38 @@ export default function Asignaciones() {
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Buscar por proyecto o cliente..."
+                  placeholder="Buscar por máquina, tipo, placas o proyecto..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
                 />
               </div>
             </div>
-            <div className="w-full sm:w-48">
-              <Select value={selectedEstado} onValueChange={setSelectedEstado}>
+            <div className="w-full sm:w-40">
+              <Select value={selectedTipo} onValueChange={setSelectedTipo}>
                 <SelectTrigger>
                   <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Todos los estados" />
+                  <SelectValue placeholder="Tipo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Activo">Activo</SelectItem>
-                  <SelectItem value="Planificado">Planificado</SelectItem>
-                  <SelectItem value="Completado">Completado</SelectItem>
-                  <SelectItem value="Pausado">Pausado</SelectItem>
+                  {tiposMaquina.map((tipo) => (
+                    <SelectItem key={tipo} value={tipo}>
+                      {tipo}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-40">
+              <Select value={selectedEstado} onValueChange={setSelectedEstado}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Operativa">Operativa</SelectItem>
+                  <SelectItem value="Disponible">Disponible</SelectItem>
+                  <SelectItem value="Mantenimiento">Mantenimiento</SelectItem>
+                  <SelectItem value="Fuera de Servicio">Fuera de Servicio</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -247,92 +341,122 @@ export default function Asignaciones() {
         </CardContent>
       </Card>
 
-      {/* Lista de Proyectos y Asignaciones */}
-      <div className="space-y-4">
-        {filteredProyectos.map((proyecto) => (
-          <Card key={proyecto.id} className="overflow-hidden">
-            <CardHeader className="pb-3">
-              <div className="flex justify-between items-start">
-                <div className="space-y-1">
-                  <CardTitle className="text-lg">{proyecto.nombre}</CardTitle>
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
-                    <span className="flex items-center gap-1">
-                      <Building className="h-4 w-4" />
-                      {proyecto.cliente}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      {new Date(proyecto.fechaInicio).toLocaleDateString()} - {new Date(proyecto.fechaFin).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-                <Badge className={getStatusColor(proyecto.estado)}>
-                  {proyecto.estado}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-gray-900">
-                    Máquinas Asignadas ({proyecto.maquinasAsignadas.length})
-                  </h4>
-                  {proyecto.estado === "Activo" || proyecto.estado === "Planificado" ? (
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => {
-                        setSelectedProject(proyecto.id);
-                        setFormData({ ...formData, proyectoId: proyecto.id.toString() });
-                        setIsDialogOpen(true);
-                      }}
-                    >
-                      <Plus className="h-3 w-3 mr-1" />
-                      Asignar
-                    </Button>
-                  ) : null}
-                </div>
-                
-                {proyecto.maquinasAsignadas.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {proyecto.maquinasAsignadas.map((maquina) => (
-                      <div key={maquina.id} className="border rounded-lg p-3 bg-gray-50">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <Truck className="h-4 w-4 text-gray-600" />
-                              <span className="font-medium text-sm">{maquina.nombre}</span>
-                            </div>
-                            <p className="text-xs text-gray-600">{maquina.tipo}</p>
-                          </div>
-                          <Badge className={`${getMachineStatusColor(maquina.estado)} text-xs`}>
-                            {maquina.estado}
-                          </Badge>
+      {/* Lista de Máquinas */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">
+            Lista de Máquinas ({filteredMaquinas.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Máquina</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Placas</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Proyecto Asignado</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Tiempo Asignada</TableHead>
+                <TableHead className="text-center">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredMaquinas.map((maquina) => (
+                <TableRow key={maquina.id} className="hover:bg-gray-50">
+                  <TableCell>
+                    <div className="space-y-1">
+                      <div className="font-medium">{maquina.nombre}</div>
+                      <div className="text-sm text-gray-600">{maquina.modelo}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">
+                      {maquina.tipo}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <code className="bg-gray-100 px-2 py-1 rounded text-sm">
+                      {maquina.placas}
+                    </code>
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={getMachineStatusColor(maquina.estado)}>
+                      {maquina.estado}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {maquina.proyectoAsignado ? (
+                      <div className="space-y-1">
+                        <div className="font-medium text-sm">
+                          {maquina.proyectoAsignado.nombre}
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          Desde: {new Date(maquina.proyectoAsignado.fechaAsignacion).toLocaleDateString()}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-lg">
-                    <Truck className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                    <p className="text-sm">No hay máquinas asignadas a este proyecto</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {filteredProyectos.length === 0 && (
-        <Card>
-          <CardContent className="text-center py-8">
-            <div className="text-gray-500">
-              No se encontraron proyectos que coincidan con los filtros
+                    ) : (
+                      <span className="text-gray-500 italic">Sin asignar</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {maquina.proyectoAsignado ? (
+                      <span className="text-gray-600">
+                        {maquina.proyectoAsignado.cliente}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {maquina.proyectoAsignado ? (
+                      <span className="text-gray-600 font-medium">
+                        {maquina.proyectoAsignado.tiempoAsignada}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-2 justify-center">
+                      {maquina.proyectoAsignado ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          Desasignar
+                        </Button>
+                      ) : (
+                        maquina.estado === "Disponible" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedMachine(maquina.id);
+                              setFormData({ ...formData, maquinaId: maquina.id.toString() });
+                              setIsDialogOpen(true);
+                            }}
+                          >
+                            Asignar
+                          </Button>
+                        )
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          
+          {filteredMaquinas.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              No se encontraron máquinas que coincidan con los filtros
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
