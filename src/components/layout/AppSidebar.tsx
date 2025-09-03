@@ -33,6 +33,7 @@ const mainItems = [
   { title: "Inventario", url: "/inventario", icon: Package },
   { title: "Proyectos", url: "/proyectos", icon: FolderOpen },
   { title: "Clientes", url: "/clientes", icon: Users },
+  { title: "Gestión Usuarios", url: "/gestion-usuarios", icon: UserCheck },
   { title: "Maquinarias", url: "/maquinarias", icon: Truck },
   { title: "Asignaciones", url: "/asignaciones", icon: GitBranch },
   { title: "Trabajadores", url: "/trabajadores", icon: UserCheck },
