@@ -47,29 +47,29 @@ export function AppSidebar() {
   const isActive = (path: string) => currentPath === path
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     isActive 
-      ? "bg-primary text-primary-foreground font-medium shadow-lg" 
-      : "text-black hover:bg-slate-100 hover:text-black border border-transparent hover:border-slate-200"
+      ? "bg-blue-600 text-white font-medium shadow-lg" 
+      : "text-gray-900 hover:bg-gray-100 hover:text-gray-900"
 
   return (
     <Sidebar
       collapsible="icon"
-      className="border-r border-sidebar-border bg-sidebar"
+      className="border-r border-gray-200 bg-white"
     >
-      <SidebarHeader className="p-4 border-b border-sidebar-border">
+      <SidebarHeader className="p-4 border-b border-gray-200 bg-white">
         <div className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
-          <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-orange-500 rounded-lg flex items-center justify-center">
             <Truck className="w-5 h-5 text-white" />
           </div>
           <div className="group-data-[collapsible=icon]:hidden">
-            <h2 className="text-lg font-bold text-sidebar-foreground">MantPro</h2>
-            <p className="text-xs text-sidebar-foreground/70">Gestión Industrial</p>
+            <h2 className="text-lg font-bold text-gray-900">MantPro</h2>
+            <p className="text-xs text-gray-600">Gestión Industrial</p>
           </div>
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="px-2">
+      <SidebarContent className="px-2 bg-white">
         <SidebarGroup className="py-2">
-          <SidebarGroupLabel className="text-sidebar-foreground/70">Gestión</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-gray-600 font-medium">Gestión</SidebarGroupLabel>
           
           <SidebarGroupContent>
             <SidebarMenu>
