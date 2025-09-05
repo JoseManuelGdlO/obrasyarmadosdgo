@@ -13,7 +13,8 @@ import {
   Calendar,
   User,
   Truck,
-  DollarSign
+  DollarSign,
+  MapPin
 } from "lucide-react"
 
 const OrdenesTrabajo = () => {
@@ -24,7 +25,8 @@ const OrdenesTrabajo = () => {
       id: "OT-2024-001",
       titulo: "Mantenimiento preventivo sistema hidráulico",
       maquina: "Excavadora CAT 320DL",
-      cliente: "Constructora Horizonte S.A.",
+      ubicacion: "Sector A - Planta Norte",
+      nomenclatura: { codigo: "MPR", descripcion: "MANTENIMIENTO PREVENTIVO RUTINARIO" },
       tecnico: "Carlos Rodríguez",
       fechaCreacion: "2024-01-15",
       fechaVencimiento: "2024-01-22",
@@ -37,7 +39,8 @@ const OrdenesTrabajo = () => {
       id: "OT-2024-002", 
       titulo: "Reparación motor principal",
       maquina: "Bulldozer Komatsu D65PX",
-      cliente: "Minera del Norte LTDA",
+      ubicacion: "Sector B - Zona Industrial",
+      nomenclatura: { codigo: "MCU", descripcion: "MANTENIMIENTO CORRECTIVO URGENTE" },
       tecnico: "Ana Martínez",
       fechaCreacion: "2024-01-14",
       fechaVencimiento: "2024-01-20",
@@ -50,7 +53,8 @@ const OrdenesTrabajo = () => {
       id: "OT-2024-003",
       titulo: "Calibración sistema GPS",
       maquina: "Grúa Liebherr LTM 1090",
-      cliente: "Vialidad Nacional",
+      ubicacion: "Sector C - Área de Carga",
+      nomenclatura: { codigo: "INS", descripcion: "INSPECCIÓN DE SEGURIDAD" },
       tecnico: "Roberto Silva",
       fechaCreacion: "2024-01-12",
       fechaVencimiento: "2024-01-18",
@@ -63,7 +67,8 @@ const OrdenesTrabajo = () => {
       id: "OT-2024-004",
       titulo: "Mantenimiento correctivo transmisión",
       maquina: "Retroexcavadora JCB 3CX",
-      cliente: "Obras Públicas Municipal",
+      ubicacion: "Sector D - Patio de Maniobras",
+      nomenclatura: { codigo: "MCP", descripcion: "MANTENIMIENTO CORRECTIVO PROGRAMADO" },
       tecnico: "Luis Fernández",
       fechaCreacion: "2024-01-16",
       fechaVencimiento: "2024-01-25",
@@ -155,7 +160,8 @@ const OrdenesTrabajo = () => {
                 <TableHead>ID</TableHead>
                 <TableHead>Título</TableHead>
                 <TableHead>Máquina</TableHead>
-                <TableHead>Cliente</TableHead>
+                <TableHead>Ubicación</TableHead>
+                <TableHead>Tipo</TableHead>
                 <TableHead>Técnico</TableHead>
                 <TableHead>Fecha Vencimiento</TableHead>
                 <TableHead>Días Abierta</TableHead>
@@ -183,8 +189,17 @@ const OrdenesTrabajo = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-primary" />
+                      <span className="text-sm">{orden.ubicacion}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
                       <ClipboardList className="w-4 h-4 text-primary" />
-                      <span className="text-sm">{orden.cliente}</span>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-mono bg-muted px-1 rounded">{orden.nomenclatura.codigo}</span>
+                        <span className="text-xs text-muted-foreground">{orden.nomenclatura.descripcion}</span>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>

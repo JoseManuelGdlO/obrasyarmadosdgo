@@ -42,6 +42,7 @@ interface ItemInventario {
 const NuevaOrdenModal = ({ open, onOpenChange }: NuevaOrdenModalProps) => {
   const [folioOT, setFolioOT] = useState("")
   const [maquinaSeleccionada, setMaquinaSeleccionada] = useState<Maquina | null>(null)
+  const [nomenclaturaSeleccionada, setNomenclaturaSeleccionada] = useState("")
   const [descripcion, setDescripcion] = useState("")
   const [actividades, setActividades] = useState<Actividad[]>([])
   const [inventario, setInventario] = useState<ItemInventario[]>([])
@@ -89,6 +90,14 @@ const NuevaOrdenModal = ({ open, onOpenChange }: NuevaOrdenModalProps) => {
     { id: "2", nombre: "Mantenimiento Especializado Ltda" },
     { id: "3", nombre: "Técnicos Unidos SRL" },
     { id: "4", nombre: "Reparaciones Mineras SA" },
+  ]
+
+  const nomenclaturasDisponibles = [
+    { id: "1", codigo: "MCU", descripcion: "MANTENIMIENTO CORRECTIVO URGENTE" },
+    { id: "2", codigo: "MCP", descripcion: "MANTENIMIENTO CORRECTIVO PROGRAMADO" },
+    { id: "3", codigo: "MPR", descripcion: "MANTENIMIENTO PREVENTIVO RUTINARIO" },
+    { id: "4", codigo: "INS", descripcion: "INSPECCIÓN DE SEGURIDAD" },
+    { id: "5", codigo: "REP", descripcion: "REPARACIÓN GENERAL" },
   ]
 
   const agregarActividad = () => {
@@ -146,6 +155,7 @@ const NuevaOrdenModal = ({ open, onOpenChange }: NuevaOrdenModalProps) => {
   const generarOT = () => {
     console.log("Generando OT:", {
       folioOT,
+      nomenclatura: nomenclaturaSeleccionada,
       maquina: maquinaSeleccionada,
       descripcion,
       actividades,
@@ -186,6 +196,21 @@ const NuevaOrdenModal = ({ open, onOpenChange }: NuevaOrdenModalProps) => {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="nomenclatura">Tipo de Orden</Label>
+                <Select onValueChange={setNomenclaturaSeleccionada}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar nomenclatura" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {nomenclaturasDisponibles.map((nomenclatura) => (
+                      <SelectItem key={nomenclatura.id} value={nomenclatura.id}>
+                        {nomenclatura.codigo} - {nomenclatura.descripcion}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="maquina">Seleccionar Máquina</Label>
                 <Select onValueChange={(value) => {
                   const maquina = maquinasDisponibles.find(m => m.id === value)
