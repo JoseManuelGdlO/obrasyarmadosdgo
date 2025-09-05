@@ -12,7 +12,8 @@ import {
   ClipboardList,
   Calendar,
   User,
-  Truck
+  Truck,
+  DollarSign
 } from "lucide-react"
 
 const OrdenesTrabajo = () => {
@@ -29,6 +30,7 @@ const OrdenesTrabajo = () => {
       fechaVencimiento: "2024-01-22",
       estado: "En Progreso",
       prioridad: "Alta",
+      costoTotal: 1250000,
       descripcion: "Revisión completa del sistema hidráulico, cambio de filtros y verificación de presiones."
     },
     {
@@ -41,6 +43,7 @@ const OrdenesTrabajo = () => {
       fechaVencimiento: "2024-01-20",
       estado: "Pendiente",
       prioridad: "Media",
+      costoTotal: 2800000,
       descripcion: "Motor presenta ruidos anómalos. Requiere diagnóstico completo y posible reemplazo de componentes."
     },
     {
@@ -53,6 +56,7 @@ const OrdenesTrabajo = () => {
       fechaVencimiento: "2024-01-18",
       estado: "Completada",
       prioridad: "Baja",
+      costoTotal: 450000,
       descripcion: "Calibración y actualización del sistema de navegación GPS integrado."
     },
     {
@@ -65,9 +69,17 @@ const OrdenesTrabajo = () => {
       fechaVencimiento: "2024-01-25",
       estado: "En Progreso",
       prioridad: "Alta",
+      costoTotal: 1850000,
       descripcion: "Falla en la transmisión automática. Requiere desmontaje y reparación completa."
     }
   ]
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-CL', {
+      style: 'currency',
+      currency: 'CLP'
+    }).format(amount)
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -147,6 +159,7 @@ const OrdenesTrabajo = () => {
                 <TableHead>Técnico</TableHead>
                 <TableHead>Fecha Vencimiento</TableHead>
                 <TableHead>Días Abierta</TableHead>
+                <TableHead>Costo Total</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Prioridad</TableHead>
                 <TableHead>Acciones</TableHead>
@@ -190,6 +203,12 @@ const OrdenesTrabajo = () => {
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-accent" />
                       <span className="text-sm font-medium">{calculateDaysOpen(orden.fechaCreacion)} días</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-green-600" />
+                      <span className="text-sm font-semibold text-green-600">{formatCurrency(orden.costoTotal)}</span>
                     </div>
                   </TableCell>
                   <TableCell>
