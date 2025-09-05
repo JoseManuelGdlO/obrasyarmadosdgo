@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Save, Trash2, X, Package } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Plus, Save, Trash2, X, Package, Users } from "lucide-react"
 
 interface NuevaOrdenModalProps {
   open: boolean
@@ -45,6 +46,11 @@ const NuevaOrdenModal = ({ open, onOpenChange }: NuevaOrdenModalProps) => {
   const [actividades, setActividades] = useState<Actividad[]>([])
   const [inventario, setInventario] = useState<ItemInventario[]>([])
 
+  // Estados para proveedor externo
+  const [necesitaProveedorExterno, setNecesitaProveedorExterno] = useState(false)
+  const [proveedorSeleccionado, setProveedorSeleccionado] = useState("")
+  const [descripcionProveedor, setDescripcionProveedor] = useState("")
+
   const [nuevaActividad, setNuevaActividad] = useState<Actividad>({
     id: "",
     descripcion: "",
@@ -76,6 +82,13 @@ const NuevaOrdenModal = ({ open, onOpenChange }: NuevaOrdenModalProps) => {
     { id: "2", nombre: "Aceite hidráulico", unidad: "lt" },
     { id: "3", nombre: "Grasa multiuso", unidad: "kg" },
     { id: "4", nombre: "Correa de transmisión", unidad: "pza" },
+  ]
+
+  const proveedoresDisponibles = [
+    { id: "1", nombre: "Servicios Industriales SA" },
+    { id: "2", nombre: "Mantenimiento Especializado Ltda" },
+    { id: "3", nombre: "Técnicos Unidos SRL" },
+    { id: "4", nombre: "Reparaciones Mineras SA" },
   ]
 
   const agregarActividad = () => {
@@ -136,7 +149,11 @@ const NuevaOrdenModal = ({ open, onOpenChange }: NuevaOrdenModalProps) => {
       maquina: maquinaSeleccionada,
       descripcion,
       actividades,
-      inventario
+      inventario,
+      proveedorExterno: necesitaProveedorExterno ? {
+        proveedor: proveedorSeleccionado,
+        descripcion: descripcionProveedor
+      } : null
     })
     onOpenChange(false)
   }
@@ -348,6 +365,63 @@ const NuevaOrdenModal = ({ open, onOpenChange }: NuevaOrdenModalProps) => {
                     ))}
                   </TableBody>
                 </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Proveedor Externo */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                PROVEEDOR EXTERNO
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="necesita-proveedor"
+                  checked={necesitaProveedorExterno}
+                  onCheckedChange={(checked) => {
+                    setNecesitaProveedorExterno(checked as boolean)
+                    if (!checked) {
+                      setProveedorSeleccionado("")
+                      setDescripcionProveedor("")
+                    }
+                  }}
+                />
+                <Label htmlFor="necesita-proveedor" className="text-sm font-medium">
+                  Necesita proveedor externo
+                </Label>
+              </div>
+              
+              {necesitaProveedorExterno && (
+                <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+                  <div className="space-y-2">
+                    <Label>Seleccionar Proveedor</Label>
+                    <Select value={proveedorSeleccionado} onValueChange={setProveedorSeleccionado}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar proveedor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {proveedoresDisponibles.map((proveedor) => (
+                          <SelectItem key={proveedor.id} value={proveedor.id}>
+                            {proveedor.nombre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Descripción del Trabajo</Label>
+                    <Textarea
+                      value={descripcionProveedor}
+                      onChange={(e) => setDescripcionProveedor(e.target.value)}
+                      placeholder="Descripción del trabajo que realizará el proveedor externo..."
+                      className="min-h-20"
+                    />
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
