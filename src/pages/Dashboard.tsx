@@ -2,6 +2,7 @@ import { StatCard } from "@/components/ui/stat-card"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { useNavigate } from "react-router-dom"
 import {
   ClipboardList,
   Package,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react"
 
 const Dashboard = () => {
+  const navigate = useNavigate()
   const recentOrders = [
     { id: "OT-001", machine: "Excavadora CAT 320", client: "Constructora ABC", status: "En Progreso", priority: "Alta" },
     { id: "OT-002", machine: "Grúa Liebherr LTM", client: "Minera XYZ", status: "Pendiente", priority: "Media" },
@@ -48,7 +50,10 @@ const Dashboard = () => {
           <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
           <p className="text-muted-foreground">Panel de control del sistema de mantenimiento</p>
         </div>
-        <Button className="bg-gradient-to-r from-primary to-accent text-white shadow-lg hover:shadow-xl transition-all">
+        <Button 
+          onClick={() => navigate('/ordenes-trabajo')}
+          className="bg-gradient-to-r from-primary to-accent text-white shadow-lg hover:shadow-xl transition-all"
+        >
           <Plus className="w-4 h-4 mr-2" />
           Nueva Orden de Trabajo
         </Button>
