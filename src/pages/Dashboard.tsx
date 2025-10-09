@@ -1,8 +1,9 @@
+import { useState } from "react"
 import { StatCard } from "@/components/ui/stat-card"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { useNavigate } from "react-router-dom"
+import NuevaOrdenModal from "@/components/modals/NuevaOrdenModal"
 import {
   ClipboardList,
   Package,
@@ -16,7 +17,7 @@ import {
 } from "lucide-react"
 
 const Dashboard = () => {
-  const navigate = useNavigate()
+  const [modalOpen, setModalOpen] = useState(false)
   const recentOrders = [
     { id: "OT-001", machine: "Excavadora CAT 320", client: "Constructora ABC", status: "En Progreso", priority: "Alta" },
     { id: "OT-002", machine: "Grúa Liebherr LTM", client: "Minera XYZ", status: "Pendiente", priority: "Media" },
@@ -51,7 +52,7 @@ const Dashboard = () => {
           <p className="text-muted-foreground">Panel de control del sistema de mantenimiento</p>
         </div>
         <Button 
-          onClick={() => navigate('/ordenes-trabajo')}
+          onClick={() => setModalOpen(true)}
           className="bg-gradient-to-r from-primary to-accent text-white shadow-lg hover:shadow-xl transition-all"
         >
           <Plus className="w-4 h-4 mr-2" />
@@ -185,6 +186,9 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal para nueva orden */}
+      <NuevaOrdenModal open={modalOpen} onOpenChange={setModalOpen} />
     </div>
   )
 }
