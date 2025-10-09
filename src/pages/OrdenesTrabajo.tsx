@@ -15,11 +15,13 @@ import {
   Truck,
   DollarSign,
   MapPin,
-  Clock
+  Clock,
+  History
 } from "lucide-react"
 
 const OrdenesTrabajo = () => {
   const [modalOpen, setModalOpen] = useState(false)
+  const [mostrarHistorico, setMostrarHistorico] = useState(false)
   
   const ordenes = [
     {
@@ -117,6 +119,11 @@ const OrdenesTrabajo = () => {
     return diffDays
   }
 
+
+  const ordenesFiltradas = mostrarHistorico 
+    ? ordenes.filter(orden => orden.estado === "Completada")
+    : ordenes.filter(orden => orden.estado !== "Completada")
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -125,13 +132,23 @@ const OrdenesTrabajo = () => {
           <h1 className="text-3xl font-bold text-foreground">Órdenes de Trabajo</h1>
           <p className="text-muted-foreground">Gestiona todas las órdenes de mantenimiento</p>
         </div>
-        <Button 
-          onClick={() => setModalOpen(true)}
-          className="bg-gradient-to-r from-primary to-accent text-white shadow-lg hover:shadow-xl transition-all"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Nueva Orden
-        </Button>
+        <div className="flex gap-3">
+          <Button 
+            variant={mostrarHistorico ? "default" : "outline"}
+            onClick={() => setMostrarHistorico(!mostrarHistorico)}
+            className="flex items-center gap-2"
+          >
+            <History className="w-4 h-4" />
+            {mostrarHistorico ? "Ver Activas" : "Histórico"}
+          </Button>
+          <Button 
+            onClick={() => setModalOpen(true)}
+            className="bg-gradient-to-r from-primary to-accent text-white shadow-lg hover:shadow-xl transition-all"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Nueva Orden
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -156,7 +173,9 @@ const OrdenesTrabajo = () => {
       {/* Orders Table */}
       <Card className="border-none shadow-md">
         <CardHeader>
-          <CardTitle>Lista de Órdenes de Trabajo</CardTitle>
+          <CardTitle>
+            {mostrarHistorico ? "Histórico de Órdenes Completadas" : "Lista de Órdenes de Trabajo Activas"}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -178,7 +197,17 @@ const OrdenesTrabajo = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {ordenes.map((orden) => (
+              {ordenesFiltradas.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
+                    {mostrarHistorico 
+                      ? "No hay órdenes completadas"
+                      : "No hay órdenes de trabajo activas"
+                    }
+                  </TableCell>
+                </TableRow>
+              ) : (
+                ordenesFiltradas.map((orden) => (
                 <TableRow key={orden.id} className="hover:bg-muted/50">
                   <TableCell className="font-medium">{orden.id}</TableCell>
                   <TableCell>
@@ -259,7 +288,7 @@ const OrdenesTrabajo = () => {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+              )))}
             </TableBody>
           </Table>
         </CardContent>
