@@ -70,10 +70,10 @@ const Dashboard = () => {
           trend={{ value: 12, isPositive: true }}
         />
         <StatCard
-          title="Inventario Bajo"
+          title="Equipos Fuera de Servicio"
           value={8}
-          icon={Package}
-          description="Artículos por reabastecer"
+          icon={AlertTriangle}
+          description="Requieren mantenimiento"
           trend={{ value: -5, isPositive: false }}
         />
         <StatCard
@@ -84,7 +84,7 @@ const Dashboard = () => {
           trend={{ value: 3, isPositive: true }}
         />
         <StatCard
-          title="Eficiencia"
+          title="Disponibilidad"
           value="94%"
           icon={CheckCircle}
           description="Promedio mensual"
