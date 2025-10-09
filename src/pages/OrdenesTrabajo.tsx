@@ -14,7 +14,8 @@ import {
   User,
   Truck,
   DollarSign,
-  MapPin
+  MapPin,
+  Clock
 } from "lucide-react"
 
 const OrdenesTrabajo = () => {
@@ -32,6 +33,7 @@ const OrdenesTrabajo = () => {
       fechaVencimiento: "2024-01-22",
       estado: "En Progreso",
       prioridad: "Alta",
+      horasInvertidas: 24,
       costoTotal: 1250000,
       descripcion: "Revisión completa del sistema hidráulico, cambio de filtros y verificación de presiones."
     },
@@ -46,6 +48,7 @@ const OrdenesTrabajo = () => {
       fechaVencimiento: "2024-01-20",
       estado: "Pendiente",
       prioridad: "Media",
+      horasInvertidas: 16,
       costoTotal: 2800000,
       descripcion: "Motor presenta ruidos anómalos. Requiere diagnóstico completo y posible reemplazo de componentes."
     },
@@ -60,6 +63,7 @@ const OrdenesTrabajo = () => {
       fechaVencimiento: "2024-01-18",
       estado: "Completada",
       prioridad: "Baja",
+      horasInvertidas: 8,
       costoTotal: 450000,
       descripcion: "Calibración y actualización del sistema de navegación GPS integrado."
     },
@@ -74,6 +78,7 @@ const OrdenesTrabajo = () => {
       fechaVencimiento: "2024-01-25",
       estado: "En Progreso",
       prioridad: "Alta",
+      horasInvertidas: 32,
       costoTotal: 1850000,
       descripcion: "Falla en la transmisión automática. Requiere desmontaje y reparación completa."
     }
@@ -162,10 +167,11 @@ const OrdenesTrabajo = () => {
                 <TableHead>Máquina</TableHead>
                 <TableHead>Ubicación</TableHead>
                 <TableHead>Tipo</TableHead>
-                <TableHead>Técnico</TableHead>
+                <TableHead>Técnico/Responsable</TableHead>
                 <TableHead>Fecha Vencimiento</TableHead>
                 <TableHead>Días Abierta</TableHead>
-                <TableHead>Costo Total</TableHead>
+                <TableHead>Horas Invertidas</TableHead>
+                <TableHead>Costo en Refacciones y/o Materiales</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Prioridad</TableHead>
                 <TableHead>Acciones</TableHead>
@@ -218,6 +224,12 @@ const OrdenesTrabajo = () => {
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-accent" />
                       <span className="text-sm font-medium">{calculateDaysOpen(orden.fechaCreacion)} días</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-medium">{orden.horasInvertidas} hrs</span>
                     </div>
                   </TableCell>
                   <TableCell>
