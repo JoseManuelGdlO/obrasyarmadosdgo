@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Filter, Settings, Truck, Building, Calendar, Users } from "lucide-react";
+import { Plus, Search, Filter, Settings, Truck, Building, Calendar, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatCard } from "@/components/ui/stat-card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Datos de ejemplo - Máquinas con sus asignaciones
 const maquinas = [
@@ -152,8 +154,8 @@ const tiposMaquina = ["Excavadora", "Grúa", "Bulldozer", "Pavimentadora", "Comp
 
 export default function Asignaciones() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedTipo, setSelectedTipo] = useState("");
-  const [selectedEstado, setSelectedEstado] = useState("");
+  const [selectedTipos, setSelectedTipos] = useState<string[]>([]);
+  const [selectedEstados, setSelectedEstados] = useState<string[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedMachine, setSelectedMachine] = useState<number | null>(null);
   
@@ -175,10 +177,29 @@ export default function Asignaciones() {
       maquina.tipo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       maquina.placas.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (maquina.proyectoAsignado?.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || false);
-    const matchesTipo = !selectedTipo || maquina.tipo === selectedTipo;
-    const matchesEstado = !selectedEstado || maquina.estado === selectedEstado;
+    const matchesTipo = selectedTipos.length === 0 || selectedTipos.includes(maquina.tipo);
+    const matchesEstado = selectedEstados.length === 0 || selectedEstados.includes(maquina.estado);
     return matchesSearch && matchesTipo && matchesEstado;
   });
+
+  const toggleTipo = (tipo: string) => {
+    setSelectedTipos(prev => 
+      prev.includes(tipo) 
+        ? prev.filter(t => t !== tipo)
+        : [...prev, tipo]
+    );
+  };
+
+  const toggleEstado = (estado: string) => {
+    setSelectedEstados(prev => 
+      prev.includes(estado) 
+        ? prev.filter(e => e !== estado)
+        : [...prev, estado]
+    );
+  };
+
+  const clearTipos = () => setSelectedTipos([]);
+  const clearEstados = () => setSelectedEstados([]);
 
   const getMachineStatusColor = (status: string) => {
     switch (status) {
@@ -309,33 +330,87 @@ export default function Asignaciones() {
                 />
               </div>
             </div>
-            <div className="w-full sm:w-40">
-              <Select value={selectedTipo} onValueChange={setSelectedTipo}>
-                <SelectTrigger>
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {tiposMaquina.map((tipo) => (
-                    <SelectItem key={tipo} value={tipo}>
-                      {tipo}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="w-full sm:w-48">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between">
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4" />
+                      <span>Tipo {selectedTipos.length > 0 && `(${selectedTipos.length})`}</span>
+                    </div>
+                    {selectedTipos.length > 0 && (
+                      <X 
+                        className="h-4 w-4 opacity-50 hover:opacity-100" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          clearTipos();
+                        }}
+                      />
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-3" align="start">
+                  <div className="space-y-2">
+                    <div className="font-medium text-sm mb-2">Seleccionar tipos</div>
+                    {tiposMaquina.map((tipo) => (
+                      <div key={tipo} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`tipo-${tipo}`}
+                          checked={selectedTipos.includes(tipo)}
+                          onCheckedChange={() => toggleTipo(tipo)}
+                        />
+                        <Label 
+                          htmlFor={`tipo-${tipo}`}
+                          className="text-sm font-normal cursor-pointer flex-1"
+                        >
+                          {tipo}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
-            <div className="w-full sm:w-40">
-              <Select value={selectedEstado} onValueChange={setSelectedEstado}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Estado" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Operativa">Operativa</SelectItem>
-                  <SelectItem value="Disponible">Disponible</SelectItem>
-                  <SelectItem value="Mantenimiento">Mantenimiento</SelectItem>
-                  <SelectItem value="Fuera de Servicio">Fuera de Servicio</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="w-full sm:w-48">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between">
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4" />
+                      <span>Estado {selectedEstados.length > 0 && `(${selectedEstados.length})`}</span>
+                    </div>
+                    {selectedEstados.length > 0 && (
+                      <X 
+                        className="h-4 w-4 opacity-50 hover:opacity-100" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          clearEstados();
+                        }}
+                      />
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-3" align="start">
+                  <div className="space-y-2">
+                    <div className="font-medium text-sm mb-2">Seleccionar estados</div>
+                    {["Operativa", "Disponible", "Mantenimiento", "Fuera de Servicio"].map((estado) => (
+                      <div key={estado} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`estado-${estado}`}
+                          checked={selectedEstados.includes(estado)}
+                          onCheckedChange={() => toggleEstado(estado)}
+                        />
+                        <Label 
+                          htmlFor={`estado-${estado}`}
+                          className="text-sm font-normal cursor-pointer flex-1"
+                        >
+                          {estado}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
         </CardContent>
