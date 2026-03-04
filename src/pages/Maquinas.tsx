@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Filter, Edit, Trash2, Truck, Building, Calendar, Gauge, X } from "lucide-react";
+import { Plus, Search, Filter, Edit, Trash2, Truck, Building, Calendar, Gauge, X, Wrench, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,26 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatCard } from "@/components/ui/stat-card";
 import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
+
+// Inventario disponible (conectado al módulo de inventario)
+const inventarioDisponible = [
+  { id: "INV-001", nombre: "Filtro hidráulico de alta presión", categoria: "Filtros" },
+  { id: "INV-002", nombre: "Aceite hidráulico ISO 46", categoria: "Lubricantes" },
+  { id: "INV-003", nombre: "Bomba de combustible eléctrica", categoria: "Componentes" },
+  { id: "INV-004", nombre: "Kit de sellos y empaques", categoria: "Repuestos" },
+  { id: "INV-005", nombre: "Sensor de temperatura", categoria: "Electrónicos" },
+  { id: "INV-006", nombre: "Correa de transmisión", categoria: "Correas" },
+  { id: "INV-007", nombre: "Filtro de aceite motor", categoria: "Filtros" },
+  { id: "INV-008", nombre: "Filtro de aire primario", categoria: "Filtros" },
+  { id: "INV-009", nombre: "Filtro de combustible", categoria: "Filtros" },
+  { id: "INV-010", nombre: "Aceite de motor 15W-40", categoria: "Lubricantes" },
+  { id: "INV-011", nombre: "Grasa multiusos EP2", categoria: "Lubricantes" },
+  { id: "INV-012", nombre: "Pastillas de freno", categoria: "Repuestos" },
+  { id: "INV-013", nombre: "Banda de alternador", categoria: "Correas" },
+  { id: "INV-014", nombre: "Refrigerante anticongelante", categoria: "Lubricantes" },
+];
 
 // Datos de ejemplo - Máquinas por cliente
 const maquinas = [
