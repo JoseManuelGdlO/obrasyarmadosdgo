@@ -31,6 +31,7 @@ const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Órdenes de Trabajo", url: "/ordenes", icon: ClipboardList },
   { title: "Asignaciones", url: "/asignaciones", icon: GitBranch },
+  { title: "Checklist Diario", url: "/checklist", icon: ClipboardList },
   { title: "Trabajadores", url: "/trabajadores", icon: UserCheck },
   { title: "Proveedores", url: "/proveedores", icon: Building },
 ]
