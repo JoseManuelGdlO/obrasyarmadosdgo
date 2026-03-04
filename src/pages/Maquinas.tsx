@@ -543,27 +543,40 @@ export default function Maquinas() {
                                     inv.nombre.toLowerCase().includes(servicePiezaSearch.toLowerCase()) ||
                                     inv.categoria.toLowerCase().includes(servicePiezaSearch.toLowerCase())
                                   )
-                                  .map((inv) => (
-                                    <label key={inv.id} className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-white cursor-pointer">
-                                      <Checkbox
-                                        checked={plan.piezas.includes(inv.id)}
-                                        onCheckedChange={() => togglePiezaInService(plan.id, inv.id)}
-                                      />
-                                      <span className="text-xs text-gray-700 truncate">{inv.nombre}</span>
-                                      <Badge variant="outline" className="text-[9px] shrink-0 ml-auto">{inv.categoria}</Badge>
-                                    </label>
-                                  ))}
+                                  .map((inv) => {
+                                    const pieza = plan.piezas.find((p) => p.invId === inv.id);
+                                    const isSelected = !!pieza;
+                                    return (
+                                      <div key={inv.id} className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-white">
+                                        <Checkbox
+                                          checked={isSelected}
+                                          onCheckedChange={() => togglePiezaInService(plan.id, inv.id)}
+                                        />
+                                        <span className="text-xs text-gray-700 truncate flex-1">{inv.nombre}</span>
+                                        {isSelected && (
+                                          <Input
+                                            type="number"
+                                            min={1}
+                                            value={pieza!.cantidad}
+                                            onChange={(e) => updatePiezaCantidad(plan.id, inv.id, parseInt(e.target.value) || 1)}
+                                            className="h-6 w-14 text-xs text-center"
+                                          />
+                                        )}
+                                        <Badge variant="outline" className="text-[9px] shrink-0">{inv.categoria}</Badge>
+                                      </div>
+                                    );
+                                  })}
                               </div>
                               {plan.piezas.length > 0 && (
                                 <div className="pt-1 border-t">
                                   <p className="text-[10px] font-medium text-gray-500 mb-1">Piezas seleccionadas:</p>
                                   <div className="flex flex-wrap gap-1">
-                                    {plan.piezas.map((pId) => {
-                                      const inv = inventarioDisponible.find((i) => i.id === pId);
+                                    {plan.piezas.map((p) => {
+                                      const inv = inventarioDisponible.find((i) => i.id === p.invId);
                                       return inv ? (
-                                        <Badge key={pId} variant="secondary" className="text-[10px] gap-1">
-                                          {inv.nombre}
-                                          <button type="button" onClick={() => togglePiezaInService(plan.id, pId)} className="hover:text-red-500">
+                                        <Badge key={p.invId} variant="secondary" className="text-[10px] gap-1">
+                                          {inv.nombre} <span className="font-bold">×{p.cantidad}</span>
+                                          <button type="button" onClick={() => togglePiezaInService(plan.id, p.invId)} className="hover:text-red-500">
                                             <X className="h-2.5 w-2.5" />
                                           </button>
                                         </Badge>
