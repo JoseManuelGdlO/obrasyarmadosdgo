@@ -197,6 +197,14 @@ export default function Maquinas() {
   const [newItemType, setNewItemType] = useState<"check" | "number">("check");
   const [newItemUnit, setNewItemUnit] = useState("");
 
+  // Service plans state
+  const [servicePlans, setServicePlans] = useState<ServicePlanDef[]>([]);
+  const [newServiceName, setNewServiceName] = useState("");
+  const [newServiceFreqTipo, setNewServiceFreqTipo] = useState<"km" | "hrs" | "meses">("km");
+  const [newServiceFreqValor, setNewServiceFreqValor] = useState("");
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
+  const [servicePiezaSearch, setServicePiezaSearch] = useState("");
+
   const addChecklistItem = () => {
     if (!newItemLabel.trim()) return;
     setChecklistItems((prev) => [
@@ -216,9 +224,45 @@ export default function Maquinas() {
     setChecklistItems((prev) => prev.filter((i) => i.id !== id));
   };
 
+  const addServicePlan = () => {
+    if (!newServiceName.trim() || !newServiceFreqValor.trim()) return;
+    setServicePlans((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        nombre: newServiceName.trim(),
+        frecuenciaTipo: newServiceFreqTipo,
+        frecuenciaValor: newServiceFreqValor.trim(),
+        piezas: [],
+      },
+    ]);
+    setNewServiceName("");
+    setNewServiceFreqValor("");
+  };
+
+  const removeServicePlan = (id: string) => {
+    setServicePlans((prev) => prev.filter((s) => s.id !== id));
+    if (editingServiceId === id) setEditingServiceId(null);
+  };
+
+  const togglePiezaInService = (serviceId: string, invId: string) => {
+    setServicePlans((prev) =>
+      prev.map((s) =>
+        s.id === serviceId
+          ? {
+              ...s,
+              piezas: s.piezas.includes(invId)
+                ? s.piezas.filter((p) => p !== invId)
+                : [...s.piezas, invId],
+            }
+          : s
+      )
+    );
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Crear máquina:", formData, "Checklist items:", checklistItems);
+    console.log("Crear máquina:", formData, "Checklist:", checklistItems, "Servicios:", servicePlans);
     setIsDialogOpen(false);
     setFormData({
       nombre: "",
@@ -235,6 +279,7 @@ export default function Maquinas() {
       ubicacion: "",
     });
     setChecklistItems([]);
+    setServicePlans([]);
   };
 
   // Filtrar solo las máquinas del cliente actual
