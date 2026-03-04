@@ -380,7 +380,7 @@ export default function Checklist() {
                 )}
               </div>
             </div>
-          </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
