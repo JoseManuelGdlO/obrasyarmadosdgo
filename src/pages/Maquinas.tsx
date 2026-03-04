@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Filter, Edit, Trash2, Truck, Building, Calendar, Gauge } from "lucide-react";
+import { Plus, Search, Filter, Edit, Trash2, Truck, Building, Calendar, Gauge, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -136,12 +136,19 @@ const tiposMaquina = ["Excavadora", "Grúa", "Bulldozer", "Pavimentadora", "Comp
 const marcas = ["Caterpillar", "Liebherr", "Volvo", "Toyota", "JCB", "Komatsu", "John Deere"];
 const estados = ["Operativa", "Disponible", "Mantenimiento", "Fuera de Servicio"];
 
+interface ChecklistItemDef {
+  id: string;
+  label: string;
+  type: "check" | "number";
+  unit?: string;
+}
+
 export default function Maquinas() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTipo, setSelectedTipo] = useState("");
   const [selectedEstado, setSelectedEstado] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     nombre: "",
     tipo: "",
@@ -149,7 +156,7 @@ export default function Maquinas() {
     modelo: "",
     placas: "",
     numeroSerie: "",
-    cliente: clienteActual, // Se asigna automáticamente al cliente actual
+    cliente: clienteActual,
     horometroInicial: "",
     horometroFinal: "",
     disponibilidad: "",
@@ -157,9 +164,33 @@ export default function Maquinas() {
     ubicacion: "",
   });
 
+  const [checklistItems, setChecklistItems] = useState<ChecklistItemDef[]>([]);
+  const [newItemLabel, setNewItemLabel] = useState("");
+  const [newItemType, setNewItemType] = useState<"check" | "number">("check");
+  const [newItemUnit, setNewItemUnit] = useState("");
+
+  const addChecklistItem = () => {
+    if (!newItemLabel.trim()) return;
+    setChecklistItems((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        label: newItemLabel.trim(),
+        type: newItemType,
+        unit: newItemType === "number" ? newItemUnit.trim() || undefined : undefined,
+      },
+    ]);
+    setNewItemLabel("");
+    setNewItemUnit("");
+  };
+
+  const removeChecklistItem = (id: string) => {
+    setChecklistItems((prev) => prev.filter((i) => i.id !== id));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Crear máquina:", formData);
+    console.log("Crear máquina:", formData, "Checklist items:", checklistItems);
     setIsDialogOpen(false);
     setFormData({
       nombre: "",
@@ -168,13 +199,14 @@ export default function Maquinas() {
       modelo: "",
       placas: "",
       numeroSerie: "",
-      cliente: clienteActual, // Se mantiene el cliente actual
+      cliente: clienteActual,
       horometroInicial: "",
       horometroFinal: "",
       disponibilidad: "",
       fechaAdquisicion: "",
       ubicacion: "",
     });
+    setChecklistItems([]);
   };
 
   // Filtrar solo las máquinas del cliente actual
