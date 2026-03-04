@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import NuevaOrdenModal from "@/components/modals/NuevaOrdenModal"
+import logoObras from "@/assets/logo-obras.png"
 import {
   ClipboardList,
   Package,
@@ -15,6 +16,20 @@ import {
   Building,
   Plus
 } from "lucide-react"
+
+const checklistData = {
+  total: 32,
+  completados: 24,
+  pendientes: 8,
+  detalle: [
+    { placa: "TRK-001", nombre: "Ford F-150 2022", completado: true },
+    { placa: "TRK-002", nombre: "Chevrolet Silverado", completado: true },
+    { placa: "TRK-003", nombre: "Toyota Hilux", completado: false },
+    { placa: "TRK-004", nombre: "Nissan NP300", completado: true },
+    { placa: "TRK-005", nombre: "RAM 2500", completado: false },
+    { placa: "TRK-006", nombre: "Ford Ranger", completado: true },
+  ],
+}
 
 const Dashboard = () => {
   const [modalOpen, setModalOpen] = useState(false)
@@ -43,13 +58,18 @@ const Dashboard = () => {
     }
   }
 
+  const pctChecklist = Math.round((checklistData.completados / checklistData.total) * 100)
+
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header con logotipo */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground">Panel de control del sistema de mantenimiento</p>
+        <div className="flex items-center gap-4">
+          <img src={logoObras} alt="Obras y Armados Estructurales" className="w-14 h-14 object-contain" />
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+            <p className="text-muted-foreground">Panel de control — Obras y Armados Estructurales</p>
+          </div>
         </div>
         <Button 
           onClick={() => setModalOpen(true)}
@@ -61,7 +81,7 @@ const Dashboard = () => {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <StatCard
           title="Órdenes Activas"
           value={24}
@@ -89,6 +109,13 @@ const Dashboard = () => {
           icon={CheckCircle}
           description="Promedio mensual"
           trend={{ value: 2, isPositive: true }}
+        />
+        <StatCard
+          title="Checklist Hoy"
+          value={`${checklistData.completados}/${checklistData.total}`}
+          icon={ClipboardList}
+          description={`${pctChecklist}% completado`}
+          trend={{ value: pctChecklist, isPositive: pctChecklist >= 70 }}
         />
       </div>
 
@@ -125,31 +152,38 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Quick Actions */}
+        {/* Checklist del Día */}
         <Card className="border-none shadow-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-accent" />
-              Acciones Rápidas
+              <ClipboardList className="w-5 h-5 text-primary" />
+              Checklist del Día
             </CardTitle>
+            <div className="mt-2">
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-muted-foreground">Progreso</span>
+                <span className="font-semibold text-foreground">{pctChecklist}%</span>
+              </div>
+              <div className="w-full h-2.5 rounded-full bg-muted">
+                <div
+                  className="h-2.5 rounded-full bg-primary transition-all"
+                  style={{ width: `${pctChecklist}%` }}
+                />
+              </div>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <Button variant="outline" className="w-full justify-start" size="lg">
-              <ClipboardList className="w-4 h-4 mr-3" />
-              Nueva Orden
-            </Button>
-            <Button variant="outline" className="w-full justify-start" size="lg">
-              <Package className="w-4 h-4 mr-3" />
-              Gestionar Inventario
-            </Button>
-            <Button variant="outline" className="w-full justify-start" size="lg">
-              <Users className="w-4 h-4 mr-3" />
-              Asignar Técnico
-            </Button>
-            <Button variant="outline" className="w-full justify-start" size="lg">
-              <Building className="w-4 h-4 mr-3" />
-              Contactar Proveedor
-            </Button>
+          <CardContent className="space-y-3">
+            {checklistData.detalle.map((v) => (
+              <div key={v.placa} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{v.nombre}</p>
+                  <p className="text-xs text-muted-foreground">{v.placa}</p>
+                </div>
+                <Badge className={v.completado ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"}>
+                  {v.completado ? "Completado" : "Pendiente"}
+                </Badge>
+              </div>
+            ))}
           </CardContent>
         </Card>
       </div>
@@ -187,7 +221,6 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Modal para nueva orden */}
       <NuevaOrdenModal open={modalOpen} onOpenChange={setModalOpen} />
     </div>
   )
