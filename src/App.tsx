@@ -16,6 +16,7 @@ import Clientes from "./pages/Clientes";
 import GestionUsuarios from "./pages/GestionUsuarios";
 import Nomenclaturas from "./pages/Nomenclaturas";
 import Checklist from "./pages/Checklist";
+import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,24 +27,28 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <MainLayout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/ordenes" element={<OrdenesTrabajo />} />
-            <Route path="/asignaciones" element={<Asignaciones />} />
-            <Route path="/trabajadores" element={<Trabajadores />} />
-            <Route path="/maquinas" element={<Maquinas />} />
-            <Route path="/proveedores" element={<Proveedores />} />
-            <Route path="/inventario" element={<Inventario />} />
-            <Route path="/proyectos" element={<Proyectos />} />
-            <Route path="/clientes" element={<Clientes />} />
-            <Route path="/gestion-usuarios" element={<GestionUsuarios />} />
-            <Route path="/nomenclaturas" element={<Nomenclaturas />} />
-            <Route path="/checklist" element={<Checklist />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </MainLayout>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="*" element={
+            <MainLayout>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/ordenes" element={<OrdenesTrabajo />} />
+                <Route path="/asignaciones" element={<Asignaciones />} />
+                <Route path="/trabajadores" element={<Trabajadores />} />
+                <Route path="/maquinas" element={<Maquinas />} />
+                <Route path="/proveedores" element={<Proveedores />} />
+                <Route path="/inventario" element={<Inventario />} />
+                <Route path="/proyectos" element={<Proyectos />} />
+                <Route path="/clientes" element={<Clientes />} />
+                <Route path="/gestion-usuarios" element={<GestionUsuarios />} />
+                <Route path="/nomenclaturas" element={<Nomenclaturas />} />
+                <Route path="/checklist" element={<Checklist />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </MainLayout>
+          } />
+        </Routes>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
