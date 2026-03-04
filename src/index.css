@@ -50,14 +50,14 @@
 
     --radius: 0.5rem;
 
-    --sidebar-background: 30 12% 14%;
-    --sidebar-foreground: 40 20% 90%;
-    --sidebar-primary: 38 80% 50%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 30 10% 12%;
+    --sidebar-primary: 38 80% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 30 15% 20%;
-    --sidebar-accent-foreground: 40 20% 90%;
-    --sidebar-border: 30 10% 22%;
-    --sidebar-ring: 38 80% 50%;
+    --sidebar-accent: 35 25% 95%;
+    --sidebar-accent-foreground: 30 10% 12%;
+    --sidebar-border: 35 20% 88%;
+    --sidebar-ring: 38 80% 45%;
 
     font-family: 'Lato', sans-serif;
   }
