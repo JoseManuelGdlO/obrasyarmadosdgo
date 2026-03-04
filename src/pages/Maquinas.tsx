@@ -396,6 +396,85 @@ export default function Maquinas() {
                   />
                 </div>
               </div>
+
+              {/* Checklist Builder */}
+              <div className="border rounded-lg p-4 space-y-4 bg-gray-50">
+                <div>
+                  <h3 className="font-semibold text-gray-900">Checklist Diario Personalizado</h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Define los puntos de inspección que se revisarán diariamente para esta máquina.
+                  </p>
+                </div>
+
+                {/* Items existentes */}
+                {checklistItems.length > 0 && (
+                  <div className="space-y-2">
+                    {checklistItems.map((item, idx) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between bg-white border rounded-md px-3 py-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-mono text-gray-400">{idx + 1}.</span>
+                          <span className="text-sm text-gray-800">{item.label}</span>
+                          <Badge variant="outline" className="text-xs">
+                            {item.type === "check" ? "✓ Check" : `# Numérico${item.unit ? ` (${item.unit})` : ""}`}
+                          </Badge>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeChecklistItem(item.id)}
+                          className="text-gray-400 hover:text-red-500 transition-colors"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Agregar nuevo item */}
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    placeholder="Nombre del punto (ej: Nivel de aceite)"
+                    value={newItemLabel}
+                    onChange={(e) => setNewItemLabel(e.target.value)}
+                    className="flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addChecklistItem();
+                      }
+                    }}
+                  />
+                  <Select value={newItemType} onValueChange={(v) => setNewItemType(v as "check" | "number")}>
+                    <SelectTrigger className="w-full sm:w-36">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="check">✓ Check</SelectItem>
+                      <SelectItem value="number"># Numérico</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {newItemType === "number" && (
+                    <Input
+                      placeholder="Unidad (ej: km, hrs)"
+                      value={newItemUnit}
+                      onChange={(e) => setNewItemUnit(e.target.value)}
+                      className="w-full sm:w-28"
+                    />
+                  )}
+                  <Button type="button" variant="outline" onClick={addChecklistItem} className="shrink-0">
+                    <Plus className="h-4 w-4 mr-1" /> Agregar
+                  </Button>
+                </div>
+
+                {checklistItems.length === 0 && (
+                  <p className="text-sm text-gray-400 text-center py-2">
+                    Aún no has agregado puntos de inspección.
+                  </p>
+                )}
+              </div>
               <div className="flex gap-2 pt-4">
                 <Button type="submit" className="flex-1">
                   Crear Máquina
