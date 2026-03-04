@@ -269,10 +269,11 @@ export default function Maquinas() {
               Nueva Máquina
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0" onInteractOutside={(e) => e.preventDefault()}>
+            <DialogHeader className="p-6 pb-2">
               <DialogTitle>Agregar Nueva Máquina</DialogTitle>
             </DialogHeader>
+            <div className="flex-1 overflow-y-auto px-6 pb-6">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
