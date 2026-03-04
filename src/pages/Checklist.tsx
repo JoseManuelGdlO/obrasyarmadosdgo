@@ -345,11 +345,19 @@ export default function Checklist() {
                           <span className="font-medium">Operador:</span> {registro.operador}
                         </p>
                         <p className="text-sm text-gray-600">
+                          <span className="font-medium">Asignado a:</span> {registro.trabajadorAsignado}
+                        </p>
+                        <p className="text-sm text-gray-600">
                           Km: {registro.kilometraje.toLocaleString()} · Hrs: {registro.horometro.toLocaleString()}
                         </p>
                         {registro.observaciones && (
                           <p className="text-sm text-amber-700 mt-1 italic">
-                            {registro.observaciones}
+                            <span className="font-medium">Obs:</span> {registro.observaciones}
+                          </p>
+                        )}
+                        {registro.notas && (
+                          <p className="text-sm text-blue-700 mt-1 italic">
+                            <span className="font-medium">Notas:</span> {registro.notas}
                           </p>
                         )}
                       </div>
