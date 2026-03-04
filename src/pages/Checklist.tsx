@@ -111,7 +111,6 @@ export default function Checklist() {
       checkedItems,
       observaciones,
       notas,
-      observaciones,
     });
     setIsModalOpen(false);
   };
