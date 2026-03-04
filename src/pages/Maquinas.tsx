@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Filter, Edit, Trash2, Truck, Building, Calendar, Gauge, X } from "lucide-react";
+import { Plus, Search, Filter, Edit, Trash2, Truck, Building, Calendar, Gauge, X, Wrench, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,26 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatCard } from "@/components/ui/stat-card";
 import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
+
+// Inventario disponible (conectado al módulo de inventario)
+const inventarioDisponible = [
+  { id: "INV-001", nombre: "Filtro hidráulico de alta presión", categoria: "Filtros" },
+  { id: "INV-002", nombre: "Aceite hidráulico ISO 46", categoria: "Lubricantes" },
+  { id: "INV-003", nombre: "Bomba de combustible eléctrica", categoria: "Componentes" },
+  { id: "INV-004", nombre: "Kit de sellos y empaques", categoria: "Repuestos" },
+  { id: "INV-005", nombre: "Sensor de temperatura", categoria: "Electrónicos" },
+  { id: "INV-006", nombre: "Correa de transmisión", categoria: "Correas" },
+  { id: "INV-007", nombre: "Filtro de aceite motor", categoria: "Filtros" },
+  { id: "INV-008", nombre: "Filtro de aire primario", categoria: "Filtros" },
+  { id: "INV-009", nombre: "Filtro de combustible", categoria: "Filtros" },
+  { id: "INV-010", nombre: "Aceite de motor 15W-40", categoria: "Lubricantes" },
+  { id: "INV-011", nombre: "Grasa multiusos EP2", categoria: "Lubricantes" },
+  { id: "INV-012", nombre: "Pastillas de freno", categoria: "Repuestos" },
+  { id: "INV-013", nombre: "Banda de alternador", categoria: "Correas" },
+  { id: "INV-014", nombre: "Refrigerante anticongelante", categoria: "Lubricantes" },
+];
 
 // Datos de ejemplo - Máquinas por cliente
 const maquinas = [
@@ -136,6 +156,14 @@ const tiposMaquina = ["Excavadora", "Grúa", "Bulldozer", "Pavimentadora", "Comp
 const marcas = ["Caterpillar", "Liebherr", "Volvo", "Toyota", "JCB", "Komatsu", "John Deere"];
 const estados = ["Operativa", "Disponible", "Mantenimiento", "Fuera de Servicio"];
 
+interface ServicePlanDef {
+  id: string;
+  nombre: string;
+  frecuenciaTipo: "km" | "hrs" | "meses";
+  frecuenciaValor: string;
+  piezas: string[]; // inventory item IDs
+}
+
 interface ChecklistItemDef {
   id: string;
   label: string;
@@ -169,6 +197,14 @@ export default function Maquinas() {
   const [newItemType, setNewItemType] = useState<"check" | "number">("check");
   const [newItemUnit, setNewItemUnit] = useState("");
 
+  // Service plans state
+  const [servicePlans, setServicePlans] = useState<ServicePlanDef[]>([]);
+  const [newServiceName, setNewServiceName] = useState("");
+  const [newServiceFreqTipo, setNewServiceFreqTipo] = useState<"km" | "hrs" | "meses">("km");
+  const [newServiceFreqValor, setNewServiceFreqValor] = useState("");
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
+  const [servicePiezaSearch, setServicePiezaSearch] = useState("");
+
   const addChecklistItem = () => {
     if (!newItemLabel.trim()) return;
     setChecklistItems((prev) => [
@@ -188,9 +224,45 @@ export default function Maquinas() {
     setChecklistItems((prev) => prev.filter((i) => i.id !== id));
   };
 
+  const addServicePlan = () => {
+    if (!newServiceName.trim() || !newServiceFreqValor.trim()) return;
+    setServicePlans((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        nombre: newServiceName.trim(),
+        frecuenciaTipo: newServiceFreqTipo,
+        frecuenciaValor: newServiceFreqValor.trim(),
+        piezas: [],
+      },
+    ]);
+    setNewServiceName("");
+    setNewServiceFreqValor("");
+  };
+
+  const removeServicePlan = (id: string) => {
+    setServicePlans((prev) => prev.filter((s) => s.id !== id));
+    if (editingServiceId === id) setEditingServiceId(null);
+  };
+
+  const togglePiezaInService = (serviceId: string, invId: string) => {
+    setServicePlans((prev) =>
+      prev.map((s) =>
+        s.id === serviceId
+          ? {
+              ...s,
+              piezas: s.piezas.includes(invId)
+                ? s.piezas.filter((p) => p !== invId)
+                : [...s.piezas, invId],
+            }
+          : s
+      )
+    );
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Crear máquina:", formData, "Checklist items:", checklistItems);
+    console.log("Crear máquina:", formData, "Checklist:", checklistItems, "Servicios:", servicePlans);
     setIsDialogOpen(false);
     setFormData({
       nombre: "",
@@ -207,6 +279,7 @@ export default function Maquinas() {
       ubicacion: "",
     });
     setChecklistItems([]);
+    setServicePlans([]);
   };
 
   // Filtrar solo las máquinas del cliente actual
@@ -269,222 +342,268 @@ export default function Maquinas() {
               Nueva Máquina
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogContent className="max-w-[95vw] lg:max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0" onInteractOutside={(e) => e.preventDefault()}>
             <DialogHeader className="p-6 pb-2">
-              <DialogTitle>Agregar Nueva Máquina</DialogTitle>
+              <DialogTitle>Agregar Nueva Máquina / Vehículo</DialogTitle>
+              <p className="text-sm text-gray-500">Completa los datos, define el checklist diario y programa los servicios.</p>
             </DialogHeader>
             <div className="flex-1 overflow-y-auto px-6 pb-6">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="nombre">Nombre de la Máquina</Label>
-                  <Input
-                    id="nombre"
-                    placeholder="Ej: Excavadora CAT 320"
-                    value={formData.nombre}
-                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tipo">Tipo</Label>
-                  <Select value={formData.tipo} onValueChange={(value) => setFormData({ ...formData, tipo: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {tiposMaquina.map((tipo) => (
-                        <SelectItem key={tipo} value={tipo}>
-                          {tipo}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="marca">Marca</Label>
-                  <Input
-                    id="marca"
-                    placeholder="Ej: Caterpillar"
-                    value={formData.marca}
-                    onChange={(e) => setFormData({ ...formData, marca: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="modelo">Modelo</Label>
-                  <Input
-                    id="modelo"
-                    placeholder="Ej: 320 GC"
-                    value={formData.modelo}
-                    onChange={(e) => setFormData({ ...formData, modelo: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="placas">Placas</Label>
-                  <Input
-                    id="placas"
-                    placeholder="Ej: MX-123-ABC"
-                    value={formData.placas}
-                    onChange={(e) => setFormData({ ...formData, placas: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="numeroSerie">Número de Serie</Label>
-                  <Input
-                    id="numeroSerie"
-                    placeholder="Ej: CAT123456789"
-                    value={formData.numeroSerie}
-                    onChange={(e) => setFormData({ ...formData, numeroSerie: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ubicacion">Ubicación</Label>
-                  <Input
-                    id="ubicacion"
-                    placeholder="Ej: Obra Centro"
-                    value={formData.ubicacion}
-                    onChange={(e) => setFormData({ ...formData, ubicacion: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="horometroInicial">Horómetro Inicial (hrs)</Label>
-                  <Input
-                    id="horometroInicial"
-                    type="number"
-                    placeholder="Ej: 1500"
-                    value={formData.horometroInicial}
-                    onChange={(e) => setFormData({ ...formData, horometroInicial: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="horometroFinal">Horómetro Final (hrs)</Label>
-                  <Input
-                    id="horometroFinal"
-                    type="number"
-                    placeholder="Ej: 8000"
-                    value={formData.horometroFinal}
-                    onChange={(e) => setFormData({ ...formData, horometroFinal: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="disponibilidad">Disponibilidad (%)</Label>
-                  <Input
-                    id="disponibilidad"
-                    type="number"
-                    min="0"
-                    max="100"
-                    placeholder="Ej: 92"
-                    value={formData.disponibilidad}
-                    onChange={(e) => setFormData({ ...formData, disponibilidad: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="fechaAdquisicion">Fecha de Adquisición</Label>
-                  <Input
-                    id="fechaAdquisicion"
-                    type="date"
-                    value={formData.fechaAdquisicion}
-                    onChange={(e) => setFormData({ ...formData, fechaAdquisicion: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              
+              {/* ═══ COLUMNA LAYOUT: Datos + Checklist + Servicios ═══ */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-              {/* Checklist Builder */}
-              <div className="border rounded-lg p-4 space-y-4 bg-gray-50">
-                <div>
-                  <h3 className="font-semibold text-gray-900">Checklist Diario Personalizado</h3>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Define los puntos de inspección que se revisarán diariamente para esta máquina.
-                  </p>
-                </div>
-
-                {/* Items existentes */}
-                {checklistItems.length > 0 && (
-                  <div className="space-y-2">
-                    {checklistItems.map((item, idx) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between bg-white border rounded-md px-3 py-2"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono text-gray-400">{idx + 1}.</span>
-                          <span className="text-sm text-gray-800">{item.label}</span>
-                          <Badge variant="outline" className="text-xs">
-                            {item.type === "check" ? "✓ Check" : `# Numérico${item.unit ? ` (${item.unit})` : ""}`}
-                          </Badge>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeChecklistItem(item.id)}
-                          className="text-gray-400 hover:text-red-500 transition-colors"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
+                {/* ── COL 1: Datos Generales ── */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                    <Truck className="h-4 w-4" /> Datos Generales
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <Label>Nombre</Label>
+                      <Input placeholder="Ej: Camioneta Ford F-150" value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} required />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Tipo</Label>
+                      <Select value={formData.tipo} onValueChange={(value) => setFormData({ ...formData, tipo: value })}>
+                        <SelectTrigger><SelectValue placeholder="Seleccionar tipo" /></SelectTrigger>
+                        <SelectContent>
+                          {tiposMaquina.map((tipo) => (<SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label>Marca</Label>
+                        <Input placeholder="Ej: Ford" value={formData.marca} onChange={(e) => setFormData({ ...formData, marca: e.target.value })} required />
                       </div>
-                    ))}
+                      <div className="space-y-1">
+                        <Label>Modelo</Label>
+                        <Input placeholder="Ej: F-150" value={formData.modelo} onChange={(e) => setFormData({ ...formData, modelo: e.target.value })} required />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label>Placas</Label>
+                        <Input placeholder="MX-123-ABC" value={formData.placas} onChange={(e) => setFormData({ ...formData, placas: e.target.value })} required />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>No. Serie</Label>
+                        <Input placeholder="CAT123456789" value={formData.numeroSerie} onChange={(e) => setFormData({ ...formData, numeroSerie: e.target.value })} required />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Ubicación</Label>
+                      <Input placeholder="Ej: Obra Centro" value={formData.ubicacion} onChange={(e) => setFormData({ ...formData, ubicacion: e.target.value })} required />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label>Horómetro Inicial (hrs)</Label>
+                        <Input type="number" placeholder="1500" value={formData.horometroInicial} onChange={(e) => setFormData({ ...formData, horometroInicial: e.target.value })} required />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Horómetro Final (hrs)</Label>
+                        <Input type="number" placeholder="8000" value={formData.horometroFinal} onChange={(e) => setFormData({ ...formData, horometroFinal: e.target.value })} required />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label>Disponibilidad (%)</Label>
+                        <Input type="number" min="0" max="100" placeholder="92" value={formData.disponibilidad} onChange={(e) => setFormData({ ...formData, disponibilidad: e.target.value })} required />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Fecha Adquisición</Label>
+                        <Input type="date" value={formData.fechaAdquisicion} onChange={(e) => setFormData({ ...formData, fechaAdquisicion: e.target.value })} required />
+                      </div>
+                    </div>
                   </div>
-                )}
-
-                {/* Agregar nuevo item */}
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Input
-                    placeholder="Nombre del punto (ej: Nivel de aceite)"
-                    value={newItemLabel}
-                    onChange={(e) => setNewItemLabel(e.target.value)}
-                    className="flex-1"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addChecklistItem();
-                      }
-                    }}
-                  />
-                  <Select value={newItemType} onValueChange={(v) => setNewItemType(v as "check" | "number")}>
-                    <SelectTrigger className="w-full sm:w-36">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="check">✓ Check</SelectItem>
-                      <SelectItem value="number"># Numérico</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {newItemType === "number" && (
-                    <Input
-                      placeholder="Unidad (ej: km, hrs)"
-                      value={newItemUnit}
-                      onChange={(e) => setNewItemUnit(e.target.value)}
-                      className="w-full sm:w-28"
-                    />
-                  )}
-                  <Button type="button" variant="outline" onClick={addChecklistItem} className="shrink-0">
-                    <Plus className="h-4 w-4 mr-1" /> Agregar
-                  </Button>
                 </div>
 
-                {checklistItems.length === 0 && (
-                  <p className="text-sm text-gray-400 text-center py-2">
-                    Aún no has agregado puntos de inspección.
-                  </p>
-                )}
+                {/* ── COL 2: Checklist Diario ── */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                    <Edit className="h-4 w-4" /> Checklist Diario
+                  </h3>
+                  <p className="text-xs text-gray-500">Puntos de inspección diaria para esta máquina.</p>
+
+                  {checklistItems.length > 0 && (
+                    <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
+                      {checklistItems.map((item, idx) => (
+                        <div key={item.id} className="flex items-center justify-between bg-gray-50 border rounded px-2 py-1.5">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-xs font-mono text-gray-400 shrink-0">{idx + 1}.</span>
+                            <span className="text-sm text-gray-800 truncate">{item.label}</span>
+                            <Badge variant="outline" className="text-[10px] shrink-0">
+                              {item.type === "check" ? "✓" : `#${item.unit ? ` ${item.unit}` : ""}`}
+                            </Badge>
+                          </div>
+                          <button type="button" onClick={() => removeChecklistItem(item.id)} className="text-gray-400 hover:text-red-500 shrink-0 ml-1">
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="Nombre del punto (ej: Nivel de aceite)"
+                      value={newItemLabel}
+                      onChange={(e) => setNewItemLabel(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addChecklistItem(); } }}
+                    />
+                    <div className="flex gap-2">
+                      <Select value={newItemType} onValueChange={(v) => setNewItemType(v as "check" | "number")}>
+                        <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="check">✓ Check</SelectItem>
+                          <SelectItem value="number"># Numérico</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {newItemType === "number" && (
+                        <Input placeholder="Unidad" value={newItemUnit} onChange={(e) => setNewItemUnit(e.target.value)} className="w-20" />
+                      )}
+                      <Button type="button" variant="outline" size="sm" onClick={addChecklistItem}>
+                        <Plus className="h-3.5 w-3.5 mr-1" /> Agregar
+                      </Button>
+                    </div>
+                  </div>
+
+                  {checklistItems.length === 0 && (
+                    <p className="text-sm text-gray-400 text-center py-4 border border-dashed rounded-lg">
+                      Sin puntos de inspección aún.
+                    </p>
+                  )}
+                </div>
+
+                {/* ── COL 3: Planes de Servicio ── */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                    <Wrench className="h-4 w-4" /> Planes de Servicio
+                  </h3>
+                  <p className="text-xs text-gray-500">Programa los mantenimientos y las piezas necesarias del inventario.</p>
+
+                  {/* Lista de servicios creados */}
+                  {servicePlans.length > 0 && (
+                    <div className="space-y-2 max-h-[350px] overflow-y-auto">
+                      {servicePlans.map((plan) => (
+                        <div key={plan.id} className="border rounded-lg bg-gray-50">
+                          <div
+                            className="flex items-center justify-between px-3 py-2 cursor-pointer"
+                            onClick={() => setEditingServiceId(editingServiceId === plan.id ? null : plan.id)}
+                          >
+                            <div className="min-w-0">
+                              <span className="text-sm font-medium text-gray-900">{plan.nombre}</span>
+                              <span className="text-xs text-gray-500 ml-2">
+                                Cada {plan.frecuenciaValor} {plan.frecuenciaTipo === "km" ? "km" : plan.frecuenciaTipo === "hrs" ? "hrs" : "meses"}
+                              </span>
+                              {plan.piezas.length > 0 && (
+                                <Badge variant="secondary" className="ml-2 text-[10px]">{plan.piezas.length} piezas</Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              {editingServiceId === plan.id ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+                              <button type="button" onClick={(e) => { e.stopPropagation(); removeServicePlan(plan.id); }} className="text-gray-400 hover:text-red-500">
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Panel expandido: selección de piezas */}
+                          {editingServiceId === plan.id && (
+                            <div className="border-t px-3 py-2 space-y-2">
+                              <Input
+                                placeholder="Buscar pieza del inventario..."
+                                value={servicePiezaSearch}
+                                onChange={(e) => setServicePiezaSearch(e.target.value)}
+                                className="h-8 text-sm"
+                              />
+                              <div className="max-h-[160px] overflow-y-auto space-y-1">
+                                {inventarioDisponible
+                                  .filter((inv) =>
+                                    inv.nombre.toLowerCase().includes(servicePiezaSearch.toLowerCase()) ||
+                                    inv.categoria.toLowerCase().includes(servicePiezaSearch.toLowerCase())
+                                  )
+                                  .map((inv) => (
+                                    <label key={inv.id} className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-white cursor-pointer">
+                                      <Checkbox
+                                        checked={plan.piezas.includes(inv.id)}
+                                        onCheckedChange={() => togglePiezaInService(plan.id, inv.id)}
+                                      />
+                                      <span className="text-xs text-gray-700 truncate">{inv.nombre}</span>
+                                      <Badge variant="outline" className="text-[9px] shrink-0 ml-auto">{inv.categoria}</Badge>
+                                    </label>
+                                  ))}
+                              </div>
+                              {plan.piezas.length > 0 && (
+                                <div className="pt-1 border-t">
+                                  <p className="text-[10px] font-medium text-gray-500 mb-1">Piezas seleccionadas:</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {plan.piezas.map((pId) => {
+                                      const inv = inventarioDisponible.find((i) => i.id === pId);
+                                      return inv ? (
+                                        <Badge key={pId} variant="secondary" className="text-[10px] gap-1">
+                                          {inv.nombre}
+                                          <button type="button" onClick={() => togglePiezaInService(plan.id, pId)} className="hover:text-red-500">
+                                            <X className="h-2.5 w-2.5" />
+                                          </button>
+                                        </Badge>
+                                      ) : null;
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Agregar nuevo servicio */}
+                  <div className="space-y-2 border border-dashed rounded-lg p-3">
+                    <Input
+                      placeholder="Nombre del servicio (ej: Servicio Menor)"
+                      value={newServiceName}
+                      onChange={(e) => setNewServiceName(e.target.value)}
+                    />
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        placeholder="Cada..."
+                        value={newServiceFreqValor}
+                        onChange={(e) => setNewServiceFreqValor(e.target.value)}
+                        className="w-24"
+                      />
+                      <Select value={newServiceFreqTipo} onValueChange={(v) => setNewServiceFreqTipo(v as "km" | "hrs" | "meses")}>
+                        <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="km">Kilómetros</SelectItem>
+                          <SelectItem value="hrs">Horas</SelectItem>
+                          <SelectItem value="meses">Meses</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button type="button" variant="outline" size="sm" onClick={addServicePlan} className="shrink-0">
+                        <Plus className="h-3.5 w-3.5 mr-1" /> Crear
+                      </Button>
+                    </div>
+                  </div>
+
+                  {servicePlans.length === 0 && (
+                    <p className="text-sm text-gray-400 text-center py-2">
+                      Sin planes de servicio aún.
+                    </p>
+                  )}
+                </div>
               </div>
-              <div className="flex gap-2 pt-4">
+
+              <Separator />
+
+              <div className="flex gap-2">
                 <Button type="submit" className="flex-1">
-                  Crear Máquina
+                  Crear Máquina / Vehículo
                 </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setIsDialogOpen(false)}
-                >
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancelar
                 </Button>
               </div>
