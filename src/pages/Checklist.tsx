@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const maquinas = [
   { id: 1, nombre: "Excavadora CAT 320", tipo: "Excavadora", placas: "MX-123-ABC", estado: "Operativa" },
@@ -200,7 +201,10 @@ export default function Checklist() {
 
       {/* Modal de Checklist */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0">
+        <DialogContent
+          className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader className="p-6 pb-0">
             <DialogTitle className="flex items-center gap-2">
               <ClipboardCheck className="h-5 w-5 text-blue-600" />
@@ -211,7 +215,7 @@ export default function Checklist() {
             </p>
           </DialogHeader>
 
-          <ScrollArea className="flex-1 px-6">
+          <div className="flex-1 overflow-y-auto px-6">
             <div className="space-y-5 pb-6">
               {/* Operador */}
               <div className="space-y-2">
@@ -230,11 +234,19 @@ export default function Checklist() {
                 <Label className="flex items-center gap-2">
                   <User className="h-4 w-4" /> Trabajador Asignado (quien recibe la máquina)
                 </Label>
-                <Input
-                  placeholder="Nombre del trabajador asignado"
-                  value={trabajadorAsignado}
-                  onChange={(e) => setTrabajadorAsignado(e.target.value)}
-                />
+                <Select value={trabajadorAsignado || undefined} onValueChange={(val) => setTrabajadorAsignado(val === "none" ? "" : val)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar trabajador..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin asignar</SelectItem>
+                    <SelectItem value="Juan Pérez">Juan Pérez</SelectItem>
+                    <SelectItem value="Carlos López">Carlos López</SelectItem>
+                    <SelectItem value="Roberto Sánchez">Roberto Sánchez</SelectItem>
+                    <SelectItem value="Pedro García">Pedro García</SelectItem>
+                    <SelectItem value="Miguel Ramírez">Miguel Ramírez</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Valores numéricos */}
@@ -368,7 +380,7 @@ export default function Checklist() {
                 )}
               </div>
             </div>
-          </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
