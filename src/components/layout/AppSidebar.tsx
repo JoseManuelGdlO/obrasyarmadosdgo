@@ -74,7 +74,7 @@ function SidebarSection({ label, items, currentPath, className }: SectionProps) 
                   className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all w-full text-sm"
                   style={{
                     backgroundColor: active ? 'hsl(38 80% 45%)' : 'transparent',
-                    color: active ? 'white' : 'hsl(40 20% 75%)',
+                    color: active ? 'white' : 'hsl(30 10% 40%)',
                     fontWeight: active ? 600 : 400,
                     boxShadow: active ? '0 4px 12px hsl(38 80% 45% / 0.4)' : 'none',
                   }}
