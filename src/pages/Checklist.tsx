@@ -45,28 +45,28 @@ const checklistItems = [
 // Historial de ejemplo
 const historialChecklist = [
   {
-    id: 1, maquinaId: 1, fecha: "2026-03-04", operador: "Juan Pérez",
-    kilometraje: 12450, horometro: 2340, itemsOk: 18, itemsTotal: 18, observaciones: "Todo en orden"
+    id: 1, maquinaId: 1, fecha: "2026-03-04", operador: "Juan Pérez", trabajadorAsignado: "Roberto Sánchez",
+    kilometraje: 12450, horometro: 2340, itemsOk: 18, itemsTotal: 18, observaciones: "Todo en orden", notas: "Se entregó limpia y con tanque lleno"
   },
   {
-    id: 2, maquinaId: 1, fecha: "2026-03-03", operador: "Carlos López",
-    kilometraje: 12380, horometro: 2332, itemsOk: 17, itemsTotal: 18, observaciones: "Fuga menor de aceite reportada"
+    id: 2, maquinaId: 1, fecha: "2026-03-03", operador: "Carlos López", trabajadorAsignado: "Juan Pérez",
+    kilometraje: 12380, horometro: 2332, itemsOk: 17, itemsTotal: 18, observaciones: "Fuga menor de aceite reportada", notas: ""
   },
   {
-    id: 3, maquinaId: 1, fecha: "2026-03-02", operador: "Juan Pérez",
-    kilometraje: 12310, horometro: 2324, itemsOk: 18, itemsTotal: 18, observaciones: ""
+    id: 3, maquinaId: 1, fecha: "2026-03-02", operador: "Juan Pérez", trabajadorAsignado: "Carlos López",
+    kilometraje: 12310, horometro: 2324, itemsOk: 18, itemsTotal: 18, observaciones: "", notas: "Cambio de turno sin novedad"
   },
   {
-    id: 4, maquinaId: 1, fecha: "2026-03-01", operador: "Miguel Ramírez",
-    kilometraje: 12240, horometro: 2316, itemsOk: 16, itemsTotal: 18, observaciones: "Presión de llantas baja, luces traseras con falla"
+    id: 4, maquinaId: 1, fecha: "2026-03-01", operador: "Miguel Ramírez", trabajadorAsignado: "Pedro García",
+    kilometraje: 12240, horometro: 2316, itemsOk: 16, itemsTotal: 18, observaciones: "Presión de llantas baja, luces traseras con falla", notas: "Se reportó a mantenimiento"
   },
   {
-    id: 5, maquinaId: 2, fecha: "2026-03-04", operador: "Pedro García",
-    kilometraje: 8900, horometro: 1650, itemsOk: 18, itemsTotal: 18, observaciones: ""
+    id: 5, maquinaId: 2, fecha: "2026-03-04", operador: "Pedro García", trabajadorAsignado: "Miguel Ramírez",
+    kilometraje: 8900, horometro: 1650, itemsOk: 18, itemsTotal: 18, observaciones: "", notas: ""
   },
   {
-    id: 6, maquinaId: 2, fecha: "2026-03-03", operador: "Pedro García",
-    kilometraje: 8840, horometro: 1642, itemsOk: 17, itemsTotal: 18, observaciones: "Extintor próximo a vencer"
+    id: 6, maquinaId: 2, fecha: "2026-03-03", operador: "Pedro García", trabajadorAsignado: "Roberto Sánchez",
+    kilometraje: 8840, horometro: 1642, itemsOk: 17, itemsTotal: 18, observaciones: "Extintor próximo a vencer", notas: "Solicitar reemplazo de extintor"
   },
 ];
 
@@ -77,7 +77,9 @@ export default function Checklist() {
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const [numericValues, setNumericValues] = useState<Record<string, string>>({});
   const [operador, setOperador] = useState("");
+  const [trabajadorAsignado, setTrabajadorAsignado] = useState("");
   const [observaciones, setObservaciones] = useState("");
+  const [notas, setNotas] = useState("");
 
   const filteredMaquinas = maquinas.filter((m) =>
     m.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -90,7 +92,9 @@ export default function Checklist() {
     setCheckedItems({});
     setNumericValues({});
     setOperador("");
+    setTrabajadorAsignado("");
     setObservaciones("");
+    setNotas("");
     setIsModalOpen(true);
   };
 
@@ -102,8 +106,11 @@ export default function Checklist() {
     console.log("Checklist enviado:", {
       maquina: selectedMaquina?.nombre,
       operador,
+      trabajadorAsignado,
       numericValues,
       checkedItems,
+      observaciones,
+      notas,
       observaciones,
     });
     setIsModalOpen(false);
