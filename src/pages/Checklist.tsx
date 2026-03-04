@@ -225,6 +225,18 @@ export default function Checklist() {
                 />
               </div>
 
+              {/* Trabajador Asignado */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <User className="h-4 w-4" /> Trabajador Asignado (quien recibe la máquina)
+                </Label>
+                <Input
+                  placeholder="Nombre del trabajador asignado"
+                  value={trabajadorAsignado}
+                  onChange={(e) => setTrabajadorAsignado(e.target.value)}
+                />
+              </div>
+
               {/* Valores numéricos */}
               <div className="grid grid-cols-2 gap-4">
                 {checklistItems
@@ -279,9 +291,20 @@ export default function Checklist() {
                 <Label>Observaciones</Label>
                 <textarea
                   className="w-full rounded-md border border-gray-300 p-2 text-sm min-h-[60px] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Notas adicionales..."
+                  placeholder="Observaciones sobre el estado de la máquina..."
                   value={observaciones}
                   onChange={(e) => setObservaciones(e.target.value)}
+                />
+              </div>
+
+              {/* Notas */}
+              <div className="space-y-2">
+                <Label>Notas</Label>
+                <textarea
+                  className="w-full rounded-md border border-gray-300 p-2 text-sm min-h-[60px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Notas adicionales (pendientes, solicitudes, etc.)..."
+                  value={notas}
+                  onChange={(e) => setNotas(e.target.value)}
                 />
               </div>
 
