@@ -202,7 +202,7 @@ export default function Checklist() {
       {/* Modal de Checklist */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent
-          className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden"
+          className="sm:max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden"
           onInteractOutside={(e) => e.preventDefault()}
         >
           <DialogHeader className="p-6 pb-0">
@@ -216,169 +216,105 @@ export default function Checklist() {
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto px-6">
-            <div className="space-y-5 pb-6">
-              {/* Operador */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <User className="h-4 w-4" /> Operador
-                </Label>
-                <Input
-                  placeholder="Nombre del operador"
-                  value={operador}
-                  onChange={(e) => setOperador(e.target.value)}
-                />
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 pb-6">
+              {/* Col 1: Datos generales */}
+              <div className="space-y-5">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <User className="h-4 w-4" /> Operador
+                  </Label>
+                  <Input placeholder="Nombre del operador" value={operador} onChange={(e) => setOperador(e.target.value)} />
+                </div>
 
-              {/* Trabajador Asignado */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <User className="h-4 w-4" /> Trabajador Asignado (quien recibe la máquina)
-                </Label>
-                <Select value={trabajadorAsignado || undefined} onValueChange={(val) => setTrabajadorAsignado(val === "none" ? "" : val)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar trabajador..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Sin asignar</SelectItem>
-                    <SelectItem value="Juan Pérez">Juan Pérez</SelectItem>
-                    <SelectItem value="Carlos López">Carlos López</SelectItem>
-                    <SelectItem value="Roberto Sánchez">Roberto Sánchez</SelectItem>
-                    <SelectItem value="Pedro García">Pedro García</SelectItem>
-                    <SelectItem value="Miguel Ramírez">Miguel Ramírez</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <User className="h-4 w-4" /> Trabajador Asignado
+                  </Label>
+                  <Select value={trabajadorAsignado || undefined} onValueChange={(val) => setTrabajadorAsignado(val === "none" ? "" : val)}>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar trabajador..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sin asignar</SelectItem>
+                      <SelectItem value="Juan Pérez">Juan Pérez</SelectItem>
+                      <SelectItem value="Carlos López">Carlos López</SelectItem>
+                      <SelectItem value="Roberto Sánchez">Roberto Sánchez</SelectItem>
+                      <SelectItem value="Pedro García">Pedro García</SelectItem>
+                      <SelectItem value="Miguel Ramírez">Miguel Ramírez</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              {/* Valores numéricos */}
-              <div className="grid grid-cols-2 gap-4">
-                {checklistItems
-                  .filter((item) => item.type === "number")
-                  .map((item) => (
+                <div className="grid grid-cols-2 gap-4">
+                  {checklistItems.filter((item) => item.type === "number").map((item) => (
                     <div key={item.id} className="space-y-2">
                       <Label>{item.label} ({item.unit})</Label>
-                      <Input
-                        type="number"
-                        placeholder={`Ingrese ${item.label.toLowerCase()}`}
-                        value={numericValues[item.id] || ""}
-                        onChange={(e) =>
-                          setNumericValues((prev) => ({ ...prev, [item.id]: e.target.value }))
-                        }
-                      />
+                      <Input type="number" placeholder={`Ingrese ${item.label.toLowerCase()}`} value={numericValues[item.id] || ""} onChange={(e) => setNumericValues((prev) => ({ ...prev, [item.id]: e.target.value }))} />
                     </div>
                   ))}
-              </div>
-
-              <Separator />
-
-              {/* Puntos de inspección */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-gray-900">Puntos de Inspección</h3>
-                  <span className="text-sm text-gray-500">
-                    {completedChecks}/{totalChecks} revisados
-                  </span>
                 </div>
+
+                <Separator />
+
                 <div className="space-y-2">
-                  {checklistItems
-                    .filter((item) => item.type === "check")
-                    .map((item) => (
-                      <label
-                        key={item.id}
-                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer"
-                      >
-                        <Checkbox
-                          checked={!!checkedItems[item.id]}
-                          onCheckedChange={() => handleToggleItem(item.id)}
-                        />
-                        <span className="text-sm text-gray-700">{item.label}</span>
-                      </label>
-                    ))}
+                  <Label>Observaciones</Label>
+                  <textarea className="w-full rounded-md border border-input bg-background p-2 text-sm min-h-[60px] focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Observaciones sobre el estado de la máquina..." value={observaciones} onChange={(e) => setObservaciones(e.target.value)} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Notas</Label>
+                  <textarea className="w-full rounded-md border border-input bg-background p-2 text-sm min-h-[60px] focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Notas adicionales..." value={notas} onChange={(e) => setNotas(e.target.value)} />
                 </div>
               </div>
 
-              <Separator />
-
-              {/* Observaciones */}
-              <div className="space-y-2">
-                <Label>Observaciones</Label>
-                <textarea
-                  className="w-full rounded-md border border-gray-300 p-2 text-sm min-h-[60px] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Observaciones sobre el estado de la máquina..."
-                  value={observaciones}
-                  onChange={(e) => setObservaciones(e.target.value)}
-                />
+              {/* Col 2: Puntos de inspección */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-foreground">Puntos de Inspección</h3>
+                  <span className="text-sm text-muted-foreground">{completedChecks}/{totalChecks} revisados</span>
+                </div>
+                <div className="space-y-1">
+                  {checklistItems.filter((item) => item.type === "check").map((item) => (
+                    <label key={item.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer">
+                      <Checkbox checked={!!checkedItems[item.id]} onCheckedChange={() => handleToggleItem(item.id)} />
+                      <span className="text-sm text-foreground">{item.label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
+            </div>
 
-              {/* Notas */}
-              <div className="space-y-2">
-                <Label>Notas</Label>
-                <textarea
-                  className="w-full rounded-md border border-gray-300 p-2 text-sm min-h-[60px] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Notas adicionales (pendientes, solicitudes, etc.)..."
-                  value={notas}
-                  onChange={(e) => setNotas(e.target.value)}
-                />
-              </div>
+            {/* Botón guardar */}
+            <div className="pb-4">
+              <Button className="w-full" onClick={handleSubmitChecklist}>Guardar Checklist</Button>
+            </div>
 
-              {/* Botón guardar */}
-              <Button className="w-full" onClick={handleSubmitChecklist}>
-                Guardar Checklist
-              </Button>
+            <Separator />
 
-              <Separator />
-
-              {/* Historial */}
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <Calendar className="h-4 w-4" /> Historial de Checklist
-                </h3>
-                {selectedMaquina && getHistorial(selectedMaquina.id).length > 0 ? (
-                  <div className="space-y-3">
-                    {getHistorial(selectedMaquina.id).map((registro) => (
-                      <div
-                        key={registro.id}
-                        className="border rounded-lg p-3 bg-gray-50"
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-medium text-sm text-gray-900">
-                            {registro.fecha}
-                          </span>
-                          <Badge
-                            className={
-                              registro.itemsOk === registro.itemsTotal
-                                ? "bg-green-100 text-green-800"
-                                : "bg-amber-100 text-amber-800"
-                            }
-                          >
-                            {registro.itemsOk}/{registro.itemsTotal} OK
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Operador:</span> {registro.operador}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Asignado a:</span> {registro.trabajadorAsignado}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          Km: {registro.kilometraje.toLocaleString()} · Hrs: {registro.horometro.toLocaleString()}
-                        </p>
-                        {registro.observaciones && (
-                          <p className="text-sm text-amber-700 mt-1 italic">
-                            <span className="font-medium">Obs:</span> {registro.observaciones}
-                          </p>
-                        )}
-                        {registro.notas && (
-                          <p className="text-sm text-blue-700 mt-1 italic">
-                            <span className="font-medium">Notas:</span> {registro.notas}
-                          </p>
-                        )}
+            {/* Historial */}
+            <div className="pb-6">
+              <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                <Calendar className="h-4 w-4" /> Historial de Checklist
+              </h3>
+              {selectedMaquina && getHistorial(selectedMaquina.id).length > 0 ? (
+                <div className="space-y-3">
+                  {getHistorial(selectedMaquina.id).map((registro) => (
+                    <div key={registro.id} className="border rounded-lg p-3 bg-muted/30">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium text-sm text-foreground">{registro.fecha}</span>
+                        <Badge className={registro.itemsOk === registro.itemsTotal ? "bg-success text-success-foreground" : "bg-warning text-warning-foreground"}>
+                          {registro.itemsOk}/{registro.itemsTotal} OK
+                        </Badge>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500">Sin registros previos.</p>
-                )}
-              </div>
+                      <p className="text-sm text-muted-foreground"><span className="font-medium">Operador:</span> {registro.operador}</p>
+                      <p className="text-sm text-muted-foreground"><span className="font-medium">Asignado a:</span> {registro.trabajadorAsignado}</p>
+                      <p className="text-sm text-muted-foreground">Km: {registro.kilometraje.toLocaleString()} · Hrs: {registro.horometro.toLocaleString()}</p>
+                      {registro.observaciones && <p className="text-sm text-warning mt-1 italic"><span className="font-medium">Obs:</span> {registro.observaciones}</p>}
+                      {registro.notas && <p className="text-sm text-primary mt-1 italic"><span className="font-medium">Notas:</span> {registro.notas}</p>}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Sin registros previos.</p>
+              )}
             </div>
           </div>
         </DialogContent>
