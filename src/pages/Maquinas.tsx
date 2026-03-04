@@ -156,12 +156,17 @@ const tiposMaquina = ["Excavadora", "Grúa", "Bulldozer", "Pavimentadora", "Comp
 const marcas = ["Caterpillar", "Liebherr", "Volvo", "Toyota", "JCB", "Komatsu", "John Deere"];
 const estados = ["Operativa", "Disponible", "Mantenimiento", "Fuera de Servicio"];
 
+interface ServicePiezaDef {
+  invId: string;
+  cantidad: number;
+}
+
 interface ServicePlanDef {
   id: string;
   nombre: string;
   frecuenciaTipo: "km" | "hrs" | "meses";
   frecuenciaValor: string;
-  piezas: string[]; // inventory item IDs
+  piezas: ServicePiezaDef[];
 }
 
 interface ChecklistItemDef {
@@ -251,9 +256,23 @@ export default function Maquinas() {
         s.id === serviceId
           ? {
               ...s,
-              piezas: s.piezas.includes(invId)
-                ? s.piezas.filter((p) => p !== invId)
-                : [...s.piezas, invId],
+              piezas: s.piezas.some((p) => p.invId === invId)
+                ? s.piezas.filter((p) => p.invId !== invId)
+                : [...s.piezas, { invId, cantidad: 1 }],
+            }
+          : s
+      )
+    );
+  };
+
+  const updatePiezaCantidad = (serviceId: string, invId: string, cantidad: number) => {
+    if (cantidad < 1) return;
+    setServicePlans((prev) =>
+      prev.map((s) =>
+        s.id === serviceId
+          ? {
+              ...s,
+              piezas: s.piezas.map((p) => (p.invId === invId ? { ...p, cantidad } : p)),
             }
           : s
       )
