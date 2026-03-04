@@ -287,60 +287,34 @@ export default function Checklist() {
               <Button className="w-full" onClick={handleSubmitChecklist}>Guardar Checklist</Button>
             </div>
 
-              <Separator />
+            <Separator />
 
-              {/* Historial */}
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <Calendar className="h-4 w-4" /> Historial de Checklist
-                </h3>
-                {selectedMaquina && getHistorial(selectedMaquina.id).length > 0 ? (
-                  <div className="space-y-3">
-                    {getHistorial(selectedMaquina.id).map((registro) => (
-                      <div
-                        key={registro.id}
-                        className="border rounded-lg p-3 bg-gray-50"
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-medium text-sm text-gray-900">
-                            {registro.fecha}
-                          </span>
-                          <Badge
-                            className={
-                              registro.itemsOk === registro.itemsTotal
-                                ? "bg-green-100 text-green-800"
-                                : "bg-amber-100 text-amber-800"
-                            }
-                          >
-                            {registro.itemsOk}/{registro.itemsTotal} OK
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Operador:</span> {registro.operador}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Asignado a:</span> {registro.trabajadorAsignado}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          Km: {registro.kilometraje.toLocaleString()} · Hrs: {registro.horometro.toLocaleString()}
-                        </p>
-                        {registro.observaciones && (
-                          <p className="text-sm text-amber-700 mt-1 italic">
-                            <span className="font-medium">Obs:</span> {registro.observaciones}
-                          </p>
-                        )}
-                        {registro.notas && (
-                          <p className="text-sm text-blue-700 mt-1 italic">
-                            <span className="font-medium">Notas:</span> {registro.notas}
-                          </p>
-                        )}
+            {/* Historial */}
+            <div className="pb-6">
+              <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                <Calendar className="h-4 w-4" /> Historial de Checklist
+              </h3>
+              {selectedMaquina && getHistorial(selectedMaquina.id).length > 0 ? (
+                <div className="space-y-3">
+                  {getHistorial(selectedMaquina.id).map((registro) => (
+                    <div key={registro.id} className="border rounded-lg p-3 bg-muted/30">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium text-sm text-foreground">{registro.fecha}</span>
+                        <Badge className={registro.itemsOk === registro.itemsTotal ? "bg-success text-success-foreground" : "bg-warning text-warning-foreground"}>
+                          {registro.itemsOk}/{registro.itemsTotal} OK
+                        </Badge>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500">Sin registros previos.</p>
-                )}
-              </div>
+                      <p className="text-sm text-muted-foreground"><span className="font-medium">Operador:</span> {registro.operador}</p>
+                      <p className="text-sm text-muted-foreground"><span className="font-medium">Asignado a:</span> {registro.trabajadorAsignado}</p>
+                      <p className="text-sm text-muted-foreground">Km: {registro.kilometraje.toLocaleString()} · Hrs: {registro.horometro.toLocaleString()}</p>
+                      {registro.observaciones && <p className="text-sm text-warning mt-1 italic"><span className="font-medium">Obs:</span> {registro.observaciones}</p>}
+                      {registro.notas && <p className="text-sm text-primary mt-1 italic"><span className="font-medium">Notas:</span> {registro.notas}</p>}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Sin registros previos.</p>
+              )}
             </div>
           </div>
         </DialogContent>
