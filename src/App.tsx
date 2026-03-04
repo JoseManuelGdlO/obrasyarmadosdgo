@@ -15,6 +15,7 @@ import Proyectos from "./pages/Proyectos";
 import Clientes from "./pages/Clientes";
 import GestionUsuarios from "./pages/GestionUsuarios";
 import Nomenclaturas from "./pages/Nomenclaturas";
+import Checklist from "./pages/Checklist";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/clientes" element={<Clientes />} />
             <Route path="/gestion-usuarios" element={<GestionUsuarios />} />
             <Route path="/nomenclaturas" element={<Nomenclaturas />} />
+            <Route path="/checklist" element={<Checklist />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
