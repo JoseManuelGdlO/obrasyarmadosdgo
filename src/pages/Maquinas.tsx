@@ -156,6 +156,14 @@ const tiposMaquina = ["Excavadora", "Grúa", "Bulldozer", "Pavimentadora", "Comp
 const marcas = ["Caterpillar", "Liebherr", "Volvo", "Toyota", "JCB", "Komatsu", "John Deere"];
 const estados = ["Operativa", "Disponible", "Mantenimiento", "Fuera de Servicio"];
 
+interface ServicePlanDef {
+  id: string;
+  nombre: string;
+  frecuenciaTipo: "km" | "hrs" | "meses";
+  frecuenciaValor: string;
+  piezas: string[]; // inventory item IDs
+}
+
 interface ChecklistItemDef {
   id: string;
   label: string;
