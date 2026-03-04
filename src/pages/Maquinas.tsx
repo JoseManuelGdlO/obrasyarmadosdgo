@@ -489,6 +489,7 @@ export default function Maquinas() {
                 </Button>
               </div>
             </form>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
