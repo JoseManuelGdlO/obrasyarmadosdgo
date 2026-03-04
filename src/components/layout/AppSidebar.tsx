@@ -37,7 +37,7 @@ const mainItems = [
 
 const inventoryItems = [
   { title: "Inventario", url: "/inventario", icon: Package },
-  { title: "Máquinas", url: "/maquinas", icon: Truck },
+  { title: "Vehículos/Máquinas", url: "/maquinas", icon: Truck },
 ]
 
 const accessItems = [
