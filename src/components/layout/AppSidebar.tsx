@@ -1,4 +1,3 @@
-import { useState } from "react"
 import { 
   ClipboardList, 
   Package, 
@@ -12,6 +11,7 @@ import {
   Settings
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
+import logoObras from "@/assets/logo-obras.png"
 
 import {
   Sidebar,
@@ -20,11 +20,9 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
-  useSidebar,
   SidebarHeader,
+  useSidebar,
 } from "@/components/ui/sidebar"
 
 const mainItems = [
@@ -51,147 +49,78 @@ const configItems = [
   { title: "Nomenclaturas", url: "/nomenclaturas", icon: Settings },
 ]
 
+type SectionProps = {
+  label: string
+  items: typeof mainItems
+  currentPath: string
+  className?: string
+}
+
+function SidebarSection({ label, items, currentPath, className }: SectionProps) {
+  return (
+    <SidebarGroup className={className ?? "py-2"}>
+      <SidebarGroupLabel className="text-sidebar-foreground/50 font-semibold text-xs uppercase tracking-wider">
+        {label}
+      </SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {items.map((item) => {
+            const active = currentPath === item.url
+            return (
+              <SidebarMenuItem key={item.title}>
+                <NavLink
+                  to={item.url}
+                  end
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all w-full text-sm"
+                  style={{
+                    backgroundColor: active ? 'hsl(38 80% 45%)' : 'transparent',
+                    color: active ? 'white' : 'hsl(40 20% 75%)',
+                    fontWeight: active ? 600 : 400,
+                    boxShadow: active ? '0 4px 12px hsl(38 80% 45% / 0.4)' : 'none',
+                  }}
+                >
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
+                </NavLink>
+              </SidebarMenuItem>
+            )
+          })}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  )
+}
+
 export function AppSidebar() {
   const { state } = useSidebar()
   const location = useLocation()
   const currentPath = location.pathname
 
-  console.log("Current path:", currentPath)
-  console.log("Sidebar state:", state)
-
-  const isActive = (path: string) => {
-    const active = currentPath === path
-    console.log(`Path ${path} is active:`, active)
-    return active
-  }
-  
-  const getNavCls = ({ isActive }: { isActive: boolean }) => {
-    const classes = isActive 
-      ? "bg-blue-600 text-white font-medium shadow-lg" 
-      : "text-gray-900 hover:bg-gray-100 hover:text-gray-900"
-    console.log("Nav classes:", classes, "isActive:", isActive)
-    return classes
-  }
-
-  const allItems = [...mainItems, ...inventoryItems, ...accessItems, ...configItems]
-
   return (
-    <Sidebar
-      collapsible="icon"
-      className="border-r border-gray-200 bg-white"
-    >
-      <SidebarHeader className="p-4 border-b border-gray-200 bg-white">
-        <div className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-orange-500 rounded-lg flex items-center justify-center">
-            <Truck className="w-5 h-5 text-white" />
-          </div>
+    <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar">
+      <SidebarHeader className="p-4 border-b border-sidebar-border">
+        <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
+          <img
+            src={logoObras}
+            alt="Obras y Armados Estructurales"
+            className="w-10 h-10 object-contain rounded bg-white p-0.5"
+          />
           <div className="group-data-[collapsible=icon]:hidden">
-            <h2 className="text-lg font-bold text-gray-900">MantPro</h2>
-            <p className="text-xs text-gray-600">Gestión Industrial</p>
+            <h2 className="text-base font-bold text-sidebar-foreground leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+              OBRAS
+            </h2>
+            <p className="text-[10px] text-sidebar-foreground/60 tracking-wide">
+              Y ARMADOS ESTRUCTURALES
+            </p>
           </div>
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="px-2 bg-white">
-        <SidebarGroup className="py-2">
-          <SidebarGroupLabel className="text-gray-600 font-medium">Gestión</SidebarGroupLabel>
-          
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {mainItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <NavLink 
-                    to={item.url} 
-                    end 
-                    className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors w-full ${getNavCls({ isActive: isActive(item.url) })}`}
-                    style={{ 
-                      backgroundColor: isActive(item.url) ? '#2563eb' : 'transparent',
-                      color: isActive(item.url) ? 'white' : '#111827'
-                    }}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
-                  </NavLink>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup className="py-2">
-          <SidebarGroupLabel className="text-gray-600 font-medium">Inventarios</SidebarGroupLabel>
-          
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {inventoryItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <NavLink 
-                    to={item.url} 
-                    end 
-                    className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors w-full ${getNavCls({ isActive: isActive(item.url) })}`}
-                    style={{ 
-                      backgroundColor: isActive(item.url) ? '#2563eb' : 'transparent',
-                      color: isActive(item.url) ? 'white' : '#111827'
-                    }}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
-                  </NavLink>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup className="py-2">
-          <SidebarGroupLabel className="text-gray-600 font-medium">Accesos</SidebarGroupLabel>
-          
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {accessItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <NavLink 
-                    to={item.url} 
-                    end 
-                    className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors w-full ${getNavCls({ isActive: isActive(item.url) })}`}
-                    style={{ 
-                      backgroundColor: isActive(item.url) ? '#2563eb' : 'transparent',
-                      color: isActive(item.url) ? 'white' : '#111827'
-                    }}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
-                  </NavLink>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup className="mt-auto py-2">
-          <SidebarGroupLabel className="text-gray-600 font-medium">Configuraciones</SidebarGroupLabel>
-          
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {configItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <NavLink 
-                    to={item.url} 
-                    end 
-                    className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors w-full ${getNavCls({ isActive: isActive(item.url) })}`}
-                    style={{ 
-                      backgroundColor: isActive(item.url) ? '#2563eb' : 'transparent',
-                      color: isActive(item.url) ? 'white' : '#111827'
-                    }}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
-                  </NavLink>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+      <SidebarContent className="px-2">
+        <SidebarSection label="Gestión" items={mainItems} currentPath={currentPath} />
+        <SidebarSection label="Inventarios" items={inventoryItems} currentPath={currentPath} />
+        <SidebarSection label="Accesos" items={accessItems} currentPath={currentPath} />
+        <SidebarSection label="Configuración" items={configItems} currentPath={currentPath} className="mt-auto py-2" />
       </SidebarContent>
     </Sidebar>
   )
