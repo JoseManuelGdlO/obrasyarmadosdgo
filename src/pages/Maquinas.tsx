@@ -954,6 +954,40 @@ export default function Maquinas() {
                   </Button>
                 )}
               </div>
+              {/* Link directo */}
+              <div className="flex items-center gap-2 p-3 bg-muted rounded-lg border">
+                <Input
+                  readOnly
+                  value={`${window.location.origin}/checklist-publico?data=${encodeURIComponent(JSON.stringify({
+                    id: qrMaquina.id,
+                    nombre: qrMaquina.nombre,
+                    marca: qrMaquina.marca,
+                    modelo: qrMaquina.modelo,
+                    placas: qrMaquina.placas,
+                    serie: qrMaquina.numeroSerie,
+                  }))}`}
+                  className="text-xs bg-background"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => {
+                    const url = `${window.location.origin}/checklist-publico?data=${encodeURIComponent(JSON.stringify({
+                      id: qrMaquina.id,
+                      nombre: qrMaquina.nombre,
+                      marca: qrMaquina.marca,
+                      modelo: qrMaquina.modelo,
+                      placas: qrMaquina.placas,
+                      serie: qrMaquina.numeroSerie,
+                    }))}`;
+                    navigator.clipboard.writeText(url);
+                    toast.success("Link copiado al portapapeles");
+                  }}
+                >
+                  Copiar
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
