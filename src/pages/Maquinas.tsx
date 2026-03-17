@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Plus, Search, Filter, Edit, Trash2, Truck, Building, Calendar, Gauge, X, Wrench, ChevronDown, ChevronUp } from "lucide-react";
+import { useState, useRef } from "react";
+import { Plus, Search, Filter, Edit, Trash2, Truck, Building, Calendar, Gauge, X, Wrench, ChevronDown, ChevronUp, QrCode, Printer, Share2, Download } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
