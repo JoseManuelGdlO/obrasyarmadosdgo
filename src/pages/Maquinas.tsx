@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Plus, Search, Filter, Edit, Trash2, Truck, Building, Calendar, Gauge, X, Wrench, ChevronDown, ChevronUp } from "lucide-react";
+import { useState, useRef } from "react";
+import { Plus, Search, Filter, Edit, Trash2, Truck, Building, Calendar, Gauge, X, Wrench, ChevronDown, ChevronUp, QrCode, Printer, Share2, Download } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -181,6 +182,8 @@ export default function Maquinas() {
   const [selectedTipo, setSelectedTipo] = useState("");
   const [selectedEstado, setSelectedEstado] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [qrMaquina, setQrMaquina] = useState<typeof maquinas[0] | null>(null);
+  const qrRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState({
     nombre: "",
@@ -825,6 +828,14 @@ export default function Maquinas() {
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setQrMaquina(maquina)}
+                        >
+                          <QrCode className="h-3 w-3" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -840,6 +851,113 @@ export default function Maquinas() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal QR */}
+      <Dialog open={!!qrMaquina} onOpenChange={(open) => !open && setQrMaquina(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <QrCode className="h-5 w-5" />
+              Código QR - {qrMaquina?.nombre}
+            </DialogTitle>
+          </DialogHeader>
+          {qrMaquina && (
+            <div className="space-y-4">
+              <div ref={qrRef} className="flex flex-col items-center gap-3 p-6 bg-background rounded-lg border">
+                <QRCodeSVG
+                  value={JSON.stringify({
+                    id: qrMaquina.id,
+                    nombre: qrMaquina.nombre,
+                    marca: qrMaquina.marca,
+                    modelo: qrMaquina.modelo,
+                    placas: qrMaquina.placas,
+                    serie: qrMaquina.numeroSerie,
+                  })}
+                  size={200}
+                  level="H"
+                  includeMargin
+                />
+                <p className="text-sm font-medium text-foreground">{qrMaquina.nombre}</p>
+                <p className="text-xs text-muted-foreground">{qrMaquina.marca} {qrMaquina.modelo} · {qrMaquina.placas}</p>
+                <p className="text-xs text-muted-foreground">S/N: {qrMaquina.numeroSerie}</p>
+              </div>
+              <div className="flex gap-2 justify-center">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const svg = qrRef.current?.querySelector("svg");
+                    if (!svg) return;
+                    const svgData = new XMLSerializer().serializeToString(svg);
+                    const canvas = document.createElement("canvas");
+                    canvas.width = 300;
+                    canvas.height = 300;
+                    const ctx = canvas.getContext("2d");
+                    const img = new Image();
+                    img.onload = () => {
+                      ctx?.drawImage(img, 0, 0, 300, 300);
+                      const a = document.createElement("a");
+                      a.download = `QR-${qrMaquina.nombre}.png`;
+                      a.href = canvas.toDataURL("image/png");
+                      a.click();
+                    };
+                    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+                  }}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Descargar
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const printWindow = window.open("", "_blank");
+                    if (!printWindow || !qrRef.current) return;
+                    printWindow.document.write(`
+                      <html><head><title>QR ${qrMaquina.nombre}</title>
+                      <style>body{display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;font-family:sans-serif;}
+                      .container{text-align:center;}</style></head>
+                      <body><div class="container">${qrRef.current.innerHTML}</div>
+                      <script>window.print();window.close();<\/script></body></html>
+                    `);
+                    printWindow.document.close();
+                  }}
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  Imprimir
+                </Button>
+                {navigator.share && (
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      const svg = qrRef.current?.querySelector("svg");
+                      if (!svg) return;
+                      const svgData = new XMLSerializer().serializeToString(svg);
+                      const canvas = document.createElement("canvas");
+                      canvas.width = 300;
+                      canvas.height = 300;
+                      const ctx = canvas.getContext("2d");
+                      const img = new Image();
+                      img.onload = async () => {
+                        ctx?.drawImage(img, 0, 0, 300, 300);
+                        canvas.toBlob(async (blob) => {
+                          if (!blob) return;
+                          const file = new File([blob], `QR-${qrMaquina.nombre}.png`, { type: "image/png" });
+                          try {
+                            await navigator.share({ title: `QR ${qrMaquina.nombre}`, files: [file] });
+                          } catch {}
+                        });
+                      };
+                      img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+                    }}
+                  >
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Compartir
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
