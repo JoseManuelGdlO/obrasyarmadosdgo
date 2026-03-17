@@ -17,6 +17,7 @@ import GestionUsuarios from "./pages/GestionUsuarios";
 import Nomenclaturas from "./pages/Nomenclaturas";
 import Checklist from "./pages/Checklist";
 import Login from "./pages/Login";
+import ChecklistPublico from "./pages/ChecklistPublico";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/checklist-publico" element={<ChecklistPublico />} />
           <Route path="*" element={
             <MainLayout>
               <Routes>
