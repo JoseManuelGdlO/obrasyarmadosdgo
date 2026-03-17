@@ -181,6 +181,7 @@ export default function Maquinas() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTipo, setSelectedTipo] = useState("");
   const [selectedEstado, setSelectedEstado] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [qrMaquina, setQrMaquina] = useState<typeof maquinas[0] | null>(null);
   const qrRef = useRef<HTMLDivElement>(null);
 
