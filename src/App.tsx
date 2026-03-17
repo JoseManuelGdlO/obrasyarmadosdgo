@@ -30,6 +30,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/checklist-publico" element={<ChecklistPublico />} />
           <Route path="*" element={
             <MainLayout>
               <Routes>
