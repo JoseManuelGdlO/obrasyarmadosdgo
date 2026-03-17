@@ -865,14 +865,14 @@ export default function Maquinas() {
             <div className="space-y-4">
               <div ref={qrRef} className="flex flex-col items-center gap-3 p-6 bg-background rounded-lg border">
                 <QRCodeSVG
-                  value={JSON.stringify({
+                  value={`${window.location.origin}/checklist-publico?data=${encodeURIComponent(JSON.stringify({
                     id: qrMaquina.id,
                     nombre: qrMaquina.nombre,
                     marca: qrMaquina.marca,
                     modelo: qrMaquina.modelo,
                     placas: qrMaquina.placas,
                     serie: qrMaquina.numeroSerie,
-                  })}
+                  }))}`}
                   size={200}
                   level="H"
                   includeMargin
