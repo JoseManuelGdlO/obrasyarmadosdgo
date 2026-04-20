@@ -41,10 +41,17 @@ const User = sequelize.define(
   {
     tableName: "users",
     timestamps: true,
+    defaultScope: {
+      attributes: { exclude: ["password"] },
+    },
     hooks: {
-      // Hash automático de contraseña al crear registros desde el modelo.
       async beforeCreate(user) {
         user.password = await bcrypt.hash(user.password, 10);
+      },
+      async beforeUpdate(user) {
+        if (user.changed("password")) {
+          user.password = await bcrypt.hash(user.password, 10);
+        }
       },
     },
   }

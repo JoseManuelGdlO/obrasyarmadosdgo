@@ -3,7 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const sequelize = require("./config/database");
-const authRoutes = require("./routes/authRoutes");
+const apiRoutes = require("./routes");
 // Asegura que el modelo quede registrado en Sequelize al iniciar la app.
 require("./models/User");
 
@@ -29,8 +29,8 @@ app.get("/health", (_req, res) => {
   return res.status(200).json({ status: "ok" });
 });
 
-// Agrupa los endpoints de autenticación bajo /api/auth.
-app.use("/api/auth", authRoutes);
+// Agrupa endpoints de API bajo /api.
+app.use("/api", apiRoutes);
 
 const startServer = async () => {
   try {

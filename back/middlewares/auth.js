@@ -21,11 +21,20 @@ const auth = (req, res, next) => {
   }
 
   try {
-    // Si el token es válido, se expone el payload para controladores siguientes.
     const payload = jwt.verify(token, jwtSecret);
-    req.user = payload;
+    req.user = {
+      id: payload.id ?? payload.sub,
+      email: payload.email,
+      rol: payload.rol,
+      status: payload.status,
+    };
+
+    if (req.user.status && req.user.status !== "activo") {
+      return res.status(403).json({ message: "Su cuenta está suspendida." });
+    }
+
     return next();
-  } catch (error) {
+  } catch (_error) {
     return res.status(403).json({ message: "Token inválido o expirado." });
   }
 };
