@@ -1,6 +1,14 @@
 const jwt = require("jsonwebtoken");
 
+// Middleware de protección para endpoints que requieren sesión válida.
 const auth = (req, res, next) => {
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    return res.status(500).json({
+      message: "Configuración de autenticación incompleta en el servidor.",
+    });
+  }
+
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {
@@ -13,7 +21,8 @@ const auth = (req, res, next) => {
   }
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    // Si el token es válido, se expone el payload para controladores siguientes.
+    const payload = jwt.verify(token, jwtSecret);
     req.user = payload;
     return next();
   } catch (error) {

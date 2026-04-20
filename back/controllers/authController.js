@@ -2,6 +2,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
+// Registro básico por email/password.
 const register = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -19,6 +20,7 @@ const register = async (req, res) => {
       });
     }
 
+    // El hash se aplica vía hook beforeCreate del modelo User.
     await User.create({ email, password });
 
     return res.status(201).json({
@@ -56,9 +58,17 @@ const login = async (req, res) => {
       });
     }
 
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      return res.status(500).json({
+        message: "Configuración de autenticación incompleta en el servidor.",
+      });
+    }
+
+    // El token incluye claims mínimos para identificar al usuario.
     const token = jwt.sign(
       { id: user.id, email: user.email },
-      process.env.JWT_SECRET,
+      jwtSecret,
       { expiresIn: process.env.JWT_EXPIRE || "24h" }
     );
 

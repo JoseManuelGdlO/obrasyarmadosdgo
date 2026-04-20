@@ -2,6 +2,7 @@ const { DataTypes } = require("sequelize");
 const bcrypt = require("bcryptjs");
 const sequelize = require("../config/database");
 
+// Modelo de usuarios autenticables del sistema.
 const User = sequelize.define(
   "User",
   {
@@ -22,14 +23,28 @@ const User = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    rol: {
+      type: DataTypes.ENUM("admin", "usuario"),
+      allowNull: false,
+      defaultValue: "usuario",
+    },
+    status: {
+      type: DataTypes.ENUM("activo", "suspendido"),
+      allowNull: false,
+      defaultValue: "activo",
+    },
+    lastAccess: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     tableName: "users",
     timestamps: true,
     hooks: {
+      // Hash automático de contraseña al crear registros desde el modelo.
       async beforeCreate(user) {
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(user.password, salt);
+        user.password = await bcrypt.hash(user.password, 10);
       },
     },
   }
