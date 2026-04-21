@@ -1,5 +1,6 @@
 const express = require("express");
-const { requireRole } = require("../middlewares/authorize");
+const { requirePermission } = require("../middlewares/permissions");
+const P = require("../constants/permissions");
 const {
   listUsers,
   getUserById,
@@ -10,7 +11,7 @@ const {
 
 const router = express.Router();
 
-router.use(requireRole("admin"));
+router.use(requirePermission(P.USERS_MANAGE));
 
 router.get("/", listUsers);
 router.get("/:id", getUserById);

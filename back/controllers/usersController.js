@@ -1,7 +1,7 @@
 const { Op } = require("sequelize");
 const User = require("../models/User");
 
-const ALLOWED_ROLES = ["admin", "usuario"];
+const ALLOWED_ROLES = ["admin", "usuario", "maquinista"];
 const ALLOWED_STATUS = ["activo", "suspendido"];
 
 const listUsers = async (_req, res) => {

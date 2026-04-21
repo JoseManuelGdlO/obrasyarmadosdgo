@@ -3,9 +3,9 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const sequelize = require("./config/database");
-const apiRoutes = require("./routes");
-// Asegura que el modelo quede registrado en Sequelize al iniciar la app.
-require("./models/User");
+const routes = require("./routes");
+// Registra modelos y asociaciones Sequelize al iniciar la app.
+require("./models");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -30,7 +30,7 @@ app.get("/health", (_req, res) => {
 });
 
 // Agrupa endpoints de API bajo /api.
-app.use("/api", apiRoutes);
+app.use("/api", routes);
 
 const startServer = async () => {
   try {
@@ -40,6 +40,7 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`Servidor backend corriendo en el puerto ${PORT}`);
     });
+    console.log(`Servidor backend corriendo en http://localhost:${PORT}/health`);
   } catch (error) {
     console.error("Error al iniciar el servidor:", error.message);
     process.exit(1);
