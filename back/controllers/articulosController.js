@@ -3,14 +3,22 @@ const Articulo = require("../models/Articulo");
 
 const listArticulos = async (req, res) => {
   try {
-    const { q } = req.query;
+    const { q, categoria, belowMin } = req.query;
     const where = {};
     if (q && String(q).trim()) {
       const term = `%${String(q).trim()}%`;
       where[Op.or] = [
         { nombre: { [Op.like]: term } },
         { categoria: { [Op.like]: term } },
+        { codigo: { [Op.like]: term } },
+        { proveedor: { [Op.like]: term } },
       ];
+    }
+    if (categoria && String(categoria).trim()) {
+      where.categoria = String(categoria).trim();
+    }
+    if (String(belowMin || "") === "true") {
+      where.stockActual = { [Op.lte]: Articulo.sequelize.col("stockMinimo") };
     }
     const articulos = await Articulo.findAll({
       where,
@@ -43,7 +51,17 @@ const getArticuloById = async (req, res) => {
 
 const createArticulo = async (req, res) => {
   try {
-    const { nombre, categoria } = req.body;
+    const {
+      nombre,
+      categoria,
+      codigo,
+      stockActual,
+      stockMinimo,
+      precioUnitario,
+      proveedor,
+      ubicacion,
+      unidad,
+    } = req.body;
     if (!nombre || !String(nombre).trim()) {
       return res.status(400).json({ message: "El nombre es obligatorio." });
     }
@@ -53,6 +71,13 @@ const createArticulo = async (req, res) => {
     const created = await Articulo.create({
       nombre: nombre.trim(),
       categoria: categoria.trim(),
+      codigo: codigo ? String(codigo).trim() : null,
+      stockActual: Number(stockActual ?? 0),
+      stockMinimo: Number(stockMinimo ?? 0),
+      precioUnitario: Number(precioUnitario ?? 0),
+      proveedor: proveedor ? String(proveedor).trim() : null,
+      ubicacion: ubicacion ? String(ubicacion).trim() : null,
+      unidad: unidad ? String(unidad).trim() : "unidad",
     });
     return res.status(201).json({
       message: "Artículo creado correctamente.",
@@ -69,7 +94,17 @@ const createArticulo = async (req, res) => {
 const updateArticulo = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, categoria } = req.body;
+    const {
+      nombre,
+      categoria,
+      codigo,
+      stockActual,
+      stockMinimo,
+      precioUnitario,
+      proveedor,
+      ubicacion,
+      unidad,
+    } = req.body;
     const articulo = await Articulo.findByPk(id);
     if (!articulo) {
       return res.status(404).json({ message: "Artículo no encontrado." });
@@ -86,6 +121,27 @@ const updateArticulo = async (req, res) => {
         return res.status(400).json({ message: "La categoría no puede estar vacía." });
       }
       updates.categoria = categoria.trim();
+    }
+    if (codigo !== undefined) {
+      updates.codigo = codigo ? String(codigo).trim() : null;
+    }
+    if (stockActual !== undefined) {
+      updates.stockActual = Number(stockActual);
+    }
+    if (stockMinimo !== undefined) {
+      updates.stockMinimo = Number(stockMinimo);
+    }
+    if (precioUnitario !== undefined) {
+      updates.precioUnitario = Number(precioUnitario);
+    }
+    if (proveedor !== undefined) {
+      updates.proveedor = proveedor ? String(proveedor).trim() : null;
+    }
+    if (ubicacion !== undefined) {
+      updates.ubicacion = ubicacion ? String(ubicacion).trim() : null;
+    }
+    if (unidad !== undefined) {
+      updates.unidad = unidad ? String(unidad).trim() : "unidad";
     }
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ message: "No hay campos para actualizar." });
@@ -121,10 +177,36 @@ const deleteArticulo = async (req, res) => {
   }
 };
 
+const getInventarioResumen = async (_req, res) => {
+  try {
+    const articulos = await Articulo.findAll();
+    const resumen = articulos.reduce(
+      (acc, a) => {
+        const stock = Number(a.stockActual || 0);
+        const min = Number(a.stockMinimo || 0);
+        const precio = Number(a.precioUnitario || 0);
+        if (stock <= 0) acc.agotados += 1;
+        else if (stock <= min) acc.stockBajo += 1;
+        else acc.disponibles += 1;
+        acc.valorTotal += stock * precio;
+        return acc;
+      },
+      { disponibles: 0, stockBajo: 0, agotados: 0, valorTotal: 0, totalArticulos: articulos.length }
+    );
+    return res.status(200).json({ resumen });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Error al obtener resumen de inventario.",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
 module.exports = {
   listArticulos,
   getArticuloById,
   createArticulo,
   updateArticulo,
   deleteArticulo,
+  getInventarioResumen,
 };

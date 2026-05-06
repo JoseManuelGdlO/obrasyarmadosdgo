@@ -1,5 +1,4 @@
 const { Op } = require("sequelize");
-const Cliente = require("../models/Cliente");
 const UsuarioMaquina = require("../models/UsuarioMaquina");
 const Maquina = require("../models/Maquina");
 const MaquinaChecklistItem = require("../models/MaquinaChecklistItem");
@@ -53,12 +52,9 @@ const buildIncludeFromQuery = (includeParam) => {
 
 const listMaquinas = async (req, res) => {
   try {
-    const { clienteId, search, tipo, estado, include: includeParam } = req.query;
+    const { search, tipo, estado, include: includeParam } = req.query;
     const where = {};
 
-    if (clienteId) {
-      where.clienteId = clienteId;
-    }
     if (tipo) {
       where.tipo = tipo;
     }
@@ -149,7 +145,6 @@ const createMaquina = async (req, res) => {
     }
     const body = req.body;
     const {
-      clienteId,
       nombre,
       tipo,
       marca,
@@ -166,13 +161,6 @@ const createMaquina = async (req, res) => {
       ultimoMantenimiento,
     } = body;
 
-    if (!clienteId) {
-      return res.status(400).json({ message: "clienteId es obligatorio." });
-    }
-    const cliente = await Cliente.findByPk(clienteId);
-    if (!cliente) {
-      return res.status(400).json({ message: "Cliente no encontrado." });
-    }
     const normalizedNombre = normalizeRequiredString(nombre);
     const normalizedTipo = normalizeRequiredString(tipo);
     const normalizedMarca = normalizeRequiredString(marca);
@@ -204,7 +192,6 @@ const createMaquina = async (req, res) => {
     }
 
     const created = await Maquina.create({
-      clienteId,
       nombre: normalizedNombre,
       tipo: normalizedTipo,
       marca: normalizedMarca,
@@ -258,9 +245,7 @@ const updateMaquina = async (req, res) => {
       }
     }
 
-    const isGlobalEditor = req.permissions?.has(P.MAQUINAS_EDIT);
     const allowed = [
-      "clienteId",
       "nombre",
       "tipo",
       "marca",
@@ -280,20 +265,6 @@ const updateMaquina = async (req, res) => {
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
         updates[key] = req.body[key];
-      }
-    }
-
-    const adminOnlyFields = ["clienteId"];
-    if (!isGlobalEditor) {
-      const attemptedAdminOnly = adminOnlyFields.filter(
-        (field) => updates[field] !== undefined
-      );
-      if (attemptedAdminOnly.length > 0) {
-        return res.status(403).json({
-          message: `No tiene permisos para editar campos sensibles: ${attemptedAdminOnly.join(
-            ", "
-          )}.`,
-        });
       }
     }
 
@@ -318,12 +289,6 @@ const updateMaquina = async (req, res) => {
       }
     }
 
-    if (updates.clienteId) {
-      const c = await Cliente.findByPk(updates.clienteId);
-      if (!c) {
-        return res.status(400).json({ message: "Cliente no encontrado." });
-      }
-    }
     if (updates.estado !== undefined && !ESTADOS_MAQUINA.includes(updates.estado)) {
       return res.status(400).json({ message: "Estado inválido." });
     }

@@ -16,6 +16,7 @@ const proyectosRoutes = require("./proyectosRoutes");
 const asignacionesRoutes = require("./asignacionesRoutes");
 const nomenclaturasRoutes = require("./nomenclaturasRoutes");
 const ordenesTrabajoRoutes = require("./ordenesTrabajoRoutes");
+const movimientosInventarioRoutes = require("./movimientosInventarioRoutes");
 
 const router = express.Router();
 
@@ -31,6 +32,7 @@ router.use("/roles", rolesRoutes);
 router.use("/role-permissions", rolePermissionsRoutes);
 router.use("/clientes", clientesRoutes);
 router.use("/articulos", articulosRoutes);
+router.use("/movimientos-inventario", movimientosInventarioRoutes);
 router.use("/maquinas", maquinasRoutes);
 router.use("/planes-servicio/:planId/piezas", planServicioPiezasRoutes);
 router.use("/proveedores", proveedoresRoutes);

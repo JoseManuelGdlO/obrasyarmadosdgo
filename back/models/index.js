@@ -15,9 +15,7 @@ const Proyecto = require("./Proyecto");
 const Asignacion = require("./Asignacion");
 const Nomenclatura = require("./Nomenclatura");
 const OrdenTrabajo = require("./OrdenTrabajo");
-
-Cliente.hasMany(Maquina, { foreignKey: "clienteId", as: "maquinas" });
-Maquina.belongsTo(Cliente, { foreignKey: "clienteId", as: "cliente" });
+const MovimientoInventario = require("./MovimientoInventario");
 
 Maquina.hasMany(MaquinaChecklistItem, {
   foreignKey: "maquinaId",
@@ -48,6 +46,13 @@ Articulo.hasMany(PlanServicioPieza, {
   as: "planServicioPiezas",
 });
 PlanServicioPieza.belongsTo(Articulo, { foreignKey: "articuloId", as: "articulo" });
+
+Articulo.hasMany(MovimientoInventario, {
+  foreignKey: "articuloId",
+  as: "movimientosInventario",
+  onDelete: "CASCADE",
+});
+MovimientoInventario.belongsTo(Articulo, { foreignKey: "articuloId", as: "articulo" });
 
 User.belongsToMany(Maquina, {
   through: UsuarioMaquina,
@@ -105,4 +110,5 @@ module.exports = {
   Asignacion,
   Nomenclatura,
   OrdenTrabajo,
+  MovimientoInventario,
 };

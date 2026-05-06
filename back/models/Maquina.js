@@ -16,10 +16,6 @@ const Maquina = sequelize.define(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    clienteId: {
-      type: DataTypes.UUID,
-      allowNull: false,
-    },
     nombre: {
       type: DataTypes.STRING,
       allowNull: false,
