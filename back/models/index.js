@@ -16,6 +16,7 @@ const Asignacion = require("./Asignacion");
 const Nomenclatura = require("./Nomenclatura");
 const OrdenTrabajo = require("./OrdenTrabajo");
 const MovimientoInventario = require("./MovimientoInventario");
+const ChecklistDiario = require("./ChecklistDiario");
 
 Maquina.hasMany(MaquinaChecklistItem, {
   foreignKey: "maquinaId",
@@ -92,6 +93,20 @@ OrdenTrabajo.belongsTo(Proveedor, { foreignKey: "proveedorId", as: "proveedor" }
 Nomenclatura.hasMany(OrdenTrabajo, { foreignKey: "nomenclaturaId", as: "ordenes" });
 OrdenTrabajo.belongsTo(Nomenclatura, { foreignKey: "nomenclaturaId", as: "nomenclatura" });
 
+Maquina.hasMany(ChecklistDiario, {
+  foreignKey: "maquinaId",
+  as: "checklistsDiarios",
+  onDelete: "CASCADE",
+});
+ChecklistDiario.belongsTo(Maquina, { foreignKey: "maquinaId", as: "maquina" });
+Trabajador.hasMany(ChecklistDiario, {
+  foreignKey: "trabajadorId",
+  as: "checklistsDiarios",
+});
+ChecklistDiario.belongsTo(Trabajador, { foreignKey: "trabajadorId", as: "trabajador" });
+User.hasMany(ChecklistDiario, { foreignKey: "userId", as: "checklistsDiarios" });
+ChecklistDiario.belongsTo(User, { foreignKey: "userId", as: "usuario" });
+
 module.exports = {
   sequelize,
   User,
@@ -111,4 +126,5 @@ module.exports = {
   Nomenclatura,
   OrdenTrabajo,
   MovimientoInventario,
+  ChecklistDiario,
 };

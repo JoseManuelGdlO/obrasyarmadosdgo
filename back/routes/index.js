@@ -17,11 +17,16 @@ const asignacionesRoutes = require("./asignacionesRoutes");
 const nomenclaturasRoutes = require("./nomenclaturasRoutes");
 const ordenesTrabajoRoutes = require("./ordenesTrabajoRoutes");
 const movimientosInventarioRoutes = require("./movimientosInventarioRoutes");
+const checklistsDiariosRoutes = require("./checklistsDiariosRoutes");
+const publicRoutes = require("./publicRoutes");
 
 const router = express.Router();
 
 // Endpoint publico.
 router.post("/auth/login", login);
+
+// Endpoints publicos para checklist diario via QR (sin auth).
+router.use("/public", publicRoutes);
 
 // El resto de rutas de /api requieren autenticacion.
 router.use(auth);
@@ -41,5 +46,6 @@ router.use("/proyectos", proyectosRoutes);
 router.use("/asignaciones", asignacionesRoutes);
 router.use("/nomenclaturas", nomenclaturasRoutes);
 router.use("/ordenes-trabajo", ordenesTrabajoRoutes);
+router.use("/checklists-diarios", checklistsDiariosRoutes);
 
 module.exports = router;
