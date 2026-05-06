@@ -6,6 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import { ALL_PERMISSIONS, PERMISSIONS } from "@/lib/permissions";
 import RolModal from "@/components/modals/RolModal";
 import PermisosModal from "@/components/modals/PermisosModal";
 import ConfirmDeleteButton from "@/components/common/ConfirmDeleteButton";
@@ -14,62 +16,8 @@ type RoleName = string;
 type RolePermissionRow = { id: string; rol: RoleName; permission: string };
 type ApiRole = { id: string; nombre: string; descripcion?: string | null; activo: boolean };
 
-const ALL_PERMISSIONS = [
-  "users.view",
-  "users.create",
-  "users.edit",
-  "users.delete",
-  "roles.view",
-  "roles.create",
-  "roles.edit",
-  "roles.delete",
-  "role_permissions.view",
-  "role_permissions.create",
-  "role_permissions.delete",
-  "clientes.view",
-  "clientes.create",
-  "clientes.edit",
-  "clientes.delete",
-  "articulos.view",
-  "articulos.create",
-  "articulos.edit",
-  "articulos.delete",
-  "maquinas.view",
-  "maquinas.create",
-  "maquinas.edit",
-  "maquinas.delete",
-  "operadores.view",
-  "operadores.create",
-  "operadores.delete",
-  "maquinas.read_assigned",
-  "maquinas.update_assigned",
-  "proveedores.view",
-  "proveedores.create",
-  "proveedores.edit",
-  "proveedores.delete",
-  "trabajadores.view",
-  "trabajadores.create",
-  "trabajadores.edit",
-  "trabajadores.delete",
-  "proyectos.view",
-  "proyectos.create",
-  "proyectos.edit",
-  "proyectos.delete",
-  "asignaciones.view",
-  "asignaciones.create",
-  "asignaciones.edit",
-  "asignaciones.delete",
-  "nomenclaturas.view",
-  "nomenclaturas.create",
-  "nomenclaturas.edit",
-  "nomenclaturas.delete",
-  "ordenes.view",
-  "ordenes.create",
-  "ordenes.edit",
-  "ordenes.delete",
-];
-
 export default function RolesPermisos() {
+  const { can } = useAuth();
   const queryClient = useQueryClient();
   const [isRolModalOpen, setIsRolModalOpen] = useState(false);
   const [isPermisosModalOpen, setIsPermisosModalOpen] = useState(false);
@@ -99,6 +47,8 @@ export default function RolesPermisos() {
     });
     return acc;
   }, [rows, roleNames]);
+  const canCreateRoles = can(PERMISSIONS.ROLES_CREATE);
+  const canManageRolePerms = can(PERMISSIONS.ROLE_PERMISSIONS_CREATE) || can(PERMISSIONS.ROLE_PERMISSIONS_DELETE);
 
   const upsertMutation = useMutation({
     mutationFn: async ({ rol, permissions }: { rol: RoleName; permissions: string[] }) => {
@@ -145,6 +95,8 @@ export default function RolesPermisos() {
         <div className="flex gap-2">
           <Button
             variant="default"
+            disabled={!canCreateRoles}
+            title={!canCreateRoles ? "Sin permiso para crear roles" : undefined}
             onClick={() => {
               setIsRolModalOpen(true);
             }}
@@ -153,6 +105,8 @@ export default function RolesPermisos() {
             Nuevo Rol
           </Button>
           <Button
+            disabled={!canManageRolePerms}
+            title={!canManageRolePerms ? "Sin permiso para configurar permisos" : undefined}
             onClick={() => {
               setIsPermisosModalOpen(true);
             }}
@@ -195,6 +149,8 @@ export default function RolesPermisos() {
                     <Button
                       variant="outline"
                       size="sm"
+                      disabled={!canManageRolePerms}
+                      title={!canManageRolePerms ? "Sin permiso para editar permisos del rol" : undefined}
                       onClick={() => {
                         setSelectedRole(rol);
                         setIsPermisosModalOpen(true);
@@ -207,6 +163,40 @@ export default function RolesPermisos() {
               ))}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Glosario de acciones</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-md border p-3">
+              <Badge variant="outline">view</Badge>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Permite ver listados y detalle de registros, sin modificar información.
+              </p>
+            </div>
+            <div className="rounded-md border p-3">
+              <Badge variant="outline">create</Badge>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Permite crear nuevos registros dentro de la funcionalidad.
+              </p>
+            </div>
+            <div className="rounded-md border p-3">
+              <Badge variant="outline">edit</Badge>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Permite editar o actualizar registros ya existentes.
+              </p>
+            </div>
+            <div className="rounded-md border p-3">
+              <Badge variant="outline">delete</Badge>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Permite eliminar registros de forma definitiva o lógica según el módulo.
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -233,6 +223,7 @@ export default function RolesPermisos() {
                       className="h-8 px-3 text-red-600 hover:text-red-700"
                       title="¿Remover permiso?"
                       description="Esta acción removerá el permiso del rol."
+                      disabled={!canManageRolePerms}
                       onConfirm={() => deleteOneMutation.mutate(row.id)}
                     >
                       <Trash2 className="h-4 w-4" />

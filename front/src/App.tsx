@@ -18,10 +18,12 @@ import GestionUsuarios from "./pages/GestionUsuarios";
 import RolesPermisos from "./pages/RolesPermisos";
 import Nomenclaturas from "./pages/Nomenclaturas";
 import Checklist from "./pages/Checklist";
+import Forbidden from "./pages/Forbidden";
 import Login from "./pages/Login";
 import ChecklistPublico from "./pages/ChecklistPublico";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./lib/auth-context";
+import { PERMISSIONS } from "./lib/permissions";
 
 const queryClient = new QueryClient();
 
@@ -42,17 +44,108 @@ const App = () => (
                   <MainLayout>
                     <Routes>
                       <Route path="/" element={<Dashboard />} />
-                      <Route path="/ordenes" element={<OrdenesTrabajo />} />
-                      <Route path="/asignaciones" element={<Asignaciones />} />
-                      <Route path="/trabajadores" element={<Trabajadores />} />
-                      <Route path="/maquinas" element={<Maquinas />} />
-                      <Route path="/proveedores" element={<Proveedores />} />
-                      <Route path="/inventario" element={<Inventario />} />
-                      <Route path="/proyectos" element={<Proyectos />} />
-                      <Route path="/clientes" element={<Clientes />} />
-                      <Route path="/gestion-usuarios" element={<GestionUsuarios />} />
-                      <Route path="/roles-permisos" element={<RolesPermisos />} />
-                      <Route path="/nomenclaturas" element={<Nomenclaturas />} />
+                      <Route
+                        path="/403"
+                        element={<Forbidden />}
+                      />
+                      <Route
+                        path="/ordenes"
+                        element={
+                          <ProtectedRoute requiredPermissions={[PERMISSIONS.ORDENES_VIEW]}>
+                            <OrdenesTrabajo />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/asignaciones"
+                        element={
+                          <ProtectedRoute requiredPermissions={[PERMISSIONS.ASIGNACIONES_VIEW]}>
+                            <Asignaciones />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/trabajadores"
+                        element={
+                          <ProtectedRoute requiredPermissions={[PERMISSIONS.TRABAJADORES_VIEW]}>
+                            <Trabajadores />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/maquinas"
+                        element={
+                          <ProtectedRoute
+                            requiredPermissions={[PERMISSIONS.MAQUINAS_VIEW, PERMISSIONS.MAQUINAS_READ_ASSIGNED]}
+                          >
+                            <Maquinas />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/proveedores"
+                        element={
+                          <ProtectedRoute requiredPermissions={[PERMISSIONS.PROVEEDORES_VIEW]}>
+                            <Proveedores />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/inventario"
+                        element={
+                          <ProtectedRoute requiredPermissions={[PERMISSIONS.ARTICULOS_VIEW]}>
+                            <Inventario />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/proyectos"
+                        element={
+                          <ProtectedRoute requiredPermissions={[PERMISSIONS.PROYECTOS_VIEW]}>
+                            <Proyectos />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/clientes"
+                        element={
+                          <ProtectedRoute requiredPermissions={[PERMISSIONS.CLIENTES_VIEW]}>
+                            <Clientes />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/gestion-usuarios"
+                        element={
+                          <ProtectedRoute
+                            requiredPermissions={[
+                              PERMISSIONS.USERS_VIEW,
+                              PERMISSIONS.ROLES_VIEW,
+                              PERMISSIONS.ROLE_PERMISSIONS_VIEW,
+                            ]}
+                          >
+                            <GestionUsuarios />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/roles-permisos"
+                        element={
+                          <ProtectedRoute
+                            requiredPermissions={[PERMISSIONS.ROLES_VIEW, PERMISSIONS.ROLE_PERMISSIONS_VIEW]}
+                          >
+                            <RolesPermisos />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/nomenclaturas"
+                        element={
+                          <ProtectedRoute requiredPermissions={[PERMISSIONS.NOMENCLATURAS_VIEW]}>
+                            <Nomenclaturas />
+                          </ProtectedRoute>
+                        }
+                      />
                       <Route path="/checklist" element={<Checklist />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>

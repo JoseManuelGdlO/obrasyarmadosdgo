@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 
 export type PermisosFormData = {
   rol: string;
@@ -35,6 +36,7 @@ export default function PermisosModal({
   roles,
 }: PermisosModalProps) {
   const [form, setForm] = useState<PermisosFormData>(defaultForm);
+  const [searchTerm, setSearchTerm] = useState("");
   const isEdit = useMemo(() => Boolean(initialData), [initialData]);
   const groupedPermissions = useMemo(() => {
     const groups: Record<string, string[]> = {};
@@ -45,6 +47,18 @@ export default function PermisosModal({
     }
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
   }, [availablePermissions]);
+  const filteredGroups = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) {
+      return groupedPermissions;
+    }
+    return groupedPermissions
+      .map(([moduleName, permissions]) => [
+        moduleName,
+        permissions.filter((permission) => permission.toLowerCase().includes(term) || moduleName.toLowerCase().includes(term)),
+      ] as [string, string[]])
+      .filter(([, permissions]) => permissions.length > 0);
+  }, [groupedPermissions, searchTerm]);
 
   useEffect(() => {
     if (open) {
@@ -53,6 +67,7 @@ export default function PermisosModal({
         ...(initialData || {}),
         permissions: initialData?.permissions || [],
       });
+      setSearchTerm("");
     }
   }, [open, initialData]);
 
@@ -93,8 +108,13 @@ export default function PermisosModal({
           </div>
           <div className="space-y-2">
             <Label>Permisos</Label>
+            <Input
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Buscar permiso o módulo..."
+            />
             <div className="space-y-2 max-h-64 overflow-y-auto border rounded-md p-3">
-              {groupedPermissions.map(([moduleName, permissions]) => (
+              {filteredGroups.map(([moduleName, permissions]) => (
                 <div key={moduleName} className="space-y-2 border rounded-md p-2">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">{moduleName}</p>
                   {permissions.map((permission) => (
@@ -108,6 +128,9 @@ export default function PermisosModal({
                   ))}
                 </div>
               ))}
+              {filteredGroups.length === 0 && (
+                <p className="text-sm text-muted-foreground">No hay permisos que coincidan con la búsqueda.</p>
+              )}
             </div>
           </div>
           <div className="flex gap-2">

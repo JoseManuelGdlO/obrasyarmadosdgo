@@ -8,11 +8,20 @@ type AuthUser = {
   status: string;
 };
 
+type AuthResponse = {
+  user: AuthUser;
+  permissions?: string[];
+};
+
 type AuthContextValue = {
   user: AuthUser | null;
+  permissions: string[];
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  can: (permission: string) => boolean;
+  canAny: (required: string[]) => boolean;
+  canAll: (required: string[]) => boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 };
@@ -21,6 +30,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [token, setToken] = useState<string | null>(tokenStorage.get());
   const [isLoading, setIsLoading] = useState(true);
 
@@ -32,13 +42,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
       try {
-        const data = await apiRequest<{ user: AuthUser }>("/auth/me", { token: stored });
+        const data = await apiRequest<AuthResponse>("/auth/me", { token: stored });
         setToken(stored);
         setUser(data.user);
+        setPermissions(data.permissions || []);
       } catch {
         tokenStorage.clear();
         setToken(null);
         setUser(null);
+        setPermissions([]);
       } finally {
         setIsLoading(false);
       }
@@ -49,11 +61,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
+      permissions,
       token,
       isLoading,
       isAuthenticated: Boolean(user && token),
+      can: (permission) => permissions.includes(permission),
+      canAny: (required) => required.some((permission) => permissions.includes(permission)),
+      canAll: (required) => required.every((permission) => permissions.includes(permission)),
       login: async (email, password) => {
-        const data = await apiRequest<{ token: string; user: AuthUser }>("/auth/login", {
+        const data = await apiRequest<{ token: string; user: AuthUser; permissions?: string[] }>("/auth/login", {
           method: "POST",
           body: { email, password },
           token: null,
@@ -61,6 +77,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         tokenStorage.set(data.token);
         setToken(data.token);
         setUser(data.user);
+        setPermissions(data.permissions || []);
       },
       logout: async () => {
         if (token) {
@@ -69,9 +86,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         tokenStorage.clear();
         setToken(null);
         setUser(null);
+        setPermissions([]);
       },
     }),
-    [isLoading, token, user]
+    [isLoading, permissions, token, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

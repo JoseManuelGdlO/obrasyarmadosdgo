@@ -20,6 +20,7 @@ interface ConfirmDeleteButtonProps {
   className?: string;
   size?: "default" | "sm" | "lg" | "icon";
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  disabled?: boolean;
 }
 
 export default function ConfirmDeleteButton({
@@ -30,11 +31,12 @@ export default function ConfirmDeleteButton({
   className,
   size = "sm",
   variant = "outline",
+  disabled = false,
 }: ConfirmDeleteButtonProps) {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant={variant} size={size} className={className}>
+        <Button variant={variant} size={size} className={className} disabled={disabled}>
           {children}
         </Button>
       </AlertDialogTrigger>

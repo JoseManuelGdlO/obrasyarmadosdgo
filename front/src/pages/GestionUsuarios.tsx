@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { StatCard } from "@/components/ui/stat-card";
 import { Plus, Search, Filter, Users, Crown, Calendar, UserCheck, Settings, Shield, User, Mail } from "lucide-react";
 import { apiRequest } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import { ALL_PERMISSIONS, PERMISSIONS } from "@/lib/permissions";
 import UsuarioModal, { UsuarioFormData } from "@/components/modals/UsuarioModal";
 import PermisosModal, { PermisosFormData } from "@/components/modals/PermisosModal";
 import ConfirmDeleteButton from "@/components/common/ConfirmDeleteButton";
@@ -21,61 +23,6 @@ type ApiUser = {
   createdAt?: string;
 };
 type ApiRole = { id: string; nombre: string; descripcion?: string | null; activo: boolean };
-
-const ALL_PERMISSIONS = [
-  "users.view",
-  "users.create",
-  "users.edit",
-  "users.delete",
-  "roles.view",
-  "roles.create",
-  "roles.edit",
-  "roles.delete",
-  "role_permissions.view",
-  "role_permissions.create",
-  "role_permissions.delete",
-  "clientes.view",
-  "clientes.create",
-  "clientes.edit",
-  "clientes.delete",
-  "articulos.view",
-  "articulos.create",
-  "articulos.edit",
-  "articulos.delete",
-  "maquinas.view",
-  "maquinas.create",
-  "maquinas.edit",
-  "maquinas.delete",
-  "operadores.view",
-  "operadores.create",
-  "operadores.delete",
-  "maquinas.read_assigned",
-  "maquinas.update_assigned",
-  "proveedores.view",
-  "proveedores.create",
-  "proveedores.edit",
-  "proveedores.delete",
-  "trabajadores.view",
-  "trabajadores.create",
-  "trabajadores.edit",
-  "trabajadores.delete",
-  "proyectos.view",
-  "proyectos.create",
-  "proyectos.edit",
-  "proyectos.delete",
-  "asignaciones.view",
-  "asignaciones.create",
-  "asignaciones.edit",
-  "asignaciones.delete",
-  "nomenclaturas.view",
-  "nomenclaturas.create",
-  "nomenclaturas.edit",
-  "nomenclaturas.delete",
-  "ordenes.view",
-  "ordenes.create",
-  "ordenes.edit",
-  "ordenes.delete",
-];
 
 const prettyRole = (rol: ApiUser["rol"]) =>
   rol === "admin" ? "Admin" : rol === "maquinista" ? "Maquinista" : rol === "usuario" ? "Usuario" : rol;
@@ -91,6 +38,7 @@ const statusColor = (status: ApiUser["status"]) =>
   status === "activo" ? "bg-success text-success-foreground" : "bg-destructive text-destructive-foreground";
 
 const GestionUsuarios = () => {
+  const { can } = useAuth();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -172,6 +120,11 @@ const GestionUsuarios = () => {
   const currentRolePermissions = rolePermissions
     .filter((row) => row.rol === permissionsTargetRole)
     .map((row) => row.permission);
+  const canCreateUsers = can(PERMISSIONS.USERS_CREATE);
+  const canEditUsers = can(PERMISSIONS.USERS_EDIT);
+  const canDeleteUsers = can(PERMISSIONS.USERS_DELETE);
+  const canViewRolePermissions = can(PERMISSIONS.ROLE_PERMISSIONS_VIEW);
+  const canEditRolePermissions = can(PERMISSIONS.ROLE_PERMISSIONS_CREATE) || can(PERMISSIONS.ROLE_PERMISSIONS_DELETE);
 
   const openCreateUser = () => {
     setEditingUser(null);
@@ -205,7 +158,12 @@ const GestionUsuarios = () => {
           <p className="text-muted-foreground">Panel Super Administrador - Control Multi-Tenant de Usuarios</p>
         </div>
         <div className="flex gap-3">
-          <Button className="bg-gradient-to-r from-primary to-accent text-white shadow-lg hover:shadow-xl transition-all" onClick={openCreateUser}>
+          <Button
+            className="bg-gradient-to-r from-primary to-accent text-white shadow-lg hover:shadow-xl transition-all"
+            onClick={openCreateUser}
+            disabled={!canCreateUsers}
+            title={!canCreateUsers ? "Sin permiso para crear usuarios" : undefined}
+          >
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Usuario
           </Button>
@@ -233,6 +191,8 @@ const GestionUsuarios = () => {
             <Button
               variant="outline"
               className="flex items-center gap-2"
+              disabled={!canEditRolePermissions}
+              title={!canEditRolePermissions ? "Sin permiso para configurar permisos" : undefined}
               onClick={() => {
                 setPermissionsTargetRole("usuario");
                 setIsPermisosModalOpen(true);
@@ -308,6 +268,8 @@ const GestionUsuarios = () => {
                         <Button
                           variant="outline"
                           size="sm"
+                          disabled={!canViewRolePermissions}
+                          title={!canViewRolePermissions ? "Sin permiso para ver permisos de rol" : undefined}
                           onClick={() => {
                             setPermissionsTargetRole(usuario.rol);
                             setIsPermisosModalOpen(true);
@@ -316,7 +278,13 @@ const GestionUsuarios = () => {
                           <Shield className="w-3 h-3 mr-1" />
                           Permisos
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => openEditUser(usuario)}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={!canEditUsers}
+                          title={!canEditUsers ? "Sin permiso para editar usuarios" : undefined}
+                          onClick={() => openEditUser(usuario)}
+                        >
                           <Settings className="w-3 h-3 mr-1" />
                           Editar
                         </Button>
@@ -324,6 +292,7 @@ const GestionUsuarios = () => {
                           className="h-9 px-3 text-red-600 hover:text-red-700"
                           title="¿Suspender usuario?"
                           description="El usuario cambiará a estado suspendido."
+                          disabled={!canDeleteUsers}
                           onConfirm={() => suspendUserMutation.mutate(usuario.id)}
                         >
                           Suspender
