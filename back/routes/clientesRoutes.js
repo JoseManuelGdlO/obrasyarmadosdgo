@@ -1,4 +1,6 @@
 const express = require("express");
+const { requirePermission } = require("../middlewares/permissions");
+const P = require("../constants/permissions");
 const {
   listClientes,
   getClienteById,
@@ -9,10 +11,10 @@ const {
 
 const router = express.Router();
 
-router.get("/", listClientes);
-router.get("/:id", getClienteById);
-router.post("/", createCliente);
-router.patch("/:id", updateCliente);
-router.delete("/:id", deleteCliente);
+router.get("/", requirePermission(P.CLIENTES_VIEW), listClientes);
+router.get("/:id", requirePermission(P.CLIENTES_VIEW), getClienteById);
+router.post("/", requirePermission(P.CLIENTES_CREATE), createCliente);
+router.patch("/:id", requirePermission(P.CLIENTES_EDIT), updateCliente);
+router.delete("/:id", requirePermission(P.CLIENTES_DELETE), deleteCliente);
 
 module.exports = router;

@@ -1,5 +1,6 @@
 const sequelize = require("../config/database");
 const User = require("./User");
+const Role = require("./Role");
 const RolePermission = require("./RolePermission");
 const UsuarioMaquina = require("./UsuarioMaquina");
 const Cliente = require("./Cliente");
@@ -89,6 +90,7 @@ OrdenTrabajo.belongsTo(Nomenclatura, { foreignKey: "nomenclaturaId", as: "nomenc
 module.exports = {
   sequelize,
   User,
+  Role,
   RolePermission,
   UsuarioMaquina,
   Cliente,

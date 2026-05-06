@@ -9,8 +9,8 @@ const P = require("../constants/permissions");
 
 const router = express.Router({ mergeParams: true });
 
-router.get("/", requirePermission(P.OPERADORES_MANAGE), listOperadores);
-router.post("/", requirePermission(P.OPERADORES_MANAGE), assignOperador);
-router.delete("/:userId", requirePermission(P.OPERADORES_MANAGE), unassignOperador);
+router.get("/", requirePermission(P.OPERADORES_VIEW), listOperadores);
+router.post("/", requirePermission(P.OPERADORES_CREATE), assignOperador);
+router.delete("/:userId", requirePermission(P.OPERADORES_DELETE), unassignOperador);
 
 module.exports = router;

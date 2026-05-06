@@ -7,7 +7,7 @@ const router = express.Router();
 
 router.post(
   "/permanent-token",
-  requirePermission(P.USERS_MANAGE),
+  requirePermission(P.USERS_EDIT),
   issuePermanentToken
 );
 router.get("/me", me);

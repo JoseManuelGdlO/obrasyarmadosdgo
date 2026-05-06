@@ -11,12 +11,10 @@ const {
 
 const router = express.Router();
 
-router.use(requirePermission(P.USERS_MANAGE));
-
-router.get("/", listUsers);
-router.get("/:id", getUserById);
-router.post("/", createUser);
-router.patch("/:id", updateUser);
-router.delete("/:id", deleteUser);
+router.get("/", requirePermission(P.USERS_VIEW), listUsers);
+router.get("/:id", requirePermission(P.USERS_VIEW), getUserById);
+router.post("/", requirePermission(P.USERS_CREATE), createUser);
+router.patch("/:id", requirePermission(P.USERS_EDIT), updateUser);
+router.delete("/:id", requirePermission(P.USERS_DELETE), deleteUser);
 
 module.exports = router;

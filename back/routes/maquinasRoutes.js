@@ -28,7 +28,7 @@ const exposeMaquinaIdParam = (req, _res, next) => {
 };
 
 router.get("/", requireMaquinaReadAccess, listMaquinas);
-router.post("/", requirePermission(P.MAQUINAS_CRUD), createMaquina);
+router.post("/", requirePermission(P.MAQUINAS_CREATE), createMaquina);
 
 router.use("/:maquinaId/operadores", operadoresRoutes);
 router.use("/:maquinaId/checklist-items", checklistRoutes);
@@ -48,6 +48,6 @@ router.patch(
   requireMaquinaAssignment,
   updateMaquina
 );
-router.delete("/:id", requirePermission(P.MAQUINAS_CRUD), deleteMaquina);
+router.delete("/:id", requirePermission(P.MAQUINAS_DELETE), deleteMaquina);
 
 module.exports = router;

@@ -15,6 +15,7 @@ import Inventario from "./pages/Inventario";
 import Proyectos from "./pages/Proyectos";
 import Clientes from "./pages/Clientes";
 import GestionUsuarios from "./pages/GestionUsuarios";
+import RolesPermisos from "./pages/RolesPermisos";
 import Nomenclaturas from "./pages/Nomenclaturas";
 import Checklist from "./pages/Checklist";
 import Login from "./pages/Login";
@@ -50,6 +51,7 @@ const App = () => (
                       <Route path="/proyectos" element={<Proyectos />} />
                       <Route path="/clientes" element={<Clientes />} />
                       <Route path="/gestion-usuarios" element={<GestionUsuarios />} />
+                      <Route path="/roles-permisos" element={<RolesPermisos />} />
                       <Route path="/nomenclaturas" element={<Nomenclaturas />} />
                       <Route path="/checklist" element={<Checklist />} />
                       <Route path="*" element={<NotFound />} />

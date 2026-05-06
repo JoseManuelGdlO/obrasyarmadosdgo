@@ -1,12 +1,11 @@
 const express = require("express");
 const { login } = require("../controllers/authController");
 const auth = require("../middlewares/auth");
-const {
-  loadRolePermissions,
-  requirePermission,
-} = require("../middlewares/permissions");
+const { loadRolePermissions } = require("../middlewares/permissions");
 const authRoutes = require("./authRoutes");
 const usersRoutes = require("./usersRoutes");
+const rolesRoutes = require("./rolesRoutes");
+const rolePermissionsRoutes = require("./rolePermissionsRoutes");
 const clientesRoutes = require("./clientesRoutes");
 const articulosRoutes = require("./articulosRoutes");
 const maquinasRoutes = require("./maquinasRoutes");
@@ -17,7 +16,6 @@ const proyectosRoutes = require("./proyectosRoutes");
 const asignacionesRoutes = require("./asignacionesRoutes");
 const nomenclaturasRoutes = require("./nomenclaturasRoutes");
 const ordenesTrabajoRoutes = require("./ordenesTrabajoRoutes");
-const P = require("../constants/permissions");
 
 const router = express.Router();
 
@@ -29,15 +27,17 @@ router.use(auth);
 router.use(loadRolePermissions);
 router.use("/auth", authRoutes);
 router.use("/users", usersRoutes);
-router.use("/clientes", requirePermission(P.CLIENTES_CRUD), clientesRoutes);
-router.use("/articulos", requirePermission(P.ARTICULOS_CRUD), articulosRoutes);
+router.use("/roles", rolesRoutes);
+router.use("/role-permissions", rolePermissionsRoutes);
+router.use("/clientes", clientesRoutes);
+router.use("/articulos", articulosRoutes);
 router.use("/maquinas", maquinasRoutes);
 router.use("/planes-servicio/:planId/piezas", planServicioPiezasRoutes);
-router.use("/proveedores", requirePermission(P.PROVEEDORES_CRUD), proveedoresRoutes);
-router.use("/trabajadores", requirePermission(P.TRABAJADORES_CRUD), trabajadoresRoutes);
-router.use("/proyectos", requirePermission(P.PROYECTOS_CRUD), proyectosRoutes);
-router.use("/asignaciones", requirePermission(P.ASIGNACIONES_CRUD), asignacionesRoutes);
-router.use("/nomenclaturas", requirePermission(P.NOMENCLATURAS_CRUD), nomenclaturasRoutes);
-router.use("/ordenes-trabajo", requirePermission(P.ORDENES_CRUD), ordenesTrabajoRoutes);
+router.use("/proveedores", proveedoresRoutes);
+router.use("/trabajadores", trabajadoresRoutes);
+router.use("/proyectos", proyectosRoutes);
+router.use("/asignaciones", asignacionesRoutes);
+router.use("/nomenclaturas", nomenclaturasRoutes);
+router.use("/ordenes-trabajo", ordenesTrabajoRoutes);
 
 module.exports = router;

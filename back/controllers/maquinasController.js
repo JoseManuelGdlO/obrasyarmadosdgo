@@ -8,7 +8,7 @@ const PlanServicioPieza = require("../models/PlanServicioPieza");
 const Articulo = require("../models/Articulo");
 const { ESTADOS_MAQUINA } = require("../models/Maquina");
 const P = require("../constants/permissions");
-const { hasMaquinasCrud } = require("../middlewares/permissions");
+const { hasMaquinasViewGlobal } = require("../middlewares/permissions");
 
 const normalizeRequiredString = (value) => {
   if (typeof value !== "string") {
@@ -77,7 +77,7 @@ const listMaquinas = async (req, res) => {
       ];
     }
 
-    if (!hasMaquinasCrud(req)) {
+    if (!hasMaquinasViewGlobal(req)) {
       const links = await UsuarioMaquina.findAll({
         where: { userId: req.user.id },
         attributes: ["maquinaId"],
@@ -120,7 +120,7 @@ const getMaquinaById = async (req, res) => {
       return res.status(404).json({ message: "Máquina no encontrada." });
     }
 
-    if (!hasMaquinasCrud(req)) {
+    if (!hasMaquinasViewGlobal(req)) {
       const link = await UsuarioMaquina.findOne({
         where: { userId: req.user.id, maquinaId: id },
       });
@@ -142,7 +142,7 @@ const getMaquinaById = async (req, res) => {
 
 const createMaquina = async (req, res) => {
   try {
-    if (!hasMaquinasCrud(req)) {
+    if (!req.permissions?.has(P.MAQUINAS_CREATE)) {
       return res.status(403).json({
         message: "No tiene permisos para crear máquinas.",
       });
@@ -242,7 +242,7 @@ const updateMaquina = async (req, res) => {
       return res.status(404).json({ message: "Máquina no encontrada." });
     }
 
-    if (!hasMaquinasCrud(req)) {
+    if (!req.permissions?.has(P.MAQUINAS_EDIT)) {
       if (!req.permissions.has(P.MAQUINAS_UPDATE_ASSIGNED)) {
         return res.status(403).json({
           message: "No tiene permisos para editar máquinas.",
@@ -258,7 +258,7 @@ const updateMaquina = async (req, res) => {
       }
     }
 
-    const isCrudUser = hasMaquinasCrud(req);
+    const isGlobalEditor = req.permissions?.has(P.MAQUINAS_EDIT);
     const allowed = [
       "clienteId",
       "nombre",
@@ -284,7 +284,7 @@ const updateMaquina = async (req, res) => {
     }
 
     const adminOnlyFields = ["clienteId"];
-    if (!isCrudUser) {
+    if (!isGlobalEditor) {
       const attemptedAdminOnly = adminOnlyFields.filter(
         (field) => updates[field] !== undefined
       );
@@ -348,7 +348,7 @@ const updateMaquina = async (req, res) => {
 
 const deleteMaquina = async (req, res) => {
   try {
-    if (!hasMaquinasCrud(req)) {
+    if (!req.permissions?.has(P.MAQUINAS_DELETE)) {
       return res.status(403).json({
         message: "No tiene permisos para eliminar máquinas.",
       });

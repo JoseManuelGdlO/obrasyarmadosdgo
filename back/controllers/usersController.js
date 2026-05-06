@@ -1,7 +1,7 @@
 const { Op } = require("sequelize");
 const User = require("../models/User");
+const Role = require("../models/Role");
 
-const ALLOWED_ROLES = ["admin", "usuario", "maquinista"];
 const ALLOWED_STATUS = ["activo", "suspendido"];
 
 const listUsers = async (_req, res) => {
@@ -44,8 +44,11 @@ const createUser = async (req, res) => {
       });
     }
 
-    if (rol !== undefined && !ALLOWED_ROLES.includes(rol)) {
-      return res.status(400).json({ message: "Rol inválido." });
+    if (rol !== undefined) {
+      const roleExists = await Role.findOne({ where: { nombre: rol, activo: true } });
+      if (!roleExists) {
+        return res.status(400).json({ message: "Rol inválido." });
+      }
     }
 
     if (status !== undefined && !ALLOWED_STATUS.includes(status)) {
@@ -108,7 +111,8 @@ const updateUser = async (req, res) => {
       updates.password = password;
     }
     if (rol !== undefined) {
-      if (!ALLOWED_ROLES.includes(rol)) {
+      const roleExists = await Role.findOne({ where: { nombre: rol, activo: true } });
+      if (!roleExists) {
         return res.status(400).json({ message: "Rol inválido." });
       }
       updates.rol = rol;

@@ -8,7 +8,8 @@ import {
   UserCheck, 
   Building,
   LayoutDashboard,
-  Settings
+  Settings,
+  Shield
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import logoObras from "@/assets/logo-obras.png"
@@ -42,6 +43,7 @@ const inventoryItems = [
 const accessItems = [
   { title: "Clientes", url: "/clientes", icon: Users },
   { title: "Gestión Usuarios", url: "/gestion-usuarios", icon: UserCheck },
+  { title: "Roles y Permisos", url: "/roles-permisos", icon: Shield },
 ]
 
 const configItems = [

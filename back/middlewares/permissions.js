@@ -51,7 +51,8 @@ const requireAnyPermission =
     return next();
   };
 
-const hasMaquinasCrud = (req) => req.permissions && req.permissions.has(P.MAQUINAS_CRUD);
+const hasMaquinasViewGlobal = (req) =>
+  req.permissions && (req.permissions.has(P.MAQUINAS_VIEW) || req.permissions.has(P.MAQUINAS_EDIT));
 
 const resolveMaquinaIdFromRequest = async (req) => {
   if (req.params.maquinaId) {
@@ -67,11 +68,11 @@ const resolveMaquinaIdFromRequest = async (req) => {
 };
 
 /**
- * Si no tiene maquinas.crud, exige fila en usuario_maquinas para el maquinista (u operador con permisos asignados).
+ * Si no tiene acceso global de lectura/edición en máquinas, exige asignación en usuario_maquinas.
  */
 const requireMaquinaAssignment = async (req, res, next) => {
   try {
-    if (hasMaquinasCrud(req)) {
+    if (hasMaquinasViewGlobal(req)) {
       return next();
     }
     const maquinaId = await resolveMaquinaIdFromRequest(req);
@@ -99,7 +100,8 @@ const requireMaquinaAssignment = async (req, res, next) => {
  * Lectura: crud global o permiso de lectura/actualización asignada + asignación.
  */
 const requireMaquinaReadAccess = requireAnyPermission(
-  P.MAQUINAS_CRUD,
+  P.MAQUINAS_VIEW,
+  P.MAQUINAS_EDIT,
   P.MAQUINAS_READ_ASSIGNED,
   P.MAQUINAS_UPDATE_ASSIGNED
 );
@@ -107,7 +109,7 @@ const requireMaquinaReadAccess = requireAnyPermission(
 /**
  * Escritura en recurso de máquina: crud o update_assigned + asignación.
  */
-const requireMaquinaWriteAccess = requireAnyPermission(P.MAQUINAS_CRUD, P.MAQUINAS_UPDATE_ASSIGNED);
+const requireMaquinaWriteAccess = requireAnyPermission(P.MAQUINAS_EDIT, P.MAQUINAS_UPDATE_ASSIGNED);
 
 module.exports = {
   loadRolePermissions,
@@ -115,7 +117,7 @@ module.exports = {
   requireAnyPermission,
   requireMaquinaAssignment,
   resolveMaquinaIdFromRequest,
-  hasMaquinasCrud,
+  hasMaquinasViewGlobal,
   requireMaquinaReadAccess,
   requireMaquinaWriteAccess,
   P,
