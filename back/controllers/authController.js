@@ -1,6 +1,26 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const RolePermission = require("../models/RolePermission");
+
+const buildAuthPayload = async (user, token) => {
+  const permissionsRows = await RolePermission.findAll({
+    where: { rol: user.rol },
+    attributes: ["permission"],
+  });
+
+  return {
+    token,
+    user: {
+      id: user.id,
+      email: user.email,
+      rol: user.rol,
+      status: user.status,
+      lastAccess: user.lastAccess,
+    },
+    permissions: permissionsRows.map((row) => row.permission),
+  };
+};
 
 const login = async (req, res) => {
   try {
@@ -54,7 +74,7 @@ const login = async (req, res) => {
 
     return res.status(200).json({
       message: "Login exitoso.",
-      token,
+      ...(await buildAuthPayload(user, token)),
     });
   } catch (error) {
     return res.status(500).json({
@@ -62,6 +82,31 @@ const login = async (req, res) => {
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
+};
+
+const me = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "Usuario no encontrado." });
+    }
+
+    // En JWT stateless devolvemos el token ya enviado para simplificar consumo frontend.
+    return res.status(200).json({
+      ...(await buildAuthPayload(user, req.headers.authorization?.split(" ")[1] || null)),
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Error al obtener sesión actual.",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+const logout = async (_req, res) => {
+  return res.status(200).json({
+    message: "Sesión cerrada correctamente.",
+  });
 };
 
 /**
@@ -107,5 +152,7 @@ const issuePermanentToken = async (req, res) => {
 
 module.exports = {
   login,
+  me,
+  logout,
   issuePermanentToken,
 };

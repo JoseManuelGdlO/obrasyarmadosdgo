@@ -1,3 +1,5 @@
+import { useMemo, useState } from "react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -11,114 +13,109 @@ import {
   Building,
   Users,
   Crown,
-  Calendar,
   MapPin,
-  UserCheck,
-  Settings
+  UserCheck
 } from "lucide-react"
+import { apiRequest } from "@/lib/api"
+import ClienteModal, { ClienteFormData } from "@/components/modals/ClienteModal"
 
 const Clientes = () => {
-  const clientes = [
-    {
-      id: "CLI-001",
-      nombre: "Constructora Horizonte S.A.",
-      tipoIndustria: "Construcción",
-      pais: "Colombia",
-      ciudad: "Bogotá",
-      fechaRegistro: "2023-06-15",
-      estado: "Activo",
-      planContratado: "Enterprise",
-      proyectosActivos: 8,
-      usuariosRegistrados: 25,
-      adminPrincipal: "Carlos Mendoza",
-      emailAdmin: "cmendoza@horizonte.com.co",
-      ultimoAcceso: "2024-01-15"
+  const [searchTerm, setSearchTerm] = useState("")
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingClientId, setEditingClientId] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+
+  const { data } = useQuery({
+    queryKey: ["clientes"],
+    queryFn: () => apiRequest<{ clientes: Array<Record<string, unknown>> }>("/clientes"),
+  })
+
+  const clientes = (data?.clientes || []).map((cliente) => ({
+    id: String(cliente.id || ""),
+    nombre: String(cliente.nombre || ""),
+    tipoIndustria: String(cliente.tipoIndustria || "-"),
+    pais: String(cliente.pais || "-"),
+    ciudad: String(cliente.ciudad || "-"),
+    encargadoNombre: String(cliente.encargadoNombre || "-"),
+    telefono: String(cliente.telefono || "-"),
+    fechaRegistro: String(cliente.createdAt || "").slice(0, 10),
+    estado: String(cliente.estado || "activo"),
+    proyectosActivos: Number(cliente.proyectosActivos || 0),
+  }))
+
+  const createCliente = useMutation({
+    mutationFn: (payload: Record<string, unknown>) =>
+      apiRequest("/clientes", { method: "POST", body: payload }),
+    onSuccess: () => {
+      setModalOpen(false)
+      queryClient.invalidateQueries({ queryKey: ["clientes"] })
     },
-    {
-      id: "CLI-002", 
-      nombre: "Minera del Cesar LTDA",
-      tipoIndustria: "Minería",
-      pais: "Colombia", 
-      ciudad: "Valledupar",
-      fechaRegistro: "2023-08-22",
-      estado: "Activo",
-      planContratado: "Professional",
-      proyectosActivos: 12,
-      usuariosRegistrados: 45,
-      adminPrincipal: "Ana López",
-      emailAdmin: "alopez@mineracesar.com",
-      ultimoAcceso: "2024-01-14"
+  })
+  const updateCliente = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Record<string, unknown> }) =>
+      apiRequest(`/clientes/${id}`, { method: "PATCH", body: payload }),
+    onSuccess: () => {
+      setModalOpen(false)
+      setEditingClientId(null)
+      queryClient.invalidateQueries({ queryKey: ["clientes"] })
     },
-    {
-      id: "CLI-003",
-      nombre: "Vialidad Nacional",
-      tipoIndustria: "Infraestructura",
-      pais: "Colombia",
-      ciudad: "Medellín", 
-      fechaRegistro: "2023-11-10",
-      estado: "Activo",
-      planContratado: "Enterprise",
-      proyectosActivos: 15,
-      usuariosRegistrados: 60,
-      adminPrincipal: "Roberto Silva",
-      emailAdmin: "rsilva@vialidadnal.gov.co",
-      ultimoAcceso: "2024-01-16"
-    },
-    {
-      id: "CLI-004",
-      nombre: "Petróleo y Gas del Norte",
-      tipoIndustria: "Petróleo y Gas",
-      pais: "Colombia",
-      ciudad: "Barrancas",
-      fechaRegistro: "2024-01-05",
-      estado: "En Configuración",
-      planContratado: "Professional",
-      proyectosActivos: 2,
-      usuariosRegistrados: 8,
-      adminPrincipal: "María García",
-      emailAdmin: "mgarcia@petrogas.com",
-      ultimoAcceso: "2024-01-12"
-    },
-    {
-      id: "CLI-005",
-      nombre: "Agroindustrial La Sabana",
-      tipoIndustria: "Agroindustria",
-      pais: "Colombia", 
-      ciudad: "Villavicencio",
-      fechaRegistro: "2023-12-18",
-      estado: "Suspendido",
-      planContratado: "Basic",
-      proyectosActivos: 0,
-      usuariosRegistrados: 12,
-      adminPrincipal: "Luis Fernández",
-      emailAdmin: "lfernandez@agrisabana.com",
-      ultimoAcceso: "2023-12-28"
-    }
-  ]
+  })
+
+  const filteredClientes = clientes.filter((cliente) =>
+    [cliente.nombre, cliente.tipoIndustria, cliente.ciudad, cliente.pais].join(" ").toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  const selectedClient = clientes.find((cliente) => cliente.id === editingClientId)
+  const initialData: Partial<ClienteFormData> | null = selectedClient
+    ? {
+        nombre: selectedClient.nombre,
+        tipoIndustria: selectedClient.tipoIndustria === "-" ? "" : selectedClient.tipoIndustria,
+        pais: selectedClient.pais === "-" ? "" : selectedClient.pais,
+        ciudad: selectedClient.ciudad === "-" ? "" : selectedClient.ciudad,
+        encargadoNombre: selectedClient.encargadoNombre === "-" ? "" : selectedClient.encargadoNombre,
+        telefono: selectedClient.telefono === "-" ? "" : selectedClient.telefono,
+        estado: (selectedClient.estado as ClienteFormData["estado"]) || "activo",
+      }
+    : null
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Activo": return "bg-success text-success-foreground"
-      case "En Configuración": return "bg-warning text-warning-foreground"
-      case "Suspendido": return "bg-destructive text-destructive-foreground"
-      case "Inactivo": return "bg-muted text-muted-foreground"
+      case "activo": return "bg-success text-success-foreground"
+      case "en_configuracion": return "bg-warning text-warning-foreground"
+      case "suspendido": return "bg-destructive text-destructive-foreground"
+      case "inactivo": return "bg-muted text-muted-foreground"
       default: return "bg-muted text-muted-foreground"
     }
   }
-
-  const getPlanColor = (plan: string) => {
-    switch (plan) {
-      case "Enterprise": return "bg-primary text-primary-foreground"
-      case "Professional": return "bg-accent text-accent-foreground"
-      case "Basic": return "bg-secondary text-secondary-foreground"
-      default: return "bg-muted text-muted-foreground"
-    }
+  const toStatusLabel = (status: string) => {
+    if (status === "activo") return "Activo"
+    if (status === "en_configuracion") return "En Configuración"
+    if (status === "suspendido") return "Suspendido"
+    if (status === "inactivo") return "Inactivo"
+    return status
   }
 
-  const clientesActivos = clientes.filter(c => c.estado === "Activo").length
+  const saveCliente = (form: ClienteFormData) => {
+    const payload = {
+      nombre: form.nombre,
+      tipoIndustria: form.tipoIndustria || null,
+      pais: form.pais || null,
+      ciudad: form.ciudad || null,
+      encargadoNombre: form.encargadoNombre || null,
+      telefono: form.telefono || null,
+      estado: form.estado,
+    }
+    if (editingClientId) {
+      updateCliente.mutate({ id: editingClientId, payload })
+      return
+    }
+    createCliente.mutate(payload)
+  }
+
+  const clientesActivos = filteredClientes.filter(c => c.estado === "activo").length
   const totalProyectos = clientes.reduce((total, c) => total + c.proyectosActivos, 0)
-  const totalUsuarios = clientes.reduce((total, c) => total + c.usuariosRegistrados, 0)
-  const clientesNuevos = clientes.filter(c => new Date(c.fechaRegistro) > new Date("2024-01-01")).length
+  const totalCiudades = new Set(clientes.map((cliente) => cliente.ciudad).filter((ciudad) => ciudad && ciudad !== "-")).size
+  const clientesNuevos = filteredClientes.filter(c => new Date(c.fechaRegistro) > new Date("2024-01-01")).length
 
   return (
     <div className="space-y-6">
@@ -129,11 +126,13 @@ const Clientes = () => {
           <p className="text-muted-foreground">Panel Super Administrador - Gestión Multi-Tenant</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" className="flex items-center gap-2">
-            <UserCheck className="w-4 h-4" />
-            Gestionar Usuarios
-          </Button>
-          <Button className="bg-gradient-to-r from-primary to-accent text-white shadow-lg hover:shadow-xl transition-all">
+          <Button
+            className="bg-gradient-to-r from-primary to-accent text-white shadow-lg hover:shadow-xl transition-all"
+            onClick={() => {
+              setEditingClientId(null)
+              setModalOpen(true)
+            }}
+          >
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Cliente
           </Button>
@@ -157,11 +156,11 @@ const Clientes = () => {
           trend={{ value: 8, isPositive: true }}
         />
         <StatCard
-          title="Usuarios Registrados"
-          value={totalUsuarios}
+          title="Ciudades Cubiertas"
+          value={totalCiudades}
           icon={UserCheck}
-          description="Total en la plataforma"
-          trend={{ value: 12, isPositive: true }}
+          description="Con presencia de clientes"
+          trend={{ value: 4, isPositive: true }}
         />
         <StatCard
           title="Clientes Nuevos"
@@ -179,8 +178,10 @@ const Clientes = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input 
-                placeholder="Buscar por nombre, industria, administrador..." 
+                placeholder="Buscar por nombre, industria o ubicación..." 
                 className="pl-10"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
               />
             </div>
             <Button variant="outline" className="flex items-center gap-2">
@@ -206,17 +207,15 @@ const Clientes = () => {
                 <TableHead>Cliente</TableHead>
                 <TableHead>Industria</TableHead>
                 <TableHead>Ubicación</TableHead>
-                <TableHead>Admin Principal</TableHead>
-                <TableHead>Plan</TableHead>
+                <TableHead>Encargado</TableHead>
+                <TableHead>Teléfono</TableHead>
                 <TableHead>Proyectos</TableHead>
-                <TableHead>Usuarios</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead>Último Acceso</TableHead>
                 <TableHead>Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {clientes.map((cliente) => (
+              {filteredClientes.map((cliente) => (
                 <TableRow key={cliente.id} className="hover:bg-muted/50">
                   <TableCell>
                     <div className="space-y-1">
@@ -242,20 +241,8 @@ const Clientes = () => {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Crown className="w-4 h-4 text-accent" />
-                        <span className="text-sm font-medium">{cliente.adminPrincipal}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">{cliente.emailAdmin}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={getPlanColor(cliente.planContratado)}>
-                      {cliente.planContratado}
-                    </Badge>
-                  </TableCell>
+                  <TableCell>{cliente.encargadoNombre}</TableCell>
+                  <TableCell>{cliente.telefono}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Users className="w-4 h-4 text-primary" />
@@ -263,33 +250,20 @@ const Clientes = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <UserCheck className="w-4 h-4 text-primary" />
-                      <span className="font-medium">{cliente.usuariosRegistrados}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
                     <Badge className={getStatusColor(cliente.estado)}>
-                      {cliente.estado}
+                      {toStatusLabel(cliente.estado)}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-primary" />
-                      <span className="text-sm">{cliente.ultimoAcceso}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
-                        <UserCheck className="w-3 h-3 mr-1" />
-                        Usuarios
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Settings className="w-3 h-3 mr-1" />
-                        Configurar
-                      </Button>
-                      <Button variant="default" size="sm">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => {
+                          setEditingClientId(cliente.id)
+                          setModalOpen(true)
+                        }}
+                      >
                         Ver Detalles
                       </Button>
                     </div>
@@ -300,6 +274,16 @@ const Clientes = () => {
           </Table>
         </CardContent>
       </Card>
+      <ClienteModal
+        open={modalOpen}
+        onOpenChange={(open) => {
+          setModalOpen(open)
+          if (!open) setEditingClientId(null)
+        }}
+        onSubmit={saveCliente}
+        isSubmitting={createCliente.isPending || updateCliente.isPending}
+        initialData={initialData}
+      />
     </div>
   )
 }

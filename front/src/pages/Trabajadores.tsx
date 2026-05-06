@@ -17,6 +17,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatCard } from "@/components/ui/stat-card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { toast } from "sonner";
+import ConfirmDeleteButton from "@/components/common/ConfirmDeleteButton";
 
 // Datos de ejemplo
 const trabajadores = [
@@ -450,13 +452,14 @@ export default function Trabajadores() {
                       >
                         <Edit className="h-3 w-3" />
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
+                      <ConfirmDeleteButton
                         className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                        title="¿Eliminar trabajador?"
+                        description="Confirma que deseas eliminar este trabajador."
+                        onConfirm={() => toast.info("Eliminación de trabajador pendiente de integrar con backend.")}
                       >
                         <Trash2 className="h-3 w-3" />
-                      </Button>
+                      </ConfirmDeleteButton>
                     </div>
                   </TableCell>
                 </TableRow>

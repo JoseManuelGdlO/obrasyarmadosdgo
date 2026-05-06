@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Plus, Save, Trash2, X, Package, Users } from "lucide-react"
+import ConfirmDeleteButton from "@/components/common/ConfirmDeleteButton"
 
 interface NuevaOrdenModalProps {
   open: boolean
@@ -378,13 +379,15 @@ const NuevaOrdenModal = ({ open, onOpenChange }: NuevaOrdenModalProps) => {
                         <TableCell>{actividad.horaInicio}</TableCell>
                         <TableCell>{actividad.horaFin}</TableCell>
                         <TableCell>
-                          <Button
+                          <ConfirmDeleteButton
                             variant="destructive"
                             size="sm"
-                            onClick={() => eliminarActividad(actividad.id)}
+                            title="¿Eliminar actividad?"
+                            description="Esta actividad se quitará de la orden de trabajo."
+                            onConfirm={() => eliminarActividad(actividad.id)}
                           >
                             <Trash2 className="w-4 h-4" />
-                          </Button>
+                          </ConfirmDeleteButton>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -519,13 +522,15 @@ const NuevaOrdenModal = ({ open, onOpenChange }: NuevaOrdenModalProps) => {
                         <TableCell>{item.cantidad}</TableCell>
                         <TableCell>{item.unidad}</TableCell>
                         <TableCell>
-                          <Button
+                          <ConfirmDeleteButton
                             variant="destructive"
                             size="sm"
-                            onClick={() => eliminarProductoInventario(item.id)}
+                            title="¿Eliminar producto?"
+                            description="Este producto se quitará del inventario necesario de la orden."
+                            onConfirm={() => eliminarProductoInventario(item.id)}
                           >
                             <Trash2 className="w-4 h-4" />
-                          </Button>
+                          </ConfirmDeleteButton>
                         </TableCell>
                       </TableRow>
                     ))}

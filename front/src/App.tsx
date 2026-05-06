@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MainLayout from "./components/layout/MainLayout";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import OrdenesTrabajo from "./pages/OrdenesTrabajo";
 import Asignaciones from "./pages/Asignaciones";
@@ -19,40 +20,48 @@ import Checklist from "./pages/Checklist";
 import Login from "./pages/Login";
 import ChecklistPublico from "./pages/ChecklistPublico";
 import NotFound from "./pages/NotFound";
+import { AuthProvider } from "./lib/auth-context";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/checklist-publico" element={<ChecklistPublico />} />
-          <Route path="*" element={
-            <MainLayout>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/ordenes" element={<OrdenesTrabajo />} />
-                <Route path="/asignaciones" element={<Asignaciones />} />
-                <Route path="/trabajadores" element={<Trabajadores />} />
-                <Route path="/maquinas" element={<Maquinas />} />
-                <Route path="/proveedores" element={<Proveedores />} />
-                <Route path="/inventario" element={<Inventario />} />
-                <Route path="/proyectos" element={<Proyectos />} />
-                <Route path="/clientes" element={<Clientes />} />
-                <Route path="/gestion-usuarios" element={<GestionUsuarios />} />
-                <Route path="/nomenclaturas" element={<Nomenclaturas />} />
-                <Route path="/checklist" element={<Checklist />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </MainLayout>
-          } />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/checklist-publico" element={<ChecklistPublico />} />
+            <Route
+              path="*"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Routes>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/ordenes" element={<OrdenesTrabajo />} />
+                      <Route path="/asignaciones" element={<Asignaciones />} />
+                      <Route path="/trabajadores" element={<Trabajadores />} />
+                      <Route path="/maquinas" element={<Maquinas />} />
+                      <Route path="/proveedores" element={<Proveedores />} />
+                      <Route path="/inventario" element={<Inventario />} />
+                      <Route path="/proyectos" element={<Proyectos />} />
+                      <Route path="/clientes" element={<Clientes />} />
+                      <Route path="/gestion-usuarios" element={<GestionUsuarios />} />
+                      <Route path="/nomenclaturas" element={<Nomenclaturas />} />
+                      <Route path="/checklist" element={<Checklist />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

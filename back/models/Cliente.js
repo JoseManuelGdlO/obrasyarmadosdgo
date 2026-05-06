@@ -13,6 +13,36 @@ const Cliente = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    tipoIndustria: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    pais: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    ciudad: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    encargadoNombre: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    telefono: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    estado: {
+      type: DataTypes.ENUM("activo", "en_configuracion", "suspendido", "inactivo"),
+      allowNull: false,
+      defaultValue: "activo",
+    },
+    proyectosActivos: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
   },
   {
     tableName: "clientes",

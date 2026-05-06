@@ -14,12 +14,22 @@ const PORT = Number(process.env.PORT) || 3000;
 const corsOrigins = (process.env.CORS_ORIGIN || "")
   .split(",")
   .map((origin) => origin.trim())
+  .map((origin) => origin.replace(/\/+$/, ""))
   .filter(Boolean);
 
 app.use(
   cors({
     // Si no se define lista, se habilita para cualquier origen (útil en desarrollo).
-    origin: corsOrigins.length > 0 ? corsOrigins : true,
+    origin:
+      corsOrigins.length > 0
+        ? (origin, callback) => {
+            if (!origin) {
+              return callback(null, true);
+            }
+            const normalizedOrigin = origin.replace(/\/+$/, "");
+            return callback(null, corsOrigins.includes(normalizedOrigin));
+          }
+        : true,
   })
 );
 app.use(express.json());

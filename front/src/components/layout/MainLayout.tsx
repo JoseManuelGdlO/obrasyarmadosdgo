@@ -1,13 +1,18 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "./AppSidebar"
-import { User, Bell } from "lucide-react"
+import { User, Bell, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/lib/auth-context"
+import { useNavigate } from "react-router-dom"
 
 interface MainLayoutProps {
   children: React.ReactNode
 }
 
 export default function MainLayout({ children }: MainLayoutProps) {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
@@ -27,12 +32,22 @@ export default function MainLayout({ children }: MainLayoutProps) {
               
               <div className="flex items-center gap-2">
                 <div className="text-right">
-                  <p className="text-sm font-medium text-foreground">Usuario Admin</p>
-                  <p className="text-xs text-muted-foreground">Supervisor</p>
+                  <p className="text-sm font-medium text-foreground">{user?.email || "Usuario"}</p>
+                  <p className="text-xs text-muted-foreground">{user?.rol || "Sin rol"}</p>
                 </div>
                 <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center">
                   <User className="w-4 h-4 text-white" />
                 </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={async () => {
+                    await logout()
+                    navigate("/login")
+                  }}
+                >
+                  <LogOut className="w-4 h-4" />
+                </Button>
               </div>
             </div>
           </header>

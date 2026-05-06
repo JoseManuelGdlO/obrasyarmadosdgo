@@ -21,6 +21,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
+import ConfirmDeleteButton from "@/components/common/ConfirmDeleteButton";
 
 // Inventario disponible (conectado al módulo de inventario)
 const inventarioDisponible = [
@@ -822,13 +823,14 @@ export default function Maquinas() {
                         >
                           <Edit className="h-3 w-3" />
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
+                        <ConfirmDeleteButton
                           className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                          title="¿Eliminar máquina?"
+                          description="Confirma que deseas eliminar esta máquina."
+                          onConfirm={() => toast.info("Eliminación de máquina pendiente de integrar con backend.")}
                         >
                           <Trash2 className="h-3 w-3" />
-                        </Button>
+                        </ConfirmDeleteButton>
                         <Button
                           variant="outline"
                           size="sm"

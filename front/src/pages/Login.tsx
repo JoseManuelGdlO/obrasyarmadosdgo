@@ -1,22 +1,34 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import logoObras from "@/assets/logo-obras.png"
 import { Eye, EyeOff, LogIn } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 const Login = () => {
   const navigate = useNavigate()
+  const { login } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPass, setShowPass] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Visual only – redirect to dashboard
-    navigate("/")
+    try {
+      setIsSubmitting(true)
+      await login(email, password)
+      toast.success("Sesión iniciada correctamente")
+      navigate("/")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo iniciar sesión")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -74,10 +86,11 @@ const Login = () => {
 
             <Button
               type="submit"
+              disabled={isSubmitting}
               className="w-full h-11 bg-gradient-to-r from-primary to-accent text-white shadow-lg hover:shadow-xl transition-all text-base font-semibold"
             >
               <LogIn className="w-4 h-4 mr-2" />
-              Iniciar Sesión
+              {isSubmitting ? "Ingresando..." : "Iniciar Sesión"}
             </Button>
           </form>
 

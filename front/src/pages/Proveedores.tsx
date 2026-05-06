@@ -17,6 +17,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatCard } from "@/components/ui/stat-card";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import ConfirmDeleteButton from "@/components/common/ConfirmDeleteButton";
 
 // Datos de ejemplo - Proveedores de mantenimiento
 const proveedores = [
@@ -506,13 +508,14 @@ export default function Proveedores() {
                       >
                         <Edit className="h-3 w-3" />
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
+                      <ConfirmDeleteButton
                         className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                        title="¿Eliminar proveedor?"
+                        description="Confirma que deseas eliminar este proveedor."
+                        onConfirm={() => toast.info("Eliminación de proveedor pendiente de integrar con backend.")}
                       >
                         <Trash2 className="h-3 w-3" />
-                      </Button>
+                      </ConfirmDeleteButton>
                     </div>
                   </TableCell>
                 </TableRow>

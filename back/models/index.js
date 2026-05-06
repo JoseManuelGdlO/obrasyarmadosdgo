@@ -8,6 +8,12 @@ const Maquina = require("./Maquina");
 const MaquinaChecklistItem = require("./MaquinaChecklistItem");
 const MaquinaPlanServicio = require("./MaquinaPlanServicio");
 const PlanServicioPieza = require("./PlanServicioPieza");
+const Proveedor = require("./Proveedor");
+const Trabajador = require("./Trabajador");
+const Proyecto = require("./Proyecto");
+const Asignacion = require("./Asignacion");
+const Nomenclatura = require("./Nomenclatura");
+const OrdenTrabajo = require("./OrdenTrabajo");
 
 Cliente.hasMany(Maquina, { foreignKey: "clienteId", as: "maquinas" });
 Maquina.belongsTo(Cliente, { foreignKey: "clienteId", as: "cliente" });
@@ -61,6 +67,25 @@ UsuarioMaquina.belongsTo(Maquina, { foreignKey: "maquinaId", as: "maquina" });
 User.hasMany(UsuarioMaquina, { foreignKey: "userId", as: "asignacionesMaquina" });
 Maquina.hasMany(UsuarioMaquina, { foreignKey: "maquinaId", as: "asignacionesOperadores" });
 
+Cliente.hasMany(Proyecto, { foreignKey: "clienteId", as: "proyectos" });
+Proyecto.belongsTo(Cliente, { foreignKey: "clienteId", as: "cliente" });
+
+Proyecto.hasMany(Asignacion, { foreignKey: "proyectoId", as: "asignaciones" });
+Asignacion.belongsTo(Proyecto, { foreignKey: "proyectoId", as: "proyecto" });
+Maquina.hasMany(Asignacion, { foreignKey: "maquinaId", as: "asignaciones" });
+Asignacion.belongsTo(Maquina, { foreignKey: "maquinaId", as: "maquina" });
+Trabajador.hasMany(Asignacion, { foreignKey: "trabajadorId", as: "asignaciones" });
+Asignacion.belongsTo(Trabajador, { foreignKey: "trabajadorId", as: "trabajador" });
+
+Proyecto.hasMany(OrdenTrabajo, { foreignKey: "proyectoId", as: "ordenes" });
+OrdenTrabajo.belongsTo(Proyecto, { foreignKey: "proyectoId", as: "proyecto" });
+Maquina.hasMany(OrdenTrabajo, { foreignKey: "maquinaId", as: "ordenes" });
+OrdenTrabajo.belongsTo(Maquina, { foreignKey: "maquinaId", as: "maquina" });
+Proveedor.hasMany(OrdenTrabajo, { foreignKey: "proveedorId", as: "ordenes" });
+OrdenTrabajo.belongsTo(Proveedor, { foreignKey: "proveedorId", as: "proveedor" });
+Nomenclatura.hasMany(OrdenTrabajo, { foreignKey: "nomenclaturaId", as: "ordenes" });
+OrdenTrabajo.belongsTo(Nomenclatura, { foreignKey: "nomenclaturaId", as: "nomenclatura" });
+
 module.exports = {
   sequelize,
   User,
@@ -72,4 +97,10 @@ module.exports = {
   MaquinaChecklistItem,
   MaquinaPlanServicio,
   PlanServicioPieza,
+  Proveedor,
+  Trabajador,
+  Proyecto,
+  Asignacion,
+  Nomenclatura,
+  OrdenTrabajo,
 };

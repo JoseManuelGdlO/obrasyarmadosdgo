@@ -30,11 +30,29 @@ const getClienteById = async (req, res) => {
 
 const createCliente = async (req, res) => {
   try {
-    const { nombre } = req.body;
+    const {
+      nombre,
+      tipoIndustria,
+      pais,
+      ciudad,
+      encargadoNombre,
+      telefono,
+      estado,
+      proyectosActivos,
+    } = req.body;
     if (!nombre || !String(nombre).trim()) {
       return res.status(400).json({ message: "El nombre es obligatorio." });
     }
-    const created = await Cliente.create({ nombre: nombre.trim() });
+    const created = await Cliente.create({
+      nombre: nombre.trim(),
+      ...(tipoIndustria !== undefined ? { tipoIndustria } : {}),
+      ...(pais !== undefined ? { pais } : {}),
+      ...(ciudad !== undefined ? { ciudad } : {}),
+      ...(encargadoNombre !== undefined ? { encargadoNombre } : {}),
+      ...(telefono !== undefined ? { telefono } : {}),
+      ...(estado !== undefined ? { estado } : {}),
+      ...(proyectosActivos !== undefined ? { proyectosActivos } : {}),
+    });
     return res.status(201).json({
       message: "Cliente creado correctamente.",
       cliente: created,
@@ -50,19 +68,36 @@ const createCliente = async (req, res) => {
 const updateCliente = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre } = req.body;
+    const allowedFields = [
+      "nombre",
+      "tipoIndustria",
+      "pais",
+      "ciudad",
+      "encargadoNombre",
+      "telefono",
+      "estado",
+      "proyectosActivos",
+    ];
+    const updates = {};
     const cliente = await Cliente.findByPk(id);
     if (!cliente) {
       return res.status(404).json({ message: "Cliente no encontrado." });
     }
-    if (nombre !== undefined) {
-      if (!nombre || !String(nombre).trim()) {
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    }
+    if (updates.nombre !== undefined) {
+      if (!updates.nombre || !String(updates.nombre).trim()) {
         return res.status(400).json({ message: "El nombre no puede estar vacío." });
       }
-      await cliente.update({ nombre: nombre.trim() });
-    } else {
+      updates.nombre = String(updates.nombre).trim();
+    }
+    if (Object.keys(updates).length === 0) {
       return res.status(400).json({ message: "No hay campos para actualizar." });
     }
+    await cliente.update(updates);
     const updated = await Cliente.findByPk(id);
     return res.status(200).json({
       message: "Cliente actualizado correctamente.",

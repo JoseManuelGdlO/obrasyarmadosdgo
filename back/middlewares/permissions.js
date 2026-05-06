@@ -21,6 +21,9 @@ const loadRolePermissions = async (req, res, next) => {
 
 const requirePermission = (permission) => {
   return (req, res, next) => {
+    if (req.user?.rol === "admin") {
+      return next();
+    }
     if (!req.permissions || !req.permissions.has(permission)) {
       return res.status(403).json({
         message: "No tiene permisos para esta operación.",
@@ -33,6 +36,9 @@ const requirePermission = (permission) => {
 const requireAnyPermission =
   (...permissions) =>
   (req, res, next) => {
+    if (req.user?.rol === "admin") {
+      return next();
+    }
     if (!req.permissions) {
       return res.status(403).json({ message: "No tiene permisos para esta operación." });
     }

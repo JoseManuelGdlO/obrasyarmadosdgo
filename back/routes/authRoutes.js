@@ -1,5 +1,5 @@
 const express = require("express");
-const { issuePermanentToken } = require("../controllers/authController");
+const { issuePermanentToken, me, logout } = require("../controllers/authController");
 const { requirePermission } = require("../middlewares/permissions");
 const P = require("../constants/permissions");
 
@@ -10,5 +10,7 @@ router.post(
   requirePermission(P.USERS_MANAGE),
   issuePermanentToken
 );
+router.get("/me", me);
+router.post("/logout", logout);
 
 module.exports = router;
