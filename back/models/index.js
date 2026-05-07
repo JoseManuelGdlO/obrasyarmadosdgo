@@ -15,6 +15,9 @@ const Proyecto = require("./Proyecto");
 const Asignacion = require("./Asignacion");
 const Nomenclatura = require("./Nomenclatura");
 const OrdenTrabajo = require("./OrdenTrabajo");
+const OrdenTrabajoActividad = require("./OrdenTrabajoActividad");
+const OrdenTrabajoActividadTecnico = require("./OrdenTrabajoActividadTecnico");
+const OrdenTrabajoItem = require("./OrdenTrabajoItem");
 const MovimientoInventario = require("./MovimientoInventario");
 const ChecklistDiario = require("./ChecklistDiario");
 
@@ -92,6 +95,43 @@ Proveedor.hasMany(OrdenTrabajo, { foreignKey: "proveedorId", as: "ordenes" });
 OrdenTrabajo.belongsTo(Proveedor, { foreignKey: "proveedorId", as: "proveedor" });
 Nomenclatura.hasMany(OrdenTrabajo, { foreignKey: "nomenclaturaId", as: "ordenes" });
 OrdenTrabajo.belongsTo(Nomenclatura, { foreignKey: "nomenclaturaId", as: "nomenclatura" });
+Trabajador.hasMany(OrdenTrabajo, { foreignKey: "responsableId", as: "ordenesResponsable" });
+OrdenTrabajo.belongsTo(Trabajador, { foreignKey: "responsableId", as: "responsable" });
+
+OrdenTrabajo.hasMany(OrdenTrabajoActividad, {
+  foreignKey: "ordenTrabajoId",
+  as: "actividades",
+  onDelete: "CASCADE",
+});
+OrdenTrabajoActividad.belongsTo(OrdenTrabajo, {
+  foreignKey: "ordenTrabajoId",
+  as: "ordenTrabajo",
+});
+
+OrdenTrabajoActividad.belongsToMany(Trabajador, {
+  through: OrdenTrabajoActividadTecnico,
+  foreignKey: "actividadId",
+  otherKey: "trabajadorId",
+  as: "tecnicos",
+});
+Trabajador.belongsToMany(OrdenTrabajoActividad, {
+  through: OrdenTrabajoActividadTecnico,
+  foreignKey: "trabajadorId",
+  otherKey: "actividadId",
+  as: "actividadesAsignadas",
+});
+
+OrdenTrabajo.hasMany(OrdenTrabajoItem, {
+  foreignKey: "ordenTrabajoId",
+  as: "items",
+  onDelete: "CASCADE",
+});
+OrdenTrabajoItem.belongsTo(OrdenTrabajo, {
+  foreignKey: "ordenTrabajoId",
+  as: "ordenTrabajo",
+});
+Articulo.hasMany(OrdenTrabajoItem, { foreignKey: "articuloId", as: "ordenItems" });
+OrdenTrabajoItem.belongsTo(Articulo, { foreignKey: "articuloId", as: "articulo" });
 
 Maquina.hasMany(ChecklistDiario, {
   foreignKey: "maquinaId",
@@ -125,6 +165,9 @@ module.exports = {
   Asignacion,
   Nomenclatura,
   OrdenTrabajo,
+  OrdenTrabajoActividad,
+  OrdenTrabajoActividadTecnico,
+  OrdenTrabajoItem,
   MovimientoInventario,
   ChecklistDiario,
 };
