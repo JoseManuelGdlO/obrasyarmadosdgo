@@ -34,8 +34,6 @@ const mainItems = [
   { title: "Órdenes de Trabajo", url: "/ordenes", icon: ClipboardList, requiredPermissions: [PERMISSIONS.ORDENES_VIEW] },
   { title: "Asignaciones", url: "/asignaciones", icon: GitBranch, requiredPermissions: [PERMISSIONS.ASIGNACIONES_VIEW] },
   { title: "Checklist Diario", url: "/checklist", icon: ClipboardList },
-  { title: "Trabajadores", url: "/trabajadores", icon: UserCheck, requiredPermissions: [PERMISSIONS.TRABAJADORES_VIEW] },
-  { title: "Proveedores", url: "/proveedores", icon: Building, requiredPermissions: [PERMISSIONS.PROVEEDORES_VIEW] },
 ]
 
 const inventoryItems = [
@@ -67,6 +65,8 @@ const accessItems = [
 const configItems = [
   { title: "Proyectos", url: "/proyectos", icon: FolderOpen, requiredPermissions: [PERMISSIONS.PROYECTOS_VIEW] },
   { title: "Nomenclaturas", url: "/nomenclaturas", icon: Settings, requiredPermissions: [PERMISSIONS.NOMENCLATURAS_VIEW] },
+  { title: "Trabajadores", url: "/trabajadores", icon: UserCheck, requiredPermissions: [PERMISSIONS.TRABAJADORES_VIEW] },
+  { title: "Proveedores", url: "/proveedores", icon: Building, requiredPermissions: [PERMISSIONS.PROVEEDORES_VIEW] },
 ]
 
 type SectionProps = {
