@@ -78,6 +78,10 @@ const Maquina = sequelize.define(
       type: DataTypes.DATEONLY,
       allowNull: true,
     },
+    fotoPortadaPath: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     tableName: "maquinas",

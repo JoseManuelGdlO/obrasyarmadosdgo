@@ -17,8 +17,11 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRE: ${JWT_EXPIRE:-24h}
+      MACHINE_UPLOADS_DIR: /app/uploads/maquinas
     expose:
       - "3000"
+    volumes:
+      - ${MACHINE_UPLOADS_HOST_DIR:-./storage/maquinas}:/app/uploads/maquinas
 
   front:
     build:

@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, toAbsoluteAssetUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
 type MaquinaBackend = {
@@ -23,6 +23,7 @@ type MaquinaBackend = {
   placas: string;
   numeroSerie?: string;
   estado: string;
+  fotoPortadaPath?: string | null;
 };
 
 type ChecklistItemBackend = {
@@ -272,9 +273,17 @@ export default function Checklist() {
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                      <Truck className="h-5 w-5 text-blue-600" />
-                    </div>
+                    {toAbsoluteAssetUrl(maquina.fotoPortadaPath) ? (
+                      <img
+                        src={toAbsoluteAssetUrl(maquina.fotoPortadaPath) || ""}
+                        alt={`Portada ${maquina.nombre}`}
+                        className="w-12 h-10 rounded-lg object-cover border"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                        <Truck className="h-5 w-5 text-blue-600" />
+                      </div>
+                    )}
                     <div>
                       <h3 className="font-semibold text-gray-900">{maquina.nombre}</h3>
                       <p className="text-sm text-gray-500">
@@ -316,6 +325,13 @@ export default function Checklist() {
               <ClipboardCheck className="h-5 w-5 text-blue-600" />
               Checklist — {selectedMaquina?.nombre}
             </DialogTitle>
+            {selectedMaquina && toAbsoluteAssetUrl(selectedMaquina.fotoPortadaPath) && (
+              <img
+                src={toAbsoluteAssetUrl(selectedMaquina.fotoPortadaPath) || ""}
+                alt={`Portada ${selectedMaquina.nombre}`}
+                className="h-28 w-full rounded-md border object-cover"
+              />
+            )}
             <p className="text-sm text-gray-500">
               {selectedMaquina?.tipo} · {selectedMaquina?.placas}
             </p>

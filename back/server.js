@@ -2,8 +2,14 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 const sequelize = require("./config/database");
 const routes = require("./routes");
+const {
+  MACHINE_UPLOADS_DIR,
+  MACHINE_UPLOADS_ROUTE,
+  ensureMachineUploadsDir,
+} = require("./config/uploads");
 // Registra modelos y asociaciones Sequelize al iniciar la app.
 require("./models");
 
@@ -34,6 +40,13 @@ app.use(
   })
 );
 app.use(express.json());
+ensureMachineUploadsDir();
+app.use(
+  MACHINE_UPLOADS_ROUTE,
+  express.static(path.resolve(MACHINE_UPLOADS_DIR), {
+    maxAge: "7d",
+  })
+);
 
 // Endpoint liviano para chequeos de disponibilidad.
 app.get("/health", (_req, res) => {

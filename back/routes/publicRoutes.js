@@ -20,6 +20,7 @@ router.get("/maquinas/:id", async (req, res) => {
         "placas",
         "numeroSerie",
         "estado",
+        "fotoPortadaPath",
       ],
     });
     if (!maquina) {

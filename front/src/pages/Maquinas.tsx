@@ -15,6 +15,7 @@ import {
   Printer,
   Share2,
   Download,
+  Image as ImageIcon,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { StatCard } from "@/components/ui/stat-card";
 import { Progress } from "@/components/ui/progress";
 import ConfirmDeleteButton from "@/components/common/ConfirmDeleteButton";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, toAbsoluteAssetUrl } from "@/lib/api";
 import MaquinaModal, {
   ChecklistItemDef,
   InventarioItem,
@@ -93,6 +94,7 @@ interface ApiMaquina {
   fechaAdquisicion: string | null;
   ubicacion: string;
   ultimoMantenimiento: string | null;
+  fotoPortadaPath?: string | null;
   checklistItems?: ApiChecklistItem[];
   planesServicio?: ApiPlanServicio[];
 }
@@ -107,6 +109,19 @@ const toDateInput = (value: string | null | undefined) => {
   if (!value) return "";
   const s = String(value);
   return s.length >= 10 ? s.slice(0, 10) : s;
+};
+
+const validatePortadaFile = (file: File | null) => {
+  if (!file) return null;
+  const maxSize = 2 * 1024 * 1024;
+  const allowedTypes = new Set(["image/jpeg", "image/png"]);
+  if (!allowedTypes.has(file.type)) {
+    return "La portada debe ser JPG o PNG.";
+  }
+  if (file.size > maxSize) {
+    return "La portada no puede superar 2MB.";
+  }
+  return null;
 };
 
 export default function Maquinas() {
@@ -155,9 +170,18 @@ export default function Maquinas() {
         disponibilidad: Number(form.disponibilidad) || 0,
         fechaAdquisicion: form.fechaAdquisicion,
       };
+      const portadaError = validatePortadaFile(form.fotoPortadaFile);
+      if (portadaError) {
+        throw new Error(portadaError);
+      }
+      const body = new FormData();
+      Object.entries(payload).forEach(([key, value]) => body.append(key, String(value)));
+      if (form.fotoPortadaFile) {
+        body.append("fotoPortada", form.fotoPortadaFile);
+      }
       const created = await apiRequest<{ maquina: { id: string } }>("/maquinas", {
         method: "POST",
-        body: payload,
+        body,
       });
       const maquinaId = created.maquina.id;
 
@@ -235,8 +259,18 @@ export default function Maquinas() {
         horometroFinal: Number(form.horometroFinal) || 0,
         disponibilidad: Number(form.disponibilidad) || 0,
         fechaAdquisicion: form.fechaAdquisicion,
+        removeFotoPortada: form.removeFotoPortada,
       };
-      await apiRequest(`/maquinas/${id}`, { method: "PATCH", body: payload });
+      const portadaError = validatePortadaFile(form.fotoPortadaFile);
+      if (portadaError) {
+        throw new Error(portadaError);
+      }
+      const body = new FormData();
+      Object.entries(payload).forEach(([key, value]) => body.append(key, String(value)));
+      if (form.fotoPortadaFile) {
+        body.append("fotoPortada", form.fotoPortadaFile);
+      }
+      await apiRequest(`/maquinas/${id}`, { method: "PATCH", body });
 
       // Reemplazo completo de checklist en edición para simplificar sincronización.
       const currentChecklist = existing?.checklistItems || [];
@@ -345,6 +379,7 @@ export default function Maquinas() {
       fechaAdquisicion: toDateInput(editingMaquina.fechaAdquisicion),
       estado: (editingMaquina.estado as MaquinaFormData["estado"]) || "Operativa",
       ultimoMantenimiento: toDateInput(editingMaquina.ultimoMantenimiento),
+      fotoPortadaPath: toAbsoluteAssetUrl(editingMaquina.fotoPortadaPath),
       checklistItems,
       planesServicio,
     };
@@ -536,13 +571,26 @@ export default function Maquinas() {
                 return (
                   <TableRow key={maquina.id} className="hover:bg-gray-50">
                     <TableCell>
-                      <div className="space-y-1">
-                        <div className="font-medium">{maquina.nombre}</div>
-                        <div className="text-sm text-gray-600">
-                          {maquina.marca} {maquina.modelo}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          Placas: {maquina.placas}
+                      <div className="flex items-start gap-3">
+                        {toAbsoluteAssetUrl(maquina.fotoPortadaPath) ? (
+                          <img
+                            src={toAbsoluteAssetUrl(maquina.fotoPortadaPath) || ""}
+                            alt={`Portada ${maquina.nombre}`}
+                            className="h-12 w-16 rounded-md border object-cover"
+                          />
+                        ) : (
+                          <div className="h-12 w-16 rounded-md border bg-muted flex items-center justify-center">
+                            <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="space-y-1">
+                          <div className="font-medium">{maquina.nombre}</div>
+                          <div className="text-sm text-gray-600">
+                            {maquina.marca} {maquina.modelo}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Placas: {maquina.placas}
+                          </div>
                         </div>
                       </div>
                     </TableCell>
