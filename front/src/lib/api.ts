@@ -1,7 +1,14 @@
-const API_BASE_URL =
+const RAW_API_BASE_URL =
   import.meta.env.VITE_API_URL ||
   import.meta.env.VITE_API_BASE_URL ||
   "http://localhost:3000/api";
+
+const normalizeApiBaseUrl = (url: string) => {
+  const cleanUrl = url.replace(/\/+$/, "");
+  return cleanUrl.endsWith("/api") ? cleanUrl : `${cleanUrl}/api`;
+};
+
+const API_BASE_URL = normalizeApiBaseUrl(RAW_API_BASE_URL);
 const TOKEN_KEY = "oya_token";
 
 export const tokenStorage = {
