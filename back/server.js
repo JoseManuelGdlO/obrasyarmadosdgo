@@ -9,6 +9,7 @@ require("./models");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
+const HOST = process.env.HOST || "0.0.0.0";
 
 // Permite definir múltiples orígenes separados por coma en CORS_ORIGIN.
 const corsOrigins = (process.env.CORS_ORIGIN || "")
@@ -47,10 +48,10 @@ const startServer = async () => {
     // Valida la conexión a DB antes de aceptar tráfico HTTP.
     await sequelize.authenticate();
 
-    app.listen(PORT, () => {
+    app.listen(PORT, HOST, () => {
       console.log(`Servidor backend corriendo en el puerto ${PORT}`);
     });
-    console.log(`Servidor backend corriendo en http://localhost:${PORT}/health`);
+    console.log(`Servidor backend corriendo en http://${HOST}:${PORT}/health`);
   } catch (error) {
     console.error("Error al iniciar el servidor:", error.message);
     process.exit(1);
