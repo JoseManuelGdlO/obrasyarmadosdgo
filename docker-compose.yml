@@ -1,0 +1,32 @@
+services:
+  back:
+    build:
+      context: ./back
+      dockerfile: Dockerfile
+    container_name: oya-back
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DIALECT: ${DB_DIALECT:-mysql}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+    ports:
+      - "${BACK_PORT:-3000}:3000"
+
+  front:
+    build:
+      context: ./front
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000/api}
+    container_name: oya-front
+    restart: unless-stopped
+    depends_on:
+      - back
+    ports:
+      - "${FRONT_PORT:-8080}:80"
