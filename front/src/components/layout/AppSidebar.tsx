@@ -46,6 +46,12 @@ const inventoryItems = [
     icon: Truck,
     requiredPermissions: [PERMISSIONS.MAQUINAS_VIEW, PERMISSIONS.MAQUINAS_READ_ASSIGNED],
   },
+  {
+    title: "Catálogo Clase/Tipo",
+    url: "/maquinas/catalogo",
+    icon: Settings,
+    requiredPermissions: [PERMISSIONS.MAQUINAS_VIEW, PERMISSIONS.MAQUINAS_READ_ASSIGNED],
+  },
 ]
 
 const accessItems = [

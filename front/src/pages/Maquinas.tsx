@@ -41,17 +41,7 @@ import MaquinaModal, {
   MaquinaFormData,
   ServicePlanDef,
 } from "@/components/modals/MaquinaModal";
-
-const tiposMaquina = [
-  "Excavadora",
-  "Grúa",
-  "Bulldozer",
-  "Pavimentadora",
-  "Compactadora",
-  "Montacargas",
-  "Camión",
-  "Retroexcavadora",
-];
+import { getMaquinaTipoNombre } from "@/lib/maquina";
 
 const estados = ["Operativa", "Disponible", "Mantenimiento", "Fuera de Servicio"] as const;
 
@@ -80,7 +70,10 @@ interface ApiPlanServicio {
 interface ApiMaquina {
   id: string;
   nombre: string;
-  tipo: string;
+  claseId: string;
+  tipoId: string;
+  clase?: { id: string; nombre: string };
+  tipoCatalogo?: { id: string; nombre: string; claseId?: string };
   marca: string;
   modelo: string;
   placas: string;
@@ -93,9 +86,48 @@ interface ApiMaquina {
   fechaAdquisicion: string | null;
   ubicacion: string;
   ultimoMantenimiento: string | null;
+  tipoCombustible?: string | null;
+  pedimento?: string | null;
+  pedimentoNumero?: string | null;
+  factura?: string | null;
+  facturaNumero?: string | null;
+  facturaImporte?: number | string | null;
+  tarjeton?: string | null;
+  tarjetonNumero?: string | null;
+  contratoCompraventa?: string | null;
+  seguro?: string | null;
+  seguroVigencia?: string | null;
   checklistItems?: ApiChecklistItem[];
   planesServicio?: ApiPlanServicio[];
 }
+
+const buildMaquinaPayload = (form: MaquinaFormData) => ({
+  nombre: form.nombre,
+  claseId: form.claseId,
+  tipoId: form.tipoId,
+  marca: form.marca,
+  modelo: form.modelo,
+  placas: form.placas,
+  numeroSerie: form.numeroSerie,
+  ubicacion: form.ubicacion,
+  estado: form.estado,
+  horometroInicial: Number(form.horometroInicial) || 0,
+  horometroActual: Number(form.horometroActual || form.horometroInicial) || 0,
+  horometroFinal: Number(form.horometroFinal) || 0,
+  disponibilidad: Number(form.disponibilidad) || 0,
+  fechaAdquisicion: form.fechaAdquisicion,
+  tipoCombustible: form.tipoCombustible || null,
+  pedimento: form.pedimento || null,
+  pedimentoNumero: form.pedimentoNumero || null,
+  factura: form.factura || null,
+  facturaNumero: form.facturaNumero || null,
+  facturaImporte: form.facturaImporte ? Number(form.facturaImporte) : null,
+  tarjeton: form.tarjeton || null,
+  tarjetonNumero: form.tarjetonNumero || null,
+  contratoCompraventa: form.contratoCompraventa || null,
+  seguro: form.seguro || null,
+  seguroVigencia: form.seguroVigencia || null,
+});
 
 interface ApiArticulo {
   id: string;
@@ -131,6 +163,14 @@ export default function Maquinas() {
     queryFn: () => apiRequest<{ articulos: ApiArticulo[] }>("/articulos"),
   });
 
+  const { data: tiposCatalogData } = useQuery({
+    queryKey: ["maquina-tipos", "filtro"],
+    queryFn: () =>
+      apiRequest<{ tipos: Array<{ id: string; nombre: string }> }>("/maquina-tipos?activo=true"),
+  });
+
+  const tiposCatalogo = tiposCatalogData?.tipos || [];
+
   const maquinas = maquinasData?.maquinas || [];
   const articulos: InventarioItem[] = (articulosData?.articulos || []).map((a) => ({
     id: a.id,
@@ -140,21 +180,7 @@ export default function Maquinas() {
 
   const createMaquinaMutation = useMutation({
     mutationFn: async (form: MaquinaFormData) => {
-      const payload = {
-        nombre: form.nombre,
-        tipo: form.tipo,
-        marca: form.marca,
-        modelo: form.modelo,
-        placas: form.placas,
-        numeroSerie: form.numeroSerie,
-        ubicacion: form.ubicacion,
-        estado: form.estado,
-        horometroInicial: Number(form.horometroInicial) || 0,
-        horometroActual: Number(form.horometroActual || form.horometroInicial) || 0,
-        horometroFinal: Number(form.horometroFinal) || 0,
-        disponibilidad: Number(form.disponibilidad) || 0,
-        fechaAdquisicion: form.fechaAdquisicion,
-      };
+      const payload = buildMaquinaPayload(form);
       const created = await apiRequest<{ maquina: { id: string } }>("/maquinas", {
         method: "POST",
         body: payload,
@@ -221,21 +247,7 @@ export default function Maquinas() {
       form: MaquinaFormData;
       existing: ApiMaquina | null;
     }) => {
-      const payload = {
-        nombre: form.nombre,
-        tipo: form.tipo,
-        marca: form.marca,
-        modelo: form.modelo,
-        placas: form.placas,
-        numeroSerie: form.numeroSerie,
-        ubicacion: form.ubicacion,
-        estado: form.estado,
-        horometroInicial: Number(form.horometroInicial) || 0,
-        horometroActual: Number(form.horometroActual) || 0,
-        horometroFinal: Number(form.horometroFinal) || 0,
-        disponibilidad: Number(form.disponibilidad) || 0,
-        fechaAdquisicion: form.fechaAdquisicion,
-      };
+      const payload = buildMaquinaPayload(form);
       await apiRequest(`/maquinas/${id}`, { method: "PATCH", body: payload });
 
       // Reemplazo completo de checklist en edición para simplificar sincronización.
@@ -332,7 +344,8 @@ export default function Maquinas() {
     }));
     return {
       nombre: editingMaquina.nombre || "",
-      tipo: editingMaquina.tipo || "",
+      claseId: editingMaquina.claseId || editingMaquina.clase?.id || "",
+      tipoId: editingMaquina.tipoId || editingMaquina.tipoCatalogo?.id || "",
       marca: editingMaquina.marca || "",
       modelo: editingMaquina.modelo || "",
       placas: editingMaquina.placas || "",
@@ -345,18 +358,31 @@ export default function Maquinas() {
       fechaAdquisicion: toDateInput(editingMaquina.fechaAdquisicion),
       estado: (editingMaquina.estado as MaquinaFormData["estado"]) || "Operativa",
       ultimoMantenimiento: toDateInput(editingMaquina.ultimoMantenimiento),
+      tipoCombustible: editingMaquina.tipoCombustible || "",
+      pedimento: editingMaquina.pedimento || "",
+      pedimentoNumero: editingMaquina.pedimentoNumero || "",
+      factura: editingMaquina.factura || "",
+      facturaNumero: editingMaquina.facturaNumero || "",
+      facturaImporte:
+        editingMaquina.facturaImporte != null ? String(editingMaquina.facturaImporte) : "",
+      tarjeton: editingMaquina.tarjeton || "",
+      tarjetonNumero: editingMaquina.tarjetonNumero || "",
+      contratoCompraventa: editingMaquina.contratoCompraventa || "",
+      seguro: editingMaquina.seguro || "",
+      seguroVigencia: toDateInput(editingMaquina.seguroVigencia),
       checklistItems,
       planesServicio,
     };
   }, [editingMaquina]);
 
   const filteredMaquinas = maquinas.filter((maquina) => {
+    const tipoNombre = getMaquinaTipoNombre(maquina);
     const matchesSearch =
       !searchTerm ||
       maquina.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      maquina.tipo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tipoNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       maquina.placas.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesTipo = !selectedTipo || maquina.tipo === selectedTipo;
+    const matchesTipo = !selectedTipo || maquina.tipoId === selectedTipo;
     const matchesEstado = !selectedEstado || maquina.estado === selectedEstado;
     return matchesSearch && matchesTipo && matchesEstado;
   });
@@ -480,9 +506,9 @@ export default function Maquinas() {
                   <SelectValue placeholder="Tipo" />
                 </SelectTrigger>
                 <SelectContent>
-                  {tiposMaquina.map((tipo) => (
-                    <SelectItem key={tipo} value={tipo}>
-                      {tipo}
+                  {tiposCatalogo.map((tipo) => (
+                    <SelectItem key={tipo.id} value={tipo.id}>
+                      {tipo.nombre}
                     </SelectItem>
                   ))}
                 </SelectContent>

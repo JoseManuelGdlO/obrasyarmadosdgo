@@ -1,5 +1,7 @@
 const express = require("express");
 const Maquina = require("../models/Maquina");
+const MaquinaClase = require("../models/MaquinaClase");
+const MaquinaTipo = require("../models/MaquinaTipo");
 const MaquinaChecklistItem = require("../models/MaquinaChecklistItem");
 const Trabajador = require("../models/Trabajador");
 const {
@@ -14,18 +16,28 @@ router.get("/maquinas/:id", async (req, res) => {
       attributes: [
         "id",
         "nombre",
-        "tipo",
         "marca",
         "modelo",
         "placas",
         "numeroSerie",
         "estado",
       ],
+      include: [
+        { model: MaquinaClase, as: "clase", attributes: ["id", "nombre"] },
+        { model: MaquinaTipo, as: "tipoCatalogo", attributes: ["id", "nombre"] },
+      ],
     });
     if (!maquina) {
       return res.status(404).json({ message: "Máquina no encontrada." });
     }
-    return res.status(200).json({ maquina });
+    const json = maquina.toJSON();
+    return res.status(200).json({
+      maquina: {
+        ...json,
+        tipo: json.tipoCatalogo?.nombre || "",
+        claseNombre: json.clase?.nombre || "",
+      },
+    });
   } catch (error) {
     return res.status(500).json({
       message: "Error al obtener la máquina.",

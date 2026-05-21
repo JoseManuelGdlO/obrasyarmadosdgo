@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/api";
 import {
   Plus,
   Truck,
@@ -47,7 +49,8 @@ export interface InventarioItem {
 
 export interface MaquinaFormData {
   nombre: string;
-  tipo: string;
+  claseId: string;
+  tipoId: string;
   marca: string;
   modelo: string;
   placas: string;
@@ -60,20 +63,26 @@ export interface MaquinaFormData {
   fechaAdquisicion: string;
   estado: MaquinaEstado;
   ultimoMantenimiento: string;
+  tipoCombustible: string;
+  pedimento: string;
+  pedimentoNumero: string;
+  factura: string;
+  facturaNumero: string;
+  facturaImporte: string;
+  tarjeton: string;
+  tarjetonNumero: string;
+  contratoCompraventa: string;
+  seguro: string;
+  seguroVigencia: string;
   checklistItems: ChecklistItemDef[];
   planesServicio: ServicePlanDef[];
 }
 
-const tiposMaquina = [
-  "Excavadora",
-  "Grúa",
-  "Bulldozer",
-  "Pavimentadora",
-  "Compactadora",
-  "Montacargas",
-  "Camión",
-  "Retroexcavadora",
-];
+interface CatalogOption {
+  id: string;
+  nombre: string;
+  activo?: boolean;
+}
 
 const estados: MaquinaEstado[] = [
   "Operativa",
@@ -84,7 +93,8 @@ const estados: MaquinaEstado[] = [
 
 const defaultForm: MaquinaFormData = {
   nombre: "",
-  tipo: "",
+  claseId: "",
+  tipoId: "",
   marca: "",
   modelo: "",
   placas: "",
@@ -97,6 +107,17 @@ const defaultForm: MaquinaFormData = {
   fechaAdquisicion: "",
   estado: "Operativa",
   ultimoMantenimiento: "",
+  tipoCombustible: "",
+  pedimento: "",
+  pedimentoNumero: "",
+  factura: "",
+  facturaNumero: "",
+  facturaImporte: "",
+  tarjeton: "",
+  tarjetonNumero: "",
+  contratoCompraventa: "",
+  seguro: "",
+  seguroVigencia: "",
   checklistItems: [],
   planesServicio: [],
 };
@@ -133,6 +154,24 @@ export default function MaquinaModal({
   const [servicePiezaSearch, setServicePiezaSearch] = useState("");
 
   const isEdit = useMemo(() => mode === "edit", [mode]);
+
+  const { data: clasesData } = useQuery({
+    queryKey: ["maquina-clases", "activos"],
+    queryFn: () => apiRequest<{ clases: CatalogOption[] }>("/maquina-clases?activo=true"),
+    enabled: open,
+  });
+
+  const { data: tiposData } = useQuery({
+    queryKey: ["maquina-tipos", form.claseId],
+    queryFn: () =>
+      apiRequest<{ tipos: CatalogOption[] }>(
+        `/maquina-tipos?activo=true&claseId=${form.claseId}`
+      ),
+    enabled: open && Boolean(form.claseId),
+  });
+
+  const clasesActivas = clasesData?.clases || [];
+  const tiposActivos = tiposData?.tipos || [];
 
   useEffect(() => {
     if (open) {
@@ -273,23 +312,48 @@ export default function MaquinaModal({
                       required
                     />
                   </div>
-                  <div className="space-y-1">
-                    <Label>Tipo</Label>
-                    <Select
-                      value={form.tipo}
-                      onValueChange={(value) => setForm((prev) => ({ ...prev, tipo: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar tipo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {tiposMaquina.map((t) => (
-                          <SelectItem key={t} value={t}>
-                            {t}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label>Clase</Label>
+                      <Select
+                        value={form.claseId}
+                        onValueChange={(value) =>
+                          setForm((prev) => ({ ...prev, claseId: value, tipoId: "" }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar clase" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {clasesActivas.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.nombre}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Tipo</Label>
+                      <Select
+                        value={form.tipoId}
+                        onValueChange={(value) =>
+                          setForm((prev) => ({ ...prev, tipoId: value }))
+                        }
+                        disabled={!form.claseId}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar tipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {tiposActivos.map((t) => (
+                            <SelectItem key={t.id} value={t.id}>
+                              {t.nombre}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
@@ -428,6 +492,123 @@ export default function MaquinaModal({
                         }
                         required
                       />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 pt-2 border-t">
+                    <h4 className="text-sm font-semibold text-gray-800">Documentación</h4>
+                    <div className="space-y-1">
+                      <Label>Tipo de combustible</Label>
+                      <Input
+                        placeholder="Ej: Diésel"
+                        value={form.tipoCombustible}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, tipoCombustible: e.target.value }))
+                        }
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label>Pedimento</Label>
+                        <Input
+                          value={form.pedimento}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, pedimento: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>No. Pedimento</Label>
+                        <Input
+                          value={form.pedimentoNumero}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, pedimentoNumero: e.target.value }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="space-y-1">
+                        <Label>Factura</Label>
+                        <Input
+                          value={form.factura}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, factura: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>No. Factura</Label>
+                        <Input
+                          value={form.facturaNumero}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, facturaNumero: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Importe</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          value={form.facturaImporte}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, facturaImporte: e.target.value }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label>Tarjetón</Label>
+                        <Input
+                          value={form.tarjeton}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, tarjeton: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>No. Tarjetón</Label>
+                        <Input
+                          value={form.tarjetonNumero}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, tarjetonNumero: e.target.value }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Contrato de compraventa</Label>
+                      <Input
+                        value={form.contratoCompraventa}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, contratoCompraventa: e.target.value }))
+                        }
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label>Seguro</Label>
+                        <Input
+                          value={form.seguro}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, seguro: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Vigencia</Label>
+                        <Input
+                          type="date"
+                          value={form.seguroVigencia}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, seguroVigencia: e.target.value }))
+                          }
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>

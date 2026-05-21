@@ -6,6 +6,8 @@ const UsuarioMaquina = require("./UsuarioMaquina");
 const Cliente = require("./Cliente");
 const Articulo = require("./Articulo");
 const Maquina = require("./Maquina");
+const MaquinaClase = require("./MaquinaClase");
+const MaquinaTipo = require("./MaquinaTipo");
 const MaquinaChecklistItem = require("./MaquinaChecklistItem");
 const MaquinaPlanServicio = require("./MaquinaPlanServicio");
 const PlanServicioPieza = require("./PlanServicioPieza");
@@ -20,6 +22,18 @@ const OrdenTrabajoActividadTecnico = require("./OrdenTrabajoActividadTecnico");
 const OrdenTrabajoItem = require("./OrdenTrabajoItem");
 const MovimientoInventario = require("./MovimientoInventario");
 const ChecklistDiario = require("./ChecklistDiario");
+
+MaquinaClase.hasMany(MaquinaTipo, {
+  foreignKey: "claseId",
+  as: "tipos",
+  onDelete: "RESTRICT",
+});
+MaquinaTipo.belongsTo(MaquinaClase, { foreignKey: "claseId", as: "clase" });
+
+Maquina.belongsTo(MaquinaClase, { foreignKey: "claseId", as: "clase" });
+Maquina.belongsTo(MaquinaTipo, { foreignKey: "tipoId", as: "tipoCatalogo" });
+MaquinaClase.hasMany(Maquina, { foreignKey: "claseId", as: "maquinas" });
+MaquinaTipo.hasMany(Maquina, { foreignKey: "tipoId", as: "maquinas" });
 
 Maquina.hasMany(MaquinaChecklistItem, {
   foreignKey: "maquinaId",
@@ -156,6 +170,8 @@ module.exports = {
   Cliente,
   Articulo,
   Maquina,
+  MaquinaClase,
+  MaquinaTipo,
   MaquinaChecklistItem,
   MaquinaPlanServicio,
   PlanServicioPieza,

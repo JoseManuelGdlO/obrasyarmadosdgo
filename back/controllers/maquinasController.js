@@ -1,6 +1,8 @@
 const { Op } = require("sequelize");
 const UsuarioMaquina = require("../models/UsuarioMaquina");
 const Maquina = require("../models/Maquina");
+const MaquinaClase = require("../models/MaquinaClase");
+const MaquinaTipo = require("../models/MaquinaTipo");
 const MaquinaChecklistItem = require("../models/MaquinaChecklistItem");
 const MaquinaPlanServicio = require("../models/MaquinaPlanServicio");
 const PlanServicioPieza = require("../models/PlanServicioPieza");
@@ -8,6 +10,25 @@ const Articulo = require("../models/Articulo");
 const { ESTADOS_MAQUINA } = require("../models/Maquina");
 const P = require("../constants/permissions");
 const { hasMaquinasViewGlobal } = require("../middlewares/permissions");
+
+const catalogInclude = [
+  { model: MaquinaClase, as: "clase", attributes: ["id", "nombre"] },
+  { model: MaquinaTipo, as: "tipoCatalogo", attributes: ["id", "nombre", "claseId"] },
+];
+
+const DOC_FIELDS = [
+  "tipoCombustible",
+  "pedimento",
+  "pedimentoNumero",
+  "factura",
+  "facturaNumero",
+  "facturaImporte",
+  "tarjeton",
+  "tarjetonNumero",
+  "contratoCompraventa",
+  "seguro",
+  "seguroVigencia",
+];
 
 const normalizeRequiredString = (value) => {
   if (typeof value !== "string") {
@@ -17,12 +38,56 @@ const normalizeRequiredString = (value) => {
   return trimmed ? trimmed : null;
 };
 
+const normalizeOptionalString = (value) => {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string") return String(value).trim() || null;
+  const trimmed = value.trim();
+  return trimmed || null;
+};
+
+const validateClaseTipo = async (claseId, tipoId) => {
+  if (!claseId || !tipoId) {
+    return { ok: false, message: "claseId y tipoId son obligatorios." };
+  }
+  const tipo = await MaquinaTipo.findByPk(tipoId);
+  if (!tipo) {
+    return { ok: false, message: "Tipo de máquina no encontrado." };
+  }
+  if (tipo.claseId !== claseId) {
+    return { ok: false, message: "El tipo no pertenece a la clase seleccionada." };
+  }
+  const clase = await MaquinaClase.findByPk(claseId);
+  if (!clase) {
+    return { ok: false, message: "Clase de máquina no encontrada." };
+  }
+  return { ok: true };
+};
+
+const pickDocFields = (body) => {
+  const doc = {};
+  for (const key of DOC_FIELDS) {
+    if (body[key] !== undefined) {
+      if (key === "facturaImporte") {
+        doc[key] =
+          body[key] === null || body[key] === ""
+            ? null
+            : Number(body[key]);
+      } else if (key === "seguroVigencia") {
+        doc[key] = body[key] || null;
+      } else {
+        doc[key] = normalizeOptionalString(body[key]);
+      }
+    }
+  }
+  return doc;
+};
+
 const buildIncludeFromQuery = (includeParam) => {
+  const includes = [...catalogInclude];
   if (!includeParam || typeof includeParam !== "string") {
-    return [];
+    return includes;
   }
   const parts = includeParam.split(",").map((s) => s.trim().toLowerCase());
-  const includes = [];
   if (parts.includes("checklist")) {
     includes.push({
       model: MaquinaChecklistItem,
@@ -52,25 +117,17 @@ const buildIncludeFromQuery = (includeParam) => {
 
 const listMaquinas = async (req, res) => {
   try {
-    const { search, tipo, estado, include: includeParam } = req.query;
+    const { search, tipoId, estado, include: includeParam } = req.query;
     const where = {};
 
-    if (tipo) {
-      where.tipo = tipo;
+    if (tipoId) {
+      where.tipoId = tipoId;
     }
     if (estado) {
       if (!ESTADOS_MAQUINA.includes(estado)) {
         return res.status(400).json({ message: "Estado de máquina inválido." });
       }
       where.estado = estado;
-    }
-    if (search && String(search).trim()) {
-      const term = `%${String(search).trim()}%`;
-      where[Op.or] = [
-        { nombre: { [Op.like]: term } },
-        { tipo: { [Op.like]: term } },
-        { placas: { [Op.like]: term } },
-      ];
     }
 
     if (!hasMaquinasViewGlobal(req)) {
@@ -86,6 +143,28 @@ const listMaquinas = async (req, res) => {
     }
 
     const include = buildIncludeFromQuery(includeParam);
+
+    if (search && String(search).trim()) {
+      const term = `%${String(search).trim()}%`;
+      const maquinas = await Maquina.findAll({
+        where,
+        include,
+        order: [["createdAt", "DESC"]],
+      });
+      const filtered = maquinas.filter((m) => {
+        const json = m.toJSON();
+        const tipoNombre = json.tipoCatalogo?.nombre || "";
+        const claseNombre = json.clase?.nombre || "";
+        const termLower = String(search).trim().toLowerCase();
+        return (
+          (json.nombre || "").toLowerCase().includes(termLower) ||
+          tipoNombre.toLowerCase().includes(termLower) ||
+          claseNombre.toLowerCase().includes(termLower) ||
+          (json.placas || "").toLowerCase().includes(termLower)
+        );
+      });
+      return res.status(200).json({ maquinas: filtered });
+    }
 
     const maquinas = await Maquina.findAll({
       where,
@@ -105,13 +184,9 @@ const getMaquinaById = async (req, res) => {
   try {
     const { id } = req.params;
     const { include: includeParam } = req.query;
-    const include = buildIncludeFromQuery(
-      includeParam || "checklist,planes"
-    );
+    const include = buildIncludeFromQuery(includeParam || "checklist,planes");
 
-    const maquina = await Maquina.findByPk(id, {
-      include: include.length ? include : undefined,
-    });
+    const maquina = await Maquina.findByPk(id, { include });
     if (!maquina) {
       return res.status(404).json({ message: "Máquina no encontrada." });
     }
@@ -146,7 +221,8 @@ const createMaquina = async (req, res) => {
     const body = req.body;
     const {
       nombre,
-      tipo,
+      claseId,
+      tipoId,
       marca,
       modelo,
       placas,
@@ -162,7 +238,6 @@ const createMaquina = async (req, res) => {
     } = body;
 
     const normalizedNombre = normalizeRequiredString(nombre);
-    const normalizedTipo = normalizeRequiredString(tipo);
     const normalizedMarca = normalizeRequiredString(marca);
     const normalizedModelo = normalizeRequiredString(modelo);
     const normalizedPlacas = normalizeRequiredString(placas);
@@ -171,7 +246,8 @@ const createMaquina = async (req, res) => {
 
     if (
       !normalizedNombre ||
-      !normalizedTipo ||
+      !claseId ||
+      !tipoId ||
       !normalizedMarca ||
       !normalizedModelo ||
       !normalizedPlacas ||
@@ -179,9 +255,15 @@ const createMaquina = async (req, res) => {
     ) {
       return res.status(400).json({
         message:
-          "nombre, tipo, marca, modelo, placas y numeroSerie son obligatorios.",
+          "nombre, claseId, tipoId, marca, modelo, placas y numeroSerie son obligatorios.",
       });
     }
+
+    const claseTipoCheck = await validateClaseTipo(claseId, tipoId);
+    if (!claseTipoCheck.ok) {
+      return res.status(400).json({ message: claseTipoCheck.message });
+    }
+
     if (fechaAdquisicion === undefined || !normalizedUbicacion) {
       return res.status(400).json({
         message: "fechaAdquisicion y ubicacion son obligatorios.",
@@ -193,7 +275,8 @@ const createMaquina = async (req, res) => {
 
     const created = await Maquina.create({
       nombre: normalizedNombre,
-      tipo: normalizedTipo,
+      claseId,
+      tipoId,
       marca: normalizedMarca,
       modelo: normalizedModelo,
       placas: normalizedPlacas,
@@ -206,9 +289,10 @@ const createMaquina = async (req, res) => {
       fechaAdquisicion,
       ubicacion: normalizedUbicacion,
       ultimoMantenimiento: ultimoMantenimiento ?? null,
+      ...pickDocFields(body),
     });
 
-    const maquina = await Maquina.findByPk(created.id);
+    const maquina = await Maquina.findByPk(created.id, { include: catalogInclude });
     return res.status(201).json({
       message: "Máquina creada correctamente.",
       maquina,
@@ -247,7 +331,8 @@ const updateMaquina = async (req, res) => {
 
     const allowed = [
       "nombre",
-      "tipo",
+      "claseId",
+      "tipoId",
       "marca",
       "modelo",
       "placas",
@@ -260,6 +345,7 @@ const updateMaquina = async (req, res) => {
       "fechaAdquisicion",
       "ubicacion",
       "ultimoMantenimiento",
+      ...DOC_FIELDS,
     ];
     const updates = {};
     for (const key of allowed) {
@@ -270,7 +356,6 @@ const updateMaquina = async (req, res) => {
 
     const requiredStringFields = [
       "nombre",
-      "tipo",
       "marca",
       "modelo",
       "placas",
@@ -289,6 +374,30 @@ const updateMaquina = async (req, res) => {
       }
     }
 
+    for (const key of DOC_FIELDS) {
+      if (updates[key] !== undefined) {
+        if (key === "facturaImporte") {
+          updates[key] =
+            updates[key] === null || updates[key] === ""
+              ? null
+              : Number(updates[key]);
+        } else if (key === "seguroVigencia") {
+          updates[key] = updates[key] || null;
+        } else {
+          updates[key] = normalizeOptionalString(updates[key]);
+        }
+      }
+    }
+
+    const nextClaseId = updates.claseId !== undefined ? updates.claseId : maquina.claseId;
+    const nextTipoId = updates.tipoId !== undefined ? updates.tipoId : maquina.tipoId;
+    if (updates.claseId !== undefined || updates.tipoId !== undefined) {
+      const claseTipoCheck = await validateClaseTipo(nextClaseId, nextTipoId);
+      if (!claseTipoCheck.ok) {
+        return res.status(400).json({ message: claseTipoCheck.message });
+      }
+    }
+
     if (updates.estado !== undefined && !ESTADOS_MAQUINA.includes(updates.estado)) {
       return res.status(400).json({ message: "Estado inválido." });
     }
@@ -298,7 +407,7 @@ const updateMaquina = async (req, res) => {
     }
 
     await maquina.update(updates);
-    const updated = await Maquina.findByPk(id);
+    const updated = await Maquina.findByPk(id, { include: catalogInclude });
     return res.status(200).json({
       message: "Máquina actualizada correctamente.",
       maquina: updated,

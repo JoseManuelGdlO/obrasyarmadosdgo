@@ -13,11 +13,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { getMaquinaClaseTipoLabel, getMaquinaTipoNombre } from "@/lib/maquina";
 
 type MaquinaBackend = {
   id: string;
   nombre: string;
-  tipo: string;
+  claseId?: string;
+  tipoId?: string;
+  clase?: { id: string; nombre: string };
+  tipoCatalogo?: { id: string; nombre: string };
   marca?: string;
   modelo?: string;
   placas: string;
@@ -154,7 +158,7 @@ export default function Checklist() {
     return (
       m.nombre.toLowerCase().includes(term) ||
       (m.placas || "").toLowerCase().includes(term) ||
-      (m.tipo || "").toLowerCase().includes(term)
+      getMaquinaTipoNombre(m).toLowerCase().includes(term)
     );
   });
 
@@ -278,7 +282,7 @@ export default function Checklist() {
                     <div>
                       <h3 className="font-semibold text-gray-900">{maquina.nombre}</h3>
                       <p className="text-sm text-gray-500">
-                        {maquina.tipo} · {maquina.placas}
+                        {getMaquinaClaseTipoLabel(maquina)} · {maquina.placas}
                       </p>
                     </div>
                   </div>
@@ -317,7 +321,8 @@ export default function Checklist() {
               Checklist — {selectedMaquina?.nombre}
             </DialogTitle>
             <p className="text-sm text-gray-500">
-              {selectedMaquina?.tipo} · {selectedMaquina?.placas}
+              {selectedMaquina ? getMaquinaClaseTipoLabel(selectedMaquina) : ""} ·{" "}
+              {selectedMaquina?.placas}
             </p>
           </DialogHeader>
 

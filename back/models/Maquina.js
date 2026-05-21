@@ -20,8 +20,12 @@ const Maquina = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    tipo: {
-      type: DataTypes.STRING,
+    claseId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+    },
+    tipoId: {
+      type: DataTypes.UUID,
       allowNull: false,
     },
     marca: {
@@ -75,6 +79,50 @@ const Maquina = sequelize.define(
       allowNull: false,
     },
     ultimoMantenimiento: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+    },
+    tipoCombustible: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    pedimento: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    pedimentoNumero: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    factura: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    facturaNumero: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    facturaImporte: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: true,
+    },
+    tarjeton: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    tarjetonNumero: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    contratoCompraventa: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    seguro: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    seguroVigencia: {
       type: DataTypes.DATEONLY,
       allowNull: true,
     },

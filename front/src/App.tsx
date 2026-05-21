@@ -10,6 +10,7 @@ import OrdenesTrabajo from "./pages/OrdenesTrabajo";
 import Asignaciones from "./pages/Asignaciones";
 import Trabajadores from "./pages/Trabajadores";
 import Maquinas from "./pages/Maquinas";
+import MaquinaCatalogo from "./pages/MaquinaCatalogo";
 import Proveedores from "./pages/Proveedores";
 import Inventario from "./pages/Inventario";
 import Proyectos from "./pages/Proyectos";
@@ -79,6 +80,16 @@ const App = () => (
                             requiredPermissions={[PERMISSIONS.MAQUINAS_VIEW, PERMISSIONS.MAQUINAS_READ_ASSIGNED]}
                           >
                             <Maquinas />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/maquinas/catalogo"
+                        element={
+                          <ProtectedRoute
+                            requiredPermissions={[PERMISSIONS.MAQUINAS_VIEW, PERMISSIONS.MAQUINAS_READ_ASSIGNED]}
+                          >
+                            <MaquinaCatalogo />
                           </ProtectedRoute>
                         }
                       />

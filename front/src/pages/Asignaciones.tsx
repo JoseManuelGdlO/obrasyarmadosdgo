@@ -21,11 +21,15 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { apiRequest } from "@/lib/api";
+import { getMaquinaClaseTipoLabel, getMaquinaTipoNombre } from "@/lib/maquina";
 
 type MaquinaBackend = {
   id: string;
   nombre: string;
-  tipo: string;
+  claseId?: string;
+  tipoId?: string;
+  clase?: { id: string; nombre: string };
+  tipoCatalogo?: { id: string; nombre: string };
   modelo: string;
   placas: string;
   estado: string;
@@ -59,18 +63,6 @@ type ProyectoAsignadoVM = {
   fechaAsignacion: string;
   tiempoAsignada: string;
 };
-
-const tiposMaquina = [
-  "Excavadora",
-  "Grúa",
-  "Bulldozer",
-  "Pavimentadora",
-  "Compactadora",
-  "Montacargas",
-  "Camión",
-  "Retroexcavadora",
-  "Soldadora",
-];
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -134,6 +126,16 @@ export default function Asignaciones() {
     queryKey: ["asign-proyectos"],
     queryFn: () => apiRequest<{ proyectos: ProyectoBackend[] }>("/proyectos"),
   });
+
+  const { data: tiposCatalogData } = useQuery({
+    queryKey: ["maquina-tipos", "asignaciones"],
+    queryFn: () =>
+      apiRequest<{ tipos: Array<{ id: string; nombre: string }> }>(
+        "/maquina-tipos?activo=true"
+      ),
+  });
+
+  const tiposCatalogo = tiposCatalogData?.tipos || [];
 
   const { data: asignacionesData } = useQuery({
     queryKey: ["asignaciones-activas"],
@@ -203,17 +205,19 @@ export default function Asignaciones() {
     const proyectoAsignado = activasMap.get(maquina.id);
     const matchesSearch =
       (maquina.nombre || "").toLowerCase().includes(term) ||
-      (maquina.tipo || "").toLowerCase().includes(term) ||
+      getMaquinaTipoNombre(maquina).toLowerCase().includes(term) ||
       (maquina.placas || "").toLowerCase().includes(term) ||
       (proyectoAsignado?.proyectoNombre.toLowerCase().includes(term) || false);
-    const matchesTipo = selectedTipos.length === 0 || selectedTipos.includes(maquina.tipo);
+    const matchesTipo =
+      selectedTipos.length === 0 ||
+      (maquina.tipoId ? selectedTipos.includes(maquina.tipoId) : false);
     const matchesEstado = selectedEstados.length === 0 || selectedEstados.includes(maquina.estado);
     return matchesSearch && matchesTipo && matchesEstado;
   });
 
-  const toggleTipo = (tipo: string) => {
+  const toggleTipo = (tipoId: string) => {
     setSelectedTipos((prev) =>
-      prev.includes(tipo) ? prev.filter((t) => t !== tipo) : [...prev, tipo]
+      prev.includes(tipoId) ? prev.filter((t) => t !== tipoId) : [...prev, tipoId]
     );
   };
 
@@ -284,7 +288,7 @@ export default function Asignaciones() {
                   <SelectContent>
                     {maquinasAsignables.map((maquina) => (
                       <SelectItem key={maquina.id} value={maquina.id}>
-                        {maquina.nombre} - {maquina.tipo}
+                        {maquina.nombre} - {getMaquinaClaseTipoLabel(maquina)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -397,18 +401,18 @@ export default function Asignaciones() {
                 <PopoverContent className="w-56 p-3" align="start">
                   <div className="space-y-2">
                     <div className="font-medium text-sm mb-2">Seleccionar tipos</div>
-                    {tiposMaquina.map((tipo) => (
-                      <div key={tipo} className="flex items-center space-x-2">
+                    {tiposCatalogo.map((tipo) => (
+                      <div key={tipo.id} className="flex items-center space-x-2">
                         <Checkbox
-                          id={`tipo-${tipo}`}
-                          checked={selectedTipos.includes(tipo)}
-                          onCheckedChange={() => toggleTipo(tipo)}
+                          id={`tipo-${tipo.id}`}
+                          checked={selectedTipos.includes(tipo.id)}
+                          onCheckedChange={() => toggleTipo(tipo.id)}
                         />
                         <Label
-                          htmlFor={`tipo-${tipo}`}
+                          htmlFor={`tipo-${tipo.id}`}
                           className="text-sm font-normal cursor-pointer flex-1"
                         >
-                          {tipo}
+                          {tipo.nombre}
                         </Label>
                       </div>
                     ))}
@@ -498,7 +502,7 @@ export default function Asignaciones() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{maquina.tipo}</Badge>
+                      <Badge variant="secondary">{getMaquinaTipoNombre(maquina)}</Badge>
                     </TableCell>
                     <TableCell>
                       <code className="bg-gray-100 px-2 py-1 rounded text-sm">
