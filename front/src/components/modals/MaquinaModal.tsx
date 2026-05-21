@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -74,6 +75,9 @@ export interface MaquinaFormData {
   contratoCompraventa: string;
   seguro: string;
   seguroVigencia: string;
+  fotoPortadaPath: string;
+  fotoPortadaFile: File | null;
+  removeFotoPortada: boolean;
   checklistItems: ChecklistItemDef[];
   planesServicio: ServicePlanDef[];
 }
@@ -118,6 +122,9 @@ const defaultForm: MaquinaFormData = {
   contratoCompraventa: "",
   seguro: "",
   seguroVigencia: "",
+  fotoPortadaPath: "",
+  fotoPortadaFile: null,
+  removeFotoPortada: false,
   checklistItems: [],
   planesServicio: [],
 };
@@ -142,6 +149,7 @@ export default function MaquinaModal({
   inventario = [],
 }: MaquinaModalProps) {
   const [form, setForm] = useState<MaquinaFormData>(defaultForm);
+  const [previewPortadaUrl, setPreviewPortadaUrl] = useState<string>("");
 
   const [newItemLabel, setNewItemLabel] = useState("");
   const [newItemType, setNewItemType] = useState<"check" | "number">("check");
@@ -178,9 +186,12 @@ export default function MaquinaModal({
       setForm({
         ...defaultForm,
         ...(initialData || {}),
+        fotoPortadaFile: null,
+        removeFotoPortada: false,
         checklistItems: initialData?.checklistItems || [],
         planesServicio: initialData?.planesServicio || [],
       });
+      setPreviewPortadaUrl(initialData?.fotoPortadaPath || "");
       setNewItemLabel("");
       setNewItemUnit("");
       setNewItemType("check");
@@ -191,6 +202,19 @@ export default function MaquinaModal({
       setServicePiezaSearch("");
     }
   }, [open, initialData]);
+
+  useEffect(() => {
+    if (form.fotoPortadaFile) {
+      const tempUrl = URL.createObjectURL(form.fotoPortadaFile);
+      setPreviewPortadaUrl(tempUrl);
+      return () => URL.revokeObjectURL(tempUrl);
+    }
+    if (form.removeFotoPortada) {
+      setPreviewPortadaUrl("");
+      return;
+    }
+    setPreviewPortadaUrl(form.fotoPortadaPath || "");
+  }, [form.fotoPortadaFile, form.fotoPortadaPath, form.removeFotoPortada]);
 
   const addChecklistItem = () => {
     if (!newItemLabel.trim()) return;
@@ -494,7 +518,6 @@ export default function MaquinaModal({
                       />
                     </div>
                   </div>
-
                   <div className="space-y-3 pt-2 border-t">
                     <h4 className="text-sm font-semibold text-gray-800">Documentación</h4>
                     <div className="space-y-1">
@@ -610,6 +633,44 @@ export default function MaquinaModal({
                         />
                       </div>
                     </div>
+                  </div>
+
+                  <div className="space-y-2 rounded-lg border p-3">
+                    <Label>Foto de portada (JPG/PNG, máx 2MB)</Label>
+                    <Input
+                      type="file"
+                      accept="image/jpeg,image/png"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        setForm((prev) => ({
+                          ...prev,
+                          fotoPortadaFile: file,
+                          removeFotoPortada: false,
+                        }));
+                      }}
+                    />
+                    {previewPortadaUrl && (
+                      <img
+                        src={previewPortadaUrl}
+                        alt="Portada de máquina"
+                        className="h-28 w-full rounded-md border object-cover"
+                      />
+                    )}
+                    {(form.fotoPortadaPath || form.fotoPortadaFile) && (
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs">Quitar portada</Label>
+                        <Switch
+                          checked={form.removeFotoPortada}
+                          onCheckedChange={(checked) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              removeFotoPortada: checked,
+                              ...(checked ? { fotoPortadaFile: null } : {}),
+                            }))
+                          }
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

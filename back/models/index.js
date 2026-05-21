@@ -22,6 +22,7 @@ const OrdenTrabajoActividadTecnico = require("./OrdenTrabajoActividadTecnico");
 const OrdenTrabajoItem = require("./OrdenTrabajoItem");
 const MovimientoInventario = require("./MovimientoInventario");
 const ChecklistDiario = require("./ChecklistDiario");
+const Notification = require("./Notification");
 
 MaquinaClase.hasMany(MaquinaTipo, {
   foreignKey: "claseId",
@@ -160,6 +161,8 @@ Trabajador.hasMany(ChecklistDiario, {
 ChecklistDiario.belongsTo(Trabajador, { foreignKey: "trabajadorId", as: "trabajador" });
 User.hasMany(ChecklistDiario, { foreignKey: "userId", as: "checklistsDiarios" });
 ChecklistDiario.belongsTo(User, { foreignKey: "userId", as: "usuario" });
+User.hasMany(Notification, { foreignKey: "userId", as: "notifications" });
+Notification.belongsTo(User, { foreignKey: "userId", as: "user" });
 
 module.exports = {
   sequelize,
@@ -186,4 +189,5 @@ module.exports = {
   OrdenTrabajoItem,
   MovimientoInventario,
   ChecklistDiario,
+  Notification,
 };

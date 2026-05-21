@@ -2,13 +2,20 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 const sequelize = require("./config/database");
 const routes = require("./routes");
+const {
+  MACHINE_UPLOADS_DIR,
+  MACHINE_UPLOADS_ROUTE,
+  ensureMachineUploadsDir,
+} = require("./config/uploads");
 // Registra modelos y asociaciones Sequelize al iniciar la app.
 require("./models");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
+const HOST = process.env.HOST || "0.0.0.0";
 
 // Permite definir múltiples orígenes separados por coma en CORS_ORIGIN.
 const corsOrigins = (process.env.CORS_ORIGIN || "")
@@ -33,6 +40,13 @@ app.use(
   })
 );
 app.use(express.json());
+ensureMachineUploadsDir();
+app.use(
+  MACHINE_UPLOADS_ROUTE,
+  express.static(path.resolve(MACHINE_UPLOADS_DIR), {
+    maxAge: "7d",
+  })
+);
 
 // Endpoint liviano para chequeos de disponibilidad.
 app.get("/health", (_req, res) => {
@@ -47,10 +61,10 @@ const startServer = async () => {
     // Valida la conexión a DB antes de aceptar tráfico HTTP.
     await sequelize.authenticate();
 
-    app.listen(PORT, () => {
+    app.listen(PORT, HOST, () => {
       console.log(`Servidor backend corriendo en el puerto ${PORT}`);
     });
-    console.log(`Servidor backend corriendo en http://localhost:${PORT}/health`);
+    console.log(`Servidor backend corriendo en http://${HOST}:${PORT}/health`);
   } catch (error) {
     console.error("Error al iniciar el servidor:", error.message);
     process.exit(1);

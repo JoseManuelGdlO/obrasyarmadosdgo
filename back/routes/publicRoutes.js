@@ -21,6 +21,7 @@ router.get("/maquinas/:id", async (req, res) => {
         "placas",
         "numeroSerie",
         "estado",
+        "fotoPortadaPath",
       ],
       include: [
         { model: MaquinaClase, as: "clase", attributes: ["id", "nombre"] },

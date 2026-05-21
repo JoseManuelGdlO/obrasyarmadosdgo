@@ -1,4 +1,6 @@
 const { Op } = require("sequelize");
+const path = require("path");
+const fs = require("fs/promises");
 const UsuarioMaquina = require("../models/UsuarioMaquina");
 const Maquina = require("../models/Maquina");
 const MaquinaClase = require("../models/MaquinaClase");
@@ -10,6 +12,49 @@ const Articulo = require("../models/Articulo");
 const { ESTADOS_MAQUINA } = require("../models/Maquina");
 const P = require("../constants/permissions");
 const { hasMaquinasViewGlobal } = require("../middlewares/permissions");
+const {
+  MACHINE_UPLOADS_DIR,
+  MACHINE_UPLOADS_ROUTE,
+} = require("../config/uploads");
+
+const buildPublicPortadaPath = (filename) =>
+  `${MACHINE_UPLOADS_ROUTE}/${encodeURIComponent(filename)}`;
+
+const resolveStoredPortadaToAbsolute = (storedPath) => {
+  if (!storedPath || typeof storedPath !== "string") return null;
+  const normalizedRoute = `${MACHINE_UPLOADS_ROUTE}/`;
+  if (!storedPath.startsWith(normalizedRoute)) return null;
+  const filename = decodeURIComponent(storedPath.slice(normalizedRoute.length));
+  const absolutePath = path.resolve(MACHINE_UPLOADS_DIR, filename);
+  const uploadsRoot = path.resolve(MACHINE_UPLOADS_DIR);
+  if (!absolutePath.startsWith(`${uploadsRoot}${path.sep}`) && absolutePath !== uploadsRoot) {
+    return null;
+  }
+  return absolutePath;
+};
+
+const safeDeletePortadaFile = async (storedPath) => {
+  const absolutePath = resolveStoredPortadaToAbsolute(storedPath);
+  if (!absolutePath) return;
+  try {
+    await fs.unlink(absolutePath);
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      throw error;
+    }
+  }
+};
+
+const cleanupUploadedFileIfPresent = async (req) => {
+  if (!req.file?.path) return;
+  try {
+    await fs.unlink(req.file.path);
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      console.error("No se pudo eliminar archivo temporal de portada:", error.message);
+    }
+  }
+};
 
 const catalogInclude = [
   { model: MaquinaClase, as: "clase", attributes: ["id", "nombre"] },
@@ -290,6 +335,9 @@ const createMaquina = async (req, res) => {
       ubicacion: normalizedUbicacion,
       ultimoMantenimiento: ultimoMantenimiento ?? null,
       ...pickDocFields(body),
+      ...(req.file?.filename
+        ? { fotoPortadaPath: buildPublicPortadaPath(req.file.filename) }
+        : {}),
     });
 
     const maquina = await Maquina.findByPk(created.id, { include: catalogInclude });
@@ -298,6 +346,7 @@ const createMaquina = async (req, res) => {
       maquina,
     });
   } catch (error) {
+    await cleanupUploadedFileIfPresent(req);
     return res.status(500).json({
       message: "Error al crear máquina.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -346,6 +395,7 @@ const updateMaquina = async (req, res) => {
       "ubicacion",
       "ultimoMantenimiento",
       ...DOC_FIELDS,
+      "removeFotoPortada",
     ];
     const updates = {};
     for (const key of allowed) {
@@ -402,17 +452,36 @@ const updateMaquina = async (req, res) => {
       return res.status(400).json({ message: "Estado inválido." });
     }
 
+    const wantsToRemovePortada =
+      updates.removeFotoPortada === true || updates.removeFotoPortada === "true";
+    delete updates.removeFotoPortada;
+
+    if (req.file?.filename) {
+      updates.fotoPortadaPath = buildPublicPortadaPath(req.file.filename);
+    } else if (wantsToRemovePortada) {
+      updates.fotoPortadaPath = null;
+    }
+
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ message: "No hay campos para actualizar." });
     }
 
+    const oldPortadaPath = maquina.fotoPortadaPath;
     await maquina.update(updates);
+    const shouldDeleteOldPortada =
+      (req.file?.filename || wantsToRemovePortada) &&
+      oldPortadaPath &&
+      oldPortadaPath !== updates.fotoPortadaPath;
+    if (shouldDeleteOldPortada) {
+      await safeDeletePortadaFile(oldPortadaPath);
+    }
     const updated = await Maquina.findByPk(id, { include: catalogInclude });
     return res.status(200).json({
       message: "Máquina actualizada correctamente.",
       maquina: updated,
     });
   } catch (error) {
+    await cleanupUploadedFileIfPresent(req);
     return res.status(500).json({
       message: "Error al actualizar máquina.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -432,7 +501,9 @@ const deleteMaquina = async (req, res) => {
     if (!maquina) {
       return res.status(404).json({ message: "Máquina no encontrada." });
     }
+    const fotoPortadaPath = maquina.fotoPortadaPath;
     await maquina.destroy();
+    await safeDeletePortadaFile(fotoPortadaPath);
     return res.status(200).json({ message: "Máquina eliminada correctamente." });
   } catch (error) {
     return res.status(500).json({

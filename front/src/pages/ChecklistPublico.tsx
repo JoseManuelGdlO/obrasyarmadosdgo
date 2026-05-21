@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import logoObras from "@/assets/logo-obras.png";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, toAbsoluteAssetUrl } from "@/lib/api";
 
 type ChecklistItemBackend = {
   id: string;
@@ -34,6 +34,7 @@ type MaquinaPublic = {
   placas: string;
   numeroSerie?: string;
   estado?: string;
+  fotoPortadaPath?: string | null;
 };
 
 const publicRequest = <T,>(path: string, options: Parameters<typeof apiRequest>[1] = {}) =>
@@ -244,9 +245,17 @@ export default function ChecklistPublico() {
         <Card>
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Truck className="h-5 w-5 text-primary" />
-              </div>
+              {toAbsoluteAssetUrl(maquina.fotoPortadaPath) ? (
+                <img
+                  src={toAbsoluteAssetUrl(maquina.fotoPortadaPath) || ""}
+                  alt={`Portada ${maquina.nombre}`}
+                  className="h-12 w-16 rounded-lg object-cover border"
+                />
+              ) : (
+                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Truck className="h-5 w-5 text-primary" />
+                </div>
+              )}
               <div className="flex-1">
                 <p className="font-medium text-foreground">{maquina.nombre}</p>
                 <p className="text-xs text-muted-foreground">
