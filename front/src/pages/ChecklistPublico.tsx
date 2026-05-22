@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ClipboardCheck, Save, CheckCircle2, Truck } from "lucide-react";
@@ -42,6 +42,7 @@ const publicRequest = <T,>(path: string, options: Parameters<typeof apiRequest>[
 
 export default function ChecklistPublico() {
   const [searchParams] = useSearchParams();
+  const isPrintMode = searchParams.get("print") === "1";
   const [maquinaIdFromQR, setMaquinaIdFromQR] = useState<string | null>(null);
   const [parseError, setParseError] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -109,6 +110,22 @@ export default function ChecklistPublico() {
   const completedChecks = checkItems.filter((i) => checkedItems[i.id]).length;
   const totalChecks = checkItems.length;
   const progress = totalChecks > 0 ? Math.round((completedChecks / totalChecks) * 100) : 0;
+  const hasTriggeredPrint = useRef(false);
+
+  useEffect(() => {
+    if (!isPrintMode) return;
+    const handleAfterPrint = () => window.close();
+    window.addEventListener("afterprint", handleAfterPrint);
+    return () => window.removeEventListener("afterprint", handleAfterPrint);
+  }, [isPrintMode]);
+
+  useEffect(() => {
+    if (!isPrintMode || !maquinaIdFromQR || maquinaLoading || itemsLoading || !maquina) return;
+    if (hasTriggeredPrint.current) return;
+    hasTriggeredPrint.current = true;
+    const timer = window.setTimeout(() => window.print(), 400);
+    return () => window.clearTimeout(timer);
+  }, [isPrintMode, maquinaIdFromQR, maquinaLoading, itemsLoading, maquina]);
 
   const submitMutation = useMutation({
     mutationFn: (payload: Record<string, unknown>) =>
@@ -221,7 +238,7 @@ export default function ChecklistPublico() {
   return (
     <div className="min-h-screen bg-muted">
       {/* Header */}
-      <div className="bg-background border-b sticky top-0 z-10">
+      <div className="bg-background border-b sticky top-0 z-10 print:static">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <img src={logoObras} alt="Logo" className="h-8 w-8 object-contain" />
           <div className="flex-1 min-w-0">
@@ -240,9 +257,11 @@ export default function ChecklistPublico() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto p-4 space-y-4 pb-24">
+      <div
+        className={`max-w-2xl mx-auto p-4 space-y-4 print:pb-4 ${isPrintMode ? "pb-4" : "pb-24"}`}
+      >
         {/* Info máquina */}
-        <Card>
+        <Card className="print:break-inside-avoid">
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center gap-3">
               {toAbsoluteAssetUrl(maquina.fotoPortadaPath) ? (
@@ -287,7 +306,7 @@ export default function ChecklistPublico() {
         ) : (
           <>
             {/* Datos generales */}
-            <Card>
+            <Card className="print:break-inside-avoid">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm">Datos del Operador</CardTitle>
               </CardHeader>
@@ -295,36 +314,43 @@ export default function ChecklistPublico() {
                 <div className="space-y-1">
                   <Label className="text-xs">Nombre del Operador *</Label>
                   <Input
-                    placeholder="Ej: Juan Pérez"
+                    placeholder={isPrintMode ? undefined : "Ej: Juan Pérez"}
                     value={operador}
                     onChange={(e) => setOperador(e.target.value)}
                   />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Trabajador Asignado</Label>
-                  <Select
-                    value={trabajadorId || "none"}
-                    onValueChange={(val) => setTrabajadorId(val === "none" ? "" : val)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar trabajador" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Sin asignar</SelectItem>
-                      {trabajadores.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.nombre}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {isPrintMode ? (
+                    <div
+                      className="flex h-10 w-full rounded-md border border-input bg-background"
+                      aria-hidden
+                    />
+                  ) : (
+                    <Select
+                      value={trabajadorId || "none"}
+                      onValueChange={(val) => setTrabajadorId(val === "none" ? "" : val)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar trabajador" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sin asignar</SelectItem>
+                        {trabajadores.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.nombre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
             {/* Valores numéricos */}
             {numericItems.length > 0 && (
-              <Card>
+              <Card className="print:break-inside-avoid">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm">Lecturas</CardTitle>
                 </CardHeader>
@@ -338,7 +364,7 @@ export default function ChecklistPublico() {
                         </Label>
                         <Input
                           type="number"
-                          placeholder="0"
+                          placeholder={isPrintMode ? undefined : "0"}
                           value={numericValues[item.id] || ""}
                           onChange={(e) =>
                             setNumericValues((prev) => ({
@@ -355,13 +381,15 @@ export default function ChecklistPublico() {
             )}
 
             {/* Puntos de inspección */}
-            <Card>
+            <Card className="print:break-inside-avoid">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm">Puntos de Inspección</CardTitle>
-                  <span className="text-xs text-muted-foreground font-medium">
-                    {completedChecks}/{totalChecks} · {progress}%
-                  </span>
+                  {!isPrintMode && (
+                    <span className="text-xs text-muted-foreground font-medium">
+                      {completedChecks}/{totalChecks} · {progress}%
+                    </span>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
@@ -391,7 +419,7 @@ export default function ChecklistPublico() {
             </Card>
 
             {/* Observaciones y notas */}
-            <Card>
+            <Card className="print:break-inside-avoid">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm">Observaciones</CardTitle>
               </CardHeader>
@@ -399,19 +427,25 @@ export default function ChecklistPublico() {
                 <div className="space-y-1">
                   <Label className="text-xs">Observaciones</Label>
                   <Textarea
-                    placeholder="Reportar anomalías o fallas encontradas..."
+                    placeholder={
+                      isPrintMode ? undefined : "Reportar anomalías o fallas encontradas..."
+                    }
                     value={observaciones}
                     onChange={(e) => setObservaciones(e.target.value)}
-                    rows={3}
+                    rows={isPrintMode ? 12 : 3}
+                    className={isPrintMode ? "min-h-[240px] resize-none" : undefined}
                   />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Notas adicionales</Label>
                   <Textarea
-                    placeholder="Notas sobre el turno, entregas, etc..."
+                    placeholder={
+                      isPrintMode ? undefined : "Notas sobre el turno, entregas, etc..."
+                    }
                     value={notas}
                     onChange={(e) => setNotas(e.target.value)}
-                    rows={2}
+                    rows={isPrintMode ? 10 : 2}
+                    className={isPrintMode ? "min-h-[200px] resize-none" : undefined}
                   />
                 </div>
               </CardContent>
@@ -421,8 +455,8 @@ export default function ChecklistPublico() {
       </div>
 
       {/* Botón fijo de guardar */}
-      {checklistItems.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 z-10">
+      {checklistItems.length > 0 && !isPrintMode && (
+        <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 z-10 print:hidden">
           <div className="max-w-2xl mx-auto">
             <Button
               onClick={handleSubmit}

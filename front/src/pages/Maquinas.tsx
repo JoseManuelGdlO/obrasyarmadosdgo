@@ -43,6 +43,7 @@ import MaquinaModal, {
   ServicePlanDef,
 } from "@/components/modals/MaquinaModal";
 import { getMaquinaTipoNombre } from "@/lib/maquina";
+import { buildChecklistPublicoUrl, openChecklistPrintWindow } from "@/lib/checklist-publico";
 
 const estados = ["Operativa", "Disponible", "Mantenimiento", "Fuera de Servicio"] as const;
 
@@ -764,16 +765,7 @@ export default function Maquinas() {
                 className="flex flex-col items-center gap-3 p-6 bg-background rounded-lg border"
               >
                 <QRCodeSVG
-                  value={`${window.location.origin}/checklist-publico?data=${encodeURIComponent(
-                    JSON.stringify({
-                      id: qrMaquina.id,
-                      nombre: qrMaquina.nombre,
-                      marca: qrMaquina.marca,
-                      modelo: qrMaquina.modelo,
-                      placas: qrMaquina.placas,
-                      serie: qrMaquina.numeroSerie,
-                    })
-                  )}`}
+                  value={buildChecklistPublicoUrl(qrMaquina)}
                   size={200}
                   level="H"
                   includeMargin
@@ -784,7 +776,7 @@ export default function Maquinas() {
                 </p>
                 <p className="text-xs text-muted-foreground">S/N: {qrMaquina.numeroSerie}</p>
               </div>
-              <div className="flex gap-2 justify-center">
+              <div className="flex flex-wrap gap-2 justify-center">
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -827,7 +819,18 @@ export default function Maquinas() {
                   }}
                 >
                   <Printer className="h-4 w-4 mr-2" />
-                  Imprimir
+                  Imprimir QR
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (!openChecklistPrintWindow(qrMaquina)) {
+                      toast.error("No se pudo abrir la ventana de impresión");
+                    }
+                  }}
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  Imprimir checklist
                 </Button>
                 {typeof navigator !== "undefined" && navigator.share && (
                   <Button
@@ -871,16 +874,7 @@ export default function Maquinas() {
               <div className="flex items-center gap-2 p-3 bg-muted rounded-lg border">
                 <Input
                   readOnly
-                  value={`${window.location.origin}/checklist-publico?data=${encodeURIComponent(
-                    JSON.stringify({
-                      id: qrMaquina.id,
-                      nombre: qrMaquina.nombre,
-                      marca: qrMaquina.marca,
-                      modelo: qrMaquina.modelo,
-                      placas: qrMaquina.placas,
-                      serie: qrMaquina.numeroSerie,
-                    })
-                  )}`}
+                  value={buildChecklistPublicoUrl(qrMaquina)}
                   className="text-xs bg-background"
                 />
                 <Button
@@ -888,17 +882,7 @@ export default function Maquinas() {
                   size="sm"
                   className="shrink-0"
                   onClick={() => {
-                    const url = `${window.location.origin}/checklist-publico?data=${encodeURIComponent(
-                      JSON.stringify({
-                        id: qrMaquina.id,
-                        nombre: qrMaquina.nombre,
-                        marca: qrMaquina.marca,
-                        modelo: qrMaquina.modelo,
-                        placas: qrMaquina.placas,
-                        serie: qrMaquina.numeroSerie,
-                      })
-                    )}`;
-                    navigator.clipboard.writeText(url);
+                    navigator.clipboard.writeText(buildChecklistPublicoUrl(qrMaquina));
                     toast.success("Link copiado al portapapeles");
                   }}
                 >

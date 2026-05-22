@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, ClipboardCheck, Truck, Calendar, User, ChevronRight } from "lucide-react";
+import {
+  Search,
+  ClipboardCheck,
+  Truck,
+  Calendar,
+  User,
+  ChevronRight,
+  Printer,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +22,7 @@ import { toast } from "sonner";
 import { apiRequest, toAbsoluteAssetUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { getMaquinaClaseTipoLabel, getMaquinaTipoNombre } from "@/lib/maquina";
+import { openChecklistPrintWindow } from "@/lib/checklist-publico";
 
 type MaquinaBackend = {
   id: string;
@@ -325,10 +334,29 @@ export default function Checklist() {
           onInteractOutside={(e) => e.preventDefault()}
         >
           <DialogHeader className="p-6 pb-0">
-            <DialogTitle className="flex items-center gap-2">
-              <ClipboardCheck className="h-5 w-5 text-blue-600" />
-              Checklist — {selectedMaquina?.nombre}
-            </DialogTitle>
+            <div className="flex items-start justify-between gap-3">
+              <DialogTitle className="flex items-center gap-2">
+                <ClipboardCheck className="h-5 w-5 text-blue-600" />
+                Checklist — {selectedMaquina?.nombre}
+              </DialogTitle>
+              {selectedMaquina && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  disabled={isLoadingItems}
+                  onClick={() => {
+                    if (!openChecklistPrintWindow(selectedMaquina)) {
+                      toast.error("No se pudo abrir la ventana de impresión");
+                    }
+                  }}
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  Imprimir checklist
+                </Button>
+              )}
+            </div>
             {selectedMaquina && toAbsoluteAssetUrl(selectedMaquina.fotoPortadaPath) && (
               <img
                 src={toAbsoluteAssetUrl(selectedMaquina.fotoPortadaPath) || ""}
