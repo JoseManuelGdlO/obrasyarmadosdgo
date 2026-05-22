@@ -322,6 +322,11 @@ Ref: usuario_maquinas.maquinaId > maquinas.id [delete: cascade, update: cascade]
   - No es editable en `PATCH /api/maquinas/:id`.
   - Incluido en búsqueda de listado (`?search=` y filtro en frontend).
 - **Convención frontend**: en la API y base de datos el campo es `idu`. En la pantalla de inventario (`front/src/pages/Maquinas.tsx`) se muestra como **ID** para los operadores. No renombrar el campo en el backend ni en el contrato JSON.
+- **Campos de compra/documentación** (opcionales, sección Documentación en el modal):
+  - `costoVehiculo` — `DECIMAL(12,2)`; costo total del vehículo/máquina (distinto de `facturaImporte`, importe de factura).
+  - `fechaFactura` — `DATEONLY`; fecha de la factura de compra.
+  - `compradoA` — `STRING`; texto libre (vendedor, concesionaria, etc.).
+  - Otros campos de documentación existentes: `tipoCombustible`, `pedimento`, `factura`, `facturaNumero`, `facturaImporte`, `tarjeton`, `contratoCompraventa`, `seguro`, `seguroVigencia`, `fotoPortadaPath`.
 - **Endpoints relacionados**:
   - `GET /api/maquinas`
   - `GET /api/maquinas/:id`

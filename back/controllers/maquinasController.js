@@ -69,6 +69,9 @@ const DOC_FIELDS = [
   "factura",
   "facturaNumero",
   "facturaImporte",
+  "costoVehiculo",
+  "fechaFactura",
+  "compradoA",
   "tarjeton",
   "tarjetonNumero",
   "contratoCompraventa",
@@ -113,12 +116,12 @@ const pickDocFields = (body) => {
   const doc = {};
   for (const key of DOC_FIELDS) {
     if (body[key] !== undefined) {
-      if (key === "facturaImporte") {
+      if (key === "facturaImporte" || key === "costoVehiculo") {
         doc[key] =
           body[key] === null || body[key] === ""
             ? null
             : Number(body[key]);
-      } else if (key === "seguroVigencia") {
+      } else if (key === "seguroVigencia" || key === "fechaFactura") {
         doc[key] = body[key] || null;
       } else {
         doc[key] = normalizeOptionalString(body[key]);
@@ -430,12 +433,12 @@ const updateMaquina = async (req, res) => {
 
     for (const key of DOC_FIELDS) {
       if (updates[key] !== undefined) {
-        if (key === "facturaImporte") {
+        if (key === "facturaImporte" || key === "costoVehiculo") {
           updates[key] =
             updates[key] === null || updates[key] === ""
               ? null
               : Number(updates[key]);
-        } else if (key === "seguroVigencia") {
+        } else if (key === "seguroVigencia" || key === "fechaFactura") {
           updates[key] = updates[key] || null;
         } else {
           updates[key] = normalizeOptionalString(updates[key]);

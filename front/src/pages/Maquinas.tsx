@@ -96,6 +96,9 @@ interface ApiMaquina {
   factura?: string | null;
   facturaNumero?: string | null;
   facturaImporte?: number | string | null;
+  costoVehiculo?: number | string | null;
+  fechaFactura?: string | null;
+  compradoA?: string | null;
   tarjeton?: string | null;
   tarjetonNumero?: string | null;
   contratoCompraventa?: string | null;
@@ -127,6 +130,9 @@ const buildMaquinaPayload = (form: MaquinaFormData) => ({
   factura: form.factura || null,
   facturaNumero: form.facturaNumero || null,
   facturaImporte: form.facturaImporte ? Number(form.facturaImporte) : null,
+  costoVehiculo: form.costoVehiculo ? Number(form.costoVehiculo) : null,
+  fechaFactura: form.fechaFactura || null,
+  compradoA: form.compradoA || null,
   tarjeton: form.tarjeton || null,
   tarjetonNumero: form.tarjetonNumero || null,
   contratoCompraventa: form.contratoCompraventa || null,
@@ -415,6 +421,10 @@ export default function Maquinas() {
       facturaNumero: editingMaquina.facturaNumero || "",
       facturaImporte:
         editingMaquina.facturaImporte != null ? String(editingMaquina.facturaImporte) : "",
+      costoVehiculo:
+        editingMaquina.costoVehiculo != null ? String(editingMaquina.costoVehiculo) : "",
+      fechaFactura: toDateInput(editingMaquina.fechaFactura),
+      compradoA: editingMaquina.compradoA || "",
       tarjeton: editingMaquina.tarjeton || "",
       tarjetonNumero: editingMaquina.tarjetonNumero || "",
       contratoCompraventa: editingMaquina.contratoCompraventa || "",

@@ -121,6 +121,18 @@ const Maquina = sequelize.define(
       type: DataTypes.DECIMAL(12, 2),
       allowNull: true,
     },
+    costoVehiculo: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: true,
+    },
+    fechaFactura: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+    },
+    compradoA: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     tarjeton: {
       type: DataTypes.STRING,
       allowNull: true,

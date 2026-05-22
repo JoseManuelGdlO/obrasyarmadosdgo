@@ -80,6 +80,9 @@ export interface MaquinaFormData {
   factura: string;
   facturaNumero: string;
   facturaImporte: string;
+  costoVehiculo: string;
+  fechaFactura: string;
+  compradoA: string;
   tarjeton: string;
   tarjetonNumero: string;
   contratoCompraventa: string;
@@ -130,6 +133,9 @@ const defaultForm: MaquinaFormData = {
   factura: "",
   facturaNumero: "",
   facturaImporte: "",
+  costoVehiculo: "",
+  fechaFactura: "",
+  compradoA: "",
   tarjeton: "",
   tarjetonNumero: "",
   contratoCompraventa: "",
@@ -697,6 +703,41 @@ export default function MaquinaModal({
                           }
                         />
                       </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label>Costo del vehículo</Label>
+                        <Input
+                          type="number"
+                          step="1.00"
+                          min="0"
+                          placeholder="0.00"
+                          value={form.costoVehiculo}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, costoVehiculo: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Fecha de factura</Label>
+                        <Input
+                          type="date"
+                          value={form.fechaFactura}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, fechaFactura: e.target.value }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>A quién se le compró</Label>
+                      <Input
+                        placeholder="Concesionaria / vendedor"
+                        value={form.compradoA}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, compradoA: e.target.value }))
+                        }
+                      />
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       <div className="space-y-1">
