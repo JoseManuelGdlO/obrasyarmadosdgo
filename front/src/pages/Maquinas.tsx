@@ -105,6 +105,8 @@ interface ApiMaquina {
   seguro?: string | null;
   seguroVigencia?: string | null;
   fotoPortadaPath?: string | null;
+  pedimentoArchivoPath?: string | null;
+  polizaSeguroPath?: string | null;
   checklistItems?: ApiChecklistItem[];
   planesServicio?: ApiPlanServicio[];
 }
@@ -176,6 +178,38 @@ const validatePortadaFile = (file: File | null) => {
   return null;
 };
 
+const DOCUMENT_ALLOWED_TYPES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "image/jpeg",
+  "image/png",
+]);
+
+const validateDocumentFile = (file: File | null, label: string) => {
+  if (!file) return null;
+  const maxSize = 5 * 1024 * 1024;
+  if (!DOCUMENT_ALLOWED_TYPES.has(file.type)) {
+    return `${label}: solo se permite PDF, DOC, DOCX, JPG o PNG.`;
+  }
+  if (file.size > maxSize) {
+    return `${label}: el archivo no puede superar 5MB.`;
+  }
+  return null;
+};
+
+const appendMaquinaFilesToFormData = (body: FormData, form: MaquinaFormData) => {
+  if (form.fotoPortadaFile) {
+    body.append("fotoPortada", form.fotoPortadaFile);
+  }
+  if (form.pedimentoArchivoFile) {
+    body.append("archivoPedimento", form.pedimentoArchivoFile);
+  }
+  if (form.polizaSeguroFile) {
+    body.append("archivoPolizaSeguro", form.polizaSeguroFile);
+  }
+};
+
 export default function Maquinas() {
   const queryClient = useQueryClient();
 
@@ -217,14 +251,17 @@ export default function Maquinas() {
     mutationFn: async (form: MaquinaFormData) => {
       const payload = buildMaquinaPayload(form);
       const portadaError = validatePortadaFile(form.fotoPortadaFile);
-      if (portadaError) {
-        throw new Error(portadaError);
-      }
+      if (portadaError) throw new Error(portadaError);
+      const pedimentoError = validateDocumentFile(
+        form.pedimentoArchivoFile,
+        "Pedimento"
+      );
+      if (pedimentoError) throw new Error(pedimentoError);
+      const polizaError = validateDocumentFile(form.polizaSeguroFile, "Póliza de seguro");
+      if (polizaError) throw new Error(polizaError);
       const body = new FormData();
       appendPayloadToFormData(body, payload);
-      if (form.fotoPortadaFile) {
-        body.append("fotoPortada", form.fotoPortadaFile);
-      }
+      appendMaquinaFilesToFormData(body, form);
       const created = await apiRequest<{ maquina: { id: string } }>("/maquinas", {
         method: "POST",
         body,
@@ -294,16 +331,21 @@ export default function Maquinas() {
       const payload = {
         ...buildMaquinaPayload(form),
         removeFotoPortada: form.removeFotoPortada,
+        removePedimentoArchivo: form.removePedimentoArchivo,
+        removePolizaSeguro: form.removePolizaSeguro,
       };
       const portadaError = validatePortadaFile(form.fotoPortadaFile);
-      if (portadaError) {
-        throw new Error(portadaError);
-      }
+      if (portadaError) throw new Error(portadaError);
+      const pedimentoError = validateDocumentFile(
+        form.pedimentoArchivoFile,
+        "Pedimento"
+      );
+      if (pedimentoError) throw new Error(pedimentoError);
+      const polizaError = validateDocumentFile(form.polizaSeguroFile, "Póliza de seguro");
+      if (polizaError) throw new Error(polizaError);
       const body = new FormData();
       appendPayloadToFormData(body, payload);
-      if (form.fotoPortadaFile) {
-        body.append("fotoPortada", form.fotoPortadaFile);
-      }
+      appendMaquinaFilesToFormData(body, form);
       await apiRequest(`/maquinas/${id}`, { method: "PATCH", body });
 
       // Reemplazo completo de checklist en edición para simplificar sincronización.
@@ -431,6 +473,9 @@ export default function Maquinas() {
       seguro: editingMaquina.seguro || "",
       seguroVigencia: toDateInput(editingMaquina.seguroVigencia),
       fotoPortadaPath: toAbsoluteAssetUrl(editingMaquina.fotoPortadaPath) || "",
+      pedimentoArchivoPath:
+        toAbsoluteAssetUrl(editingMaquina.pedimentoArchivoPath) || "",
+      polizaSeguroPath: toAbsoluteAssetUrl(editingMaquina.polizaSeguroPath) || "",
       checklistItems,
       planesServicio,
     };

@@ -91,6 +91,12 @@ export interface MaquinaFormData {
   fotoPortadaPath: string;
   fotoPortadaFile: File | null;
   removeFotoPortada: boolean;
+  pedimentoArchivoPath: string;
+  pedimentoArchivoFile: File | null;
+  removePedimentoArchivo: boolean;
+  polizaSeguroPath: string;
+  polizaSeguroFile: File | null;
+  removePolizaSeguro: boolean;
   checklistItems: ChecklistItemDef[];
   planesServicio: ServicePlanDef[];
 }
@@ -144,9 +150,103 @@ const defaultForm: MaquinaFormData = {
   fotoPortadaPath: "",
   fotoPortadaFile: null,
   removeFotoPortada: false,
+  pedimentoArchivoPath: "",
+  pedimentoArchivoFile: null,
+  removePedimentoArchivo: false,
+  polizaSeguroPath: "",
+  polizaSeguroFile: null,
+  removePolizaSeguro: false,
   checklistItems: [],
   planesServicio: [],
 };
+
+const DOCUMENT_ACCEPT =
+  ".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png";
+
+const isImageDocument = (file: File | null, url: string) => {
+  if (file) return file.type.startsWith("image/");
+  const lower = url.toLowerCase();
+  return /\.(jpe?g|png)(\?|$)/i.test(lower);
+};
+
+interface DocumentUploadBlockProps {
+  label: string;
+  removeLabel: string;
+  path: string;
+  file: File | null;
+  remove: boolean;
+  onFileChange: (file: File | null) => void;
+  onRemoveChange: (remove: boolean) => void;
+}
+
+function DocumentUploadBlock({
+  label,
+  removeLabel,
+  path,
+  file,
+  remove,
+  onFileChange,
+  onRemoveChange,
+}: DocumentUploadBlockProps) {
+  const [previewUrl, setPreviewUrl] = useState("");
+
+  useEffect(() => {
+    if (remove) {
+      setPreviewUrl("");
+      return;
+    }
+    if (file) {
+      const tempUrl = URL.createObjectURL(file);
+      setPreviewUrl(tempUrl);
+      return () => URL.revokeObjectURL(tempUrl);
+    }
+    setPreviewUrl(path || "");
+  }, [file, path, remove]);
+
+  const viewUrl = remove ? "" : file ? previewUrl : path;
+  const hasDocument = Boolean((path || file) && !remove);
+  const displayName = file?.name || (path ? path.split("/").pop() || "Documento guardado" : "");
+
+  return (
+    <div className="space-y-2 rounded-lg border p-3">
+      <Label>{label}</Label>
+      <Input
+        type="file"
+        accept={DOCUMENT_ACCEPT}
+        onChange={(e) => {
+          const selected = e.target.files?.[0] || null;
+          onFileChange(selected);
+          e.target.value = "";
+        }}
+      />
+      {displayName && (
+        <p className="text-xs text-muted-foreground truncate">{displayName}</p>
+      )}
+      {hasDocument && viewUrl && (
+        <a
+          href={viewUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-primary underline-offset-4 hover:underline"
+        >
+          Ver documento
+        </a>
+      )}
+      {hasDocument && viewUrl && isImageDocument(file, viewUrl) && (
+        <img src={viewUrl} alt={label} className="h-28 w-full rounded-md border object-cover" />
+      )}
+      {hasDocument && (
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">{removeLabel}</Label>
+          <Switch
+            checked={remove}
+            onCheckedChange={onRemoveChange}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface MaquinaModalProps {
   open: boolean;
@@ -273,6 +373,10 @@ export default function MaquinaModal({
         ...(initialData || {}),
         fotoPortadaFile: null,
         removeFotoPortada: false,
+        pedimentoArchivoFile: null,
+        removePedimentoArchivo: false,
+        polizaSeguroFile: null,
+        removePolizaSeguro: false,
         checklistItems: initialData?.checklistItems || [],
         planesServicio: initialData?.planesServicio || [],
       });
@@ -704,6 +808,27 @@ export default function MaquinaModal({
                         />
                       </div>
                     </div>
+                    <DocumentUploadBlock
+                      label="Subir pedimento (PDF, DOC, DOCX, JPG/PNG, máx 5MB)"
+                      removeLabel="Quitar pedimento"
+                      path={form.pedimentoArchivoPath}
+                      file={form.pedimentoArchivoFile}
+                      remove={form.removePedimentoArchivo}
+                      onFileChange={(file) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          pedimentoArchivoFile: file,
+                          removePedimentoArchivo: false,
+                        }))
+                      }
+                      onRemoveChange={(checked) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          removePedimentoArchivo: checked,
+                          ...(checked ? { pedimentoArchivoFile: null } : {}),
+                        }))
+                      }
+                    />
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
                         <Label>Costo del vehículo</Label>
@@ -822,6 +947,27 @@ export default function MaquinaModal({
                         />
                       </div>
                     </div>
+                    <DocumentUploadBlock
+                      label="Subir póliza de seguro (PDF, DOC, DOCX, JPG/PNG, máx 5MB)"
+                      removeLabel="Quitar póliza de seguro"
+                      path={form.polizaSeguroPath}
+                      file={form.polizaSeguroFile}
+                      remove={form.removePolizaSeguro}
+                      onFileChange={(file) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          polizaSeguroFile: file,
+                          removePolizaSeguro: false,
+                        }))
+                      }
+                      onRemoveChange={(checked) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          removePolizaSeguro: checked,
+                          ...(checked ? { polizaSeguroFile: null } : {}),
+                        }))
+                      }
+                    />
                   </div>
 
                   <div className="space-y-2 rounded-lg border p-3">

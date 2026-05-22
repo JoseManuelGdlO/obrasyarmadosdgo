@@ -16,22 +16,33 @@ const P = require("../constants/permissions");
 const checklistRoutes = require("./maquinaChecklistItemsRoutes");
 const planesRoutes = require("./maquinaPlanesServicioRoutes");
 const operadoresRoutes = require("./maquinasOperadoresRoutes");
-const { uploadMaquinaPortada } = require("../middlewares/uploadMaquinaPortada");
+const {
+  uploadMaquinaFiles,
+  MAQUINA_UPLOAD_FIELDS,
+  validateUploadedFileSizes,
+  cleanupUploadedFilesIfPresent,
+} = require("../middlewares/uploadMaquinaFiles");
 
 const router = express.Router();
 
-const handlePortadaUpload = (req, res, next) => {
-  uploadMaquinaPortada.single("fotoPortada")(req, res, (error) => {
+const handleMaquinaFilesUpload = (req, res, next) => {
+  uploadMaquinaFiles.fields(MAQUINA_UPLOAD_FIELDS)(req, res, async (error) => {
     if (!error) {
+      const sizeErrors = validateUploadedFileSizes(req);
+      if (sizeErrors.length > 0) {
+        await cleanupUploadedFilesIfPresent(req);
+        return res.status(400).json({ message: sizeErrors[0] });
+      }
       return next();
     }
+    await cleanupUploadedFilesIfPresent(req);
     if (error.name === "MulterError" && error.code === "LIMIT_FILE_SIZE") {
       return res.status(400).json({
-        message: "La imagen excede el tamaño máximo permitido de 2MB.",
+        message: "Uno de los archivos excede el tamaño máximo permitido (5MB).",
       });
     }
     return res.status(400).json({
-      message: error.message || "No se pudo procesar la imagen de portada.",
+      message: error.message || "No se pudieron procesar los archivos adjuntos.",
     });
   });
 };
@@ -45,7 +56,7 @@ const exposeMaquinaIdParam = (req, _res, next) => {
 };
 
 router.get("/", requireMaquinaReadAccess, listMaquinas);
-router.post("/", requirePermission(P.MAQUINAS_CREATE), handlePortadaUpload, createMaquina);
+router.post("/", requirePermission(P.MAQUINAS_CREATE), handleMaquinaFilesUpload, createMaquina);
 
 router.use("/:maquinaId/operadores", operadoresRoutes);
 router.use("/:maquinaId/checklist-items", checklistRoutes);
@@ -63,7 +74,7 @@ router.patch(
   requireMaquinaWriteAccess,
   exposeMaquinaIdParam,
   requireMaquinaAssignment,
-  handlePortadaUpload,
+  handleMaquinaFilesUpload,
   updateMaquina
 );
 router.delete("/:id", requirePermission(P.MAQUINAS_DELETE), deleteMaquina);

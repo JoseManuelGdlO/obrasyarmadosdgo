@@ -326,7 +326,13 @@ Ref: usuario_maquinas.maquinaId > maquinas.id [delete: cascade, update: cascade]
   - `costoVehiculo` — `DECIMAL(12,2)`; costo total del vehículo/máquina (distinto de `facturaImporte`, importe de factura).
   - `fechaFactura` — `DATEONLY`; fecha de la factura de compra.
   - `compradoA` — `STRING`; texto libre (vendedor, concesionaria, etc.).
-  - Otros campos de documentación existentes: `tipoCombustible`, `pedimento`, `factura`, `facturaNumero`, `facturaImporte`, `tarjeton`, `contratoCompraventa`, `seguro`, `seguroVigencia`, `fotoPortadaPath`.
+  - Otros campos de documentación existentes: `tipoCombustible`, `pedimento`, `pedimentoNumero`, `factura`, `facturaNumero`, `facturaImporte`, `tarjeton`, `tarjetonNumero`, `contratoCompraventa`, `seguro`, `seguroVigencia`.
+  - Archivos adjuntos (rutas públicas bajo `/uploads/maquinas/`):
+    - `fotoPortadaPath` — imagen JPG/PNG, máx. 2 MB; campo multipart `fotoPortada`.
+    - `pedimentoArchivoPath` — PDF, DOC, DOCX, JPG o PNG, máx. 5 MB; campo multipart `archivoPedimento`.
+    - `polizaSeguroPath` — mismos formatos que pedimento; campo multipart `archivoPolizaSeguro`.
+  - En `PATCH`, flags opcionales para eliminar sin reemplazar: `removeFotoPortada`, `removePedimentoArchivo`, `removePolizaSeguro` (valor `true`).
+  - `POST` y `PATCH` de máquinas aceptan `multipart/form-data` cuando hay archivos; el resto de campos van como campos de texto en el mismo formulario.
 - **Endpoints relacionados**:
   - `GET /api/maquinas`
   - `GET /api/maquinas/:id`

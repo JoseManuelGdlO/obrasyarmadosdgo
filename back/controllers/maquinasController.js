@@ -17,11 +17,12 @@ const {
   MACHINE_UPLOADS_DIR,
   MACHINE_UPLOADS_ROUTE,
 } = require("../config/uploads");
+const { cleanupUploadedFilesIfPresent } = require("../middlewares/uploadMaquinaFiles");
 
-const buildPublicPortadaPath = (filename) =>
+const buildPublicMachineUploadPath = (filename) =>
   `${MACHINE_UPLOADS_ROUTE}/${encodeURIComponent(filename)}`;
 
-const resolveStoredPortadaToAbsolute = (storedPath) => {
+const resolveStoredUploadToAbsolute = (storedPath) => {
   if (!storedPath || typeof storedPath !== "string") return null;
   const normalizedRoute = `${MACHINE_UPLOADS_ROUTE}/`;
   if (!storedPath.startsWith(normalizedRoute)) return null;
@@ -34,8 +35,8 @@ const resolveStoredPortadaToAbsolute = (storedPath) => {
   return absolutePath;
 };
 
-const safeDeletePortadaFile = async (storedPath) => {
-  const absolutePath = resolveStoredPortadaToAbsolute(storedPath);
+const safeDeleteStoredUpload = async (storedPath) => {
+  const absolutePath = resolveStoredUploadToAbsolute(storedPath);
   if (!absolutePath) return;
   try {
     await fs.unlink(absolutePath);
@@ -46,16 +47,26 @@ const safeDeletePortadaFile = async (storedPath) => {
   }
 };
 
-const cleanupUploadedFileIfPresent = async (req) => {
-  if (!req.file?.path) return;
-  try {
-    await fs.unlink(req.file.path);
-  } catch (error) {
-    if (error.code !== "ENOENT") {
-      console.error("No se pudo eliminar archivo temporal de portada:", error.message);
-    }
+const getUploadedFile = (req, fieldname) => req.files?.[fieldname]?.[0] || null;
+
+const pickUploadedFilePaths = (req) => {
+  const paths = {};
+  const portada = getUploadedFile(req, "fotoPortada");
+  if (portada?.filename) {
+    paths.fotoPortadaPath = buildPublicMachineUploadPath(portada.filename);
   }
+  const pedimento = getUploadedFile(req, "archivoPedimento");
+  if (pedimento?.filename) {
+    paths.pedimentoArchivoPath = buildPublicMachineUploadPath(pedimento.filename);
+  }
+  const poliza = getUploadedFile(req, "archivoPolizaSeguro");
+  if (poliza?.filename) {
+    paths.polizaSeguroPath = buildPublicMachineUploadPath(poliza.filename);
+  }
+  return paths;
 };
+
+const parseTruthyFlag = (value) => value === true || value === "true";
 
 const catalogInclude = [
   { model: MaquinaClase, as: "clase", attributes: ["id", "nombre"] },
@@ -342,9 +353,7 @@ const createMaquina = async (req, res) => {
       ubicacion: normalizedUbicacion,
       ultimoMantenimiento: ultimoMantenimiento ?? null,
       ...pickDocFields(body),
-      ...(req.file?.filename
-        ? { fotoPortadaPath: buildPublicPortadaPath(req.file.filename) }
-        : {}),
+      ...pickUploadedFilePaths(req),
     });
 
     const maquina = await Maquina.findByPk(created.id, { include: catalogInclude });
@@ -353,7 +362,7 @@ const createMaquina = async (req, res) => {
       maquina,
     });
   } catch (error) {
-    await cleanupUploadedFileIfPresent(req);
+    await cleanupUploadedFilesIfPresent(req);
     return res.status(500).json({
       message: "Error al crear máquina.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -403,6 +412,8 @@ const updateMaquina = async (req, res) => {
       "ultimoMantenimiento",
       ...DOC_FIELDS,
       "removeFotoPortada",
+      "removePedimentoArchivo",
+      "removePolizaSeguro",
     ];
     const updates = {};
     for (const key of allowed) {
@@ -459,28 +470,48 @@ const updateMaquina = async (req, res) => {
       return res.status(400).json({ message: "Estado inválido." });
     }
 
-    const wantsToRemovePortada =
-      updates.removeFotoPortada === true || updates.removeFotoPortada === "true";
+    const wantsToRemovePortada = parseTruthyFlag(updates.removeFotoPortada);
+    const wantsToRemovePedimento = parseTruthyFlag(updates.removePedimentoArchivo);
+    const wantsToRemovePoliza = parseTruthyFlag(updates.removePolizaSeguro);
     delete updates.removeFotoPortada;
+    delete updates.removePedimentoArchivo;
+    delete updates.removePolizaSeguro;
 
-    if (req.file?.filename) {
-      updates.fotoPortadaPath = buildPublicPortadaPath(req.file.filename);
-    } else if (wantsToRemovePortada) {
+    const uploadedPaths = pickUploadedFilePaths(req);
+    Object.assign(updates, uploadedPaths);
+
+    if (wantsToRemovePortada && !uploadedPaths.fotoPortadaPath) {
       updates.fotoPortadaPath = null;
+    }
+    if (wantsToRemovePedimento && !uploadedPaths.pedimentoArchivoPath) {
+      updates.pedimentoArchivoPath = null;
+    }
+    if (wantsToRemovePoliza && !uploadedPaths.polizaSeguroPath) {
+      updates.polizaSeguroPath = null;
     }
 
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ message: "No hay campos para actualizar." });
     }
 
-    const oldPortadaPath = maquina.fotoPortadaPath;
+    const oldPaths = {
+      fotoPortadaPath: maquina.fotoPortadaPath,
+      pedimentoArchivoPath: maquina.pedimentoArchivoPath,
+      polizaSeguroPath: maquina.polizaSeguroPath,
+    };
     await maquina.update(updates);
-    const shouldDeleteOldPortada =
-      (req.file?.filename || wantsToRemovePortada) &&
-      oldPortadaPath &&
-      oldPortadaPath !== updates.fotoPortadaPath;
-    if (shouldDeleteOldPortada) {
-      await safeDeletePortadaFile(oldPortadaPath);
+
+    const fileFields = [
+      "fotoPortadaPath",
+      "pedimentoArchivoPath",
+      "polizaSeguroPath",
+    ];
+    for (const field of fileFields) {
+      const oldPath = oldPaths[field];
+      const newPath = updates[field] !== undefined ? updates[field] : oldPath;
+      if (oldPath && oldPath !== newPath) {
+        await safeDeleteStoredUpload(oldPath);
+      }
     }
     const updated = await Maquina.findByPk(id, { include: catalogInclude });
     return res.status(200).json({
@@ -488,7 +519,7 @@ const updateMaquina = async (req, res) => {
       maquina: updated,
     });
   } catch (error) {
-    await cleanupUploadedFileIfPresent(req);
+    await cleanupUploadedFilesIfPresent(req);
     return res.status(500).json({
       message: "Error al actualizar máquina.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -508,9 +539,15 @@ const deleteMaquina = async (req, res) => {
     if (!maquina) {
       return res.status(404).json({ message: "Máquina no encontrada." });
     }
-    const fotoPortadaPath = maquina.fotoPortadaPath;
+    const pathsToDelete = [
+      maquina.fotoPortadaPath,
+      maquina.pedimentoArchivoPath,
+      maquina.polizaSeguroPath,
+    ];
     await maquina.destroy();
-    await safeDeletePortadaFile(fotoPortadaPath);
+    for (const storedPath of pathsToDelete) {
+      await safeDeleteStoredUpload(storedPath);
+    }
     return res.status(200).json({ message: "Máquina eliminada correctamente." });
   } catch (error) {
     return res.status(500).json({

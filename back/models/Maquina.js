@@ -157,6 +157,14 @@ const Maquina = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    pedimentoArchivoPath: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    polizaSeguroPath: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     tableName: "maquinas",
