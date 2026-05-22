@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { apiRequest } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import { PERMISSIONS } from "@/lib/permissions";
 import {
   Plus,
   Truck,
@@ -15,7 +18,14 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
@@ -95,6 +105,9 @@ const estados: MaquinaEstado[] = [
   "Fuera de Servicio",
 ];
 
+const ADD_CLASE_VALUE = "__add_clase__";
+const ADD_TIPO_VALUE = "__add_tipo__";
+
 const defaultForm: MaquinaFormData = {
   nombre: "",
   claseId: "",
@@ -148,8 +161,17 @@ export default function MaquinaModal({
   mode = "create",
   inventario = [],
 }: MaquinaModalProps) {
+  const queryClient = useQueryClient();
+  const { can } = useAuth();
+  const canEditCatalog = can(PERMISSIONS.MAQUINAS_EDIT);
+
   const [form, setForm] = useState<MaquinaFormData>(defaultForm);
   const [previewPortadaUrl, setPreviewPortadaUrl] = useState<string>("");
+
+  const [claseDialogOpen, setClaseDialogOpen] = useState(false);
+  const [tipoDialogOpen, setTipoDialogOpen] = useState(false);
+  const [claseForm, setClaseForm] = useState({ nombre: "", activo: true });
+  const [tipoForm, setTipoForm] = useState({ nombre: "", claseId: "", activo: true });
 
   const [newItemLabel, setNewItemLabel] = useState("");
   const [newItemType, setNewItemType] = useState<"check" | "number">("check");
@@ -180,6 +202,63 @@ export default function MaquinaModal({
 
   const clasesActivas = clasesData?.clases || [];
   const tiposActivos = tiposData?.tipos || [];
+
+  const invalidateCatalog = () => {
+    queryClient.invalidateQueries({ queryKey: ["maquina-clases"] });
+    queryClient.invalidateQueries({ queryKey: ["maquina-tipos"] });
+  };
+
+  const saveClaseMutation = useMutation({
+    mutationFn: () =>
+      apiRequest<{ maquinaClase: { id: string } }>("/maquina-clases", {
+        method: "POST",
+        body: { nombre: claseForm.nombre.trim(), activo: claseForm.activo },
+      }),
+    onSuccess: (data) => {
+      const newId = data.maquinaClase?.id;
+      toast.success("Clase creada");
+      setClaseDialogOpen(false);
+      setClaseForm({ nombre: "", activo: true });
+      invalidateCatalog();
+      if (newId) {
+        setForm((prev) => ({ ...prev, claseId: newId, tipoId: "" }));
+      }
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const saveTipoMutation = useMutation({
+    mutationFn: () =>
+      apiRequest<{ maquinaTipo: { id: string } }>("/maquina-tipos", {
+        method: "POST",
+        body: {
+          nombre: tipoForm.nombre.trim(),
+          claseId: tipoForm.claseId,
+          activo: tipoForm.activo,
+        },
+      }),
+    onSuccess: (data) => {
+      const newId = data.maquinaTipo?.id;
+      toast.success("Tipo creado");
+      setTipoDialogOpen(false);
+      setTipoForm({ nombre: "", claseId: "", activo: true });
+      invalidateCatalog();
+      if (newId) {
+        setForm((prev) => ({ ...prev, tipoId: newId }));
+      }
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const openNewClase = () => {
+    setClaseForm({ nombre: "", activo: true });
+    setClaseDialogOpen(true);
+  };
+
+  const openNewTipo = () => {
+    setTipoForm({ nombre: "", claseId: form.claseId, activo: true });
+    setTipoDialogOpen(true);
+  };
 
   useEffect(() => {
     if (open) {
@@ -305,6 +384,7 @@ export default function MaquinaModal({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-w-[95vw] lg:max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0"
@@ -340,10 +420,18 @@ export default function MaquinaModal({
                     <div className="space-y-1">
                       <Label>Clase</Label>
                       <Select
-                        value={form.claseId}
-                        onValueChange={(value) =>
-                          setForm((prev) => ({ ...prev, claseId: value, tipoId: "" }))
+                        value={
+                          form.claseId && form.claseId !== ADD_CLASE_VALUE
+                            ? form.claseId
+                            : undefined
                         }
+                        onValueChange={(value) => {
+                          if (value === ADD_CLASE_VALUE) {
+                            openNewClase();
+                            return;
+                          }
+                          setForm((prev) => ({ ...prev, claseId: value, tipoId: "" }));
+                        }}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Seleccionar clase" />
@@ -354,17 +442,51 @@ export default function MaquinaModal({
                               {c.nombre}
                             </SelectItem>
                           ))}
+                          {canEditCatalog && (
+                            <>
+                              <SelectSeparator />
+                              <div
+                                role="button"
+                                tabIndex={0}
+                                className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm font-medium text-primary outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent"
+                                onPointerDown={(e) => e.preventDefault()}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openNewClase();
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    openNewClase();
+                                  }
+                                }}
+                              >
+                                <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                                  <Plus className="h-3.5 w-3.5" />
+                                </span>
+                                Agregar clase
+                              </div>
+                            </>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-1">
                       <Label>Tipo</Label>
                       <Select
-                        value={form.tipoId}
-                        onValueChange={(value) =>
-                          setForm((prev) => ({ ...prev, tipoId: value }))
+                        value={
+                          form.tipoId && form.tipoId !== ADD_TIPO_VALUE
+                            ? form.tipoId
+                            : undefined
                         }
-                        disabled={!form.claseId}
+                        onValueChange={(value) => {
+                          if (value === ADD_TIPO_VALUE) {
+                            openNewTipo();
+                            return;
+                          }
+                          setForm((prev) => ({ ...prev, tipoId: value }));
+                        }}
+                        disabled={!form.claseId || form.claseId === ADD_CLASE_VALUE}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Seleccionar tipo" />
@@ -375,6 +497,32 @@ export default function MaquinaModal({
                               {t.nombre}
                             </SelectItem>
                           ))}
+                          {canEditCatalog && form.claseId && form.claseId !== ADD_CLASE_VALUE && (
+                            <>
+                              <SelectSeparator />
+                              <div
+                                role="button"
+                                tabIndex={0}
+                                className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm font-medium text-primary outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent"
+                                onPointerDown={(e) => e.preventDefault()}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openNewTipo();
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    openNewTipo();
+                                  }
+                                }}
+                              >
+                                <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                                  <Plus className="h-3.5 w-3.5" />
+                                </span>
+                                Agregar tipo
+                              </div>
+                            </>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -986,5 +1134,89 @@ export default function MaquinaModal({
         </div>
       </DialogContent>
     </Dialog>
+
+    <Dialog open={claseDialogOpen} onOpenChange={setClaseDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Nueva clase</DialogTitle>
+        </DialogHeader>
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            saveClaseMutation.mutate();
+          }}
+        >
+          <div className="space-y-1">
+            <Label>Nombre</Label>
+            <Input
+              value={claseForm.nombre}
+              onChange={(e) => setClaseForm((p) => ({ ...p, nombre: e.target.value }))}
+              required
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={claseForm.activo}
+              onCheckedChange={(v) => setClaseForm((p) => ({ ...p, activo: Boolean(v) }))}
+            />
+            <Label>Activo</Label>
+          </div>
+          <Button type="submit" disabled={saveClaseMutation.isPending}>
+            Guardar
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog open={tipoDialogOpen} onOpenChange={setTipoDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Nuevo tipo</DialogTitle>
+        </DialogHeader>
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            saveTipoMutation.mutate();
+          }}
+        >
+          <div className="space-y-1">
+            <Label>Clase</Label>
+            <Select value={tipoForm.claseId} disabled>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar clase" />
+              </SelectTrigger>
+              <SelectContent>
+                {clasesActivas.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label>Nombre</Label>
+            <Input
+              value={tipoForm.nombre}
+              onChange={(e) => setTipoForm((p) => ({ ...p, nombre: e.target.value }))}
+              required
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={tipoForm.activo}
+              onCheckedChange={(v) => setTipoForm((p) => ({ ...p, activo: Boolean(v) }))}
+            />
+            <Label>Activo</Label>
+          </div>
+          <Button type="submit" disabled={saveTipoMutation.isPending}>
+            Guardar
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
