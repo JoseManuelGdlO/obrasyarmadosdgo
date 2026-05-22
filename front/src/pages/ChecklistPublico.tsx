@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ClipboardCheck, Save, CheckCircle2, Truck } from "lucide-react";
@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import logoObras from "@/assets/logo-obras.png";
+import { FuelGauge } from "@/components/checklist/FuelGauge";
 import { apiRequest, toAbsoluteAssetUrl } from "@/lib/api";
 
 type ChecklistItemBackend = {
@@ -49,6 +50,7 @@ export default function ChecklistPublico() {
 
   const [operador, setOperador] = useState("");
   const [trabajadorId, setTrabajadorId] = useState("");
+  const [nivelCombustible, setNivelCombustible] = useState<number | null>(null);
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const [numericValues, setNumericValues] = useState<Record<string, string>>({});
   const [observaciones, setObservaciones] = useState("");
@@ -110,7 +112,12 @@ export default function ChecklistPublico() {
   const completedChecks = checkItems.filter((i) => checkedItems[i.id]).length;
   const totalChecks = checkItems.length;
   const progress = totalChecks > 0 ? Math.round((completedChecks / totalChecks) * 100) : 0;
-  const hasTriggeredPrint = useRef(false);
+  const isDataReadyForPrint =
+    isPrintMode &&
+    Boolean(maquinaIdFromQR) &&
+    !maquinaLoading &&
+    !itemsLoading &&
+    Boolean(maquina);
 
   useEffect(() => {
     if (!isPrintMode) return;
@@ -120,12 +127,10 @@ export default function ChecklistPublico() {
   }, [isPrintMode]);
 
   useEffect(() => {
-    if (!isPrintMode || !maquinaIdFromQR || maquinaLoading || itemsLoading || !maquina) return;
-    if (hasTriggeredPrint.current) return;
-    hasTriggeredPrint.current = true;
+    if (!isDataReadyForPrint) return;
     const timer = window.setTimeout(() => window.print(), 400);
     return () => window.clearTimeout(timer);
-  }, [isPrintMode, maquinaIdFromQR, maquinaLoading, itemsLoading, maquina]);
+  }, [isDataReadyForPrint]);
 
   const submitMutation = useMutation({
     mutationFn: (payload: Record<string, unknown>) =>
@@ -140,6 +145,10 @@ export default function ChecklistPublico() {
   const handleSubmit = () => {
     if (!operador.trim()) {
       toast.error("Por favor ingresa el nombre del operador");
+      return;
+    }
+    if (nivelCombustible === null) {
+      toast.error("Indica el nivel de gasolina");
       return;
     }
     if (!maquina) return;
@@ -165,6 +174,7 @@ export default function ChecklistPublico() {
       fecha: new Date().toISOString().slice(0, 10),
       operador: operador.trim(),
       trabajadorId: trabajadorId || null,
+      nivelCombustible,
       lecturas,
       respuestas,
       observaciones: observaciones.trim() || null,
@@ -217,6 +227,7 @@ export default function ChecklistPublico() {
                 setNotas("");
                 setOperador("");
                 setTrabajadorId("");
+                setNivelCombustible(null);
               }}
             >
               Realizar otro checklist
@@ -344,6 +355,14 @@ export default function ChecklistPublico() {
                       </SelectContent>
                     </Select>
                   )}
+                </div>
+                <div className="space-y-2 pt-1">
+                  <Label className="text-xs">Nivel de gasolina *</Label>
+                  <FuelGauge
+                    value={nivelCombustible}
+                    onChange={isPrintMode ? undefined : setNivelCombustible}
+                    mode={isPrintMode ? "print" : "interactive"}
+                  />
                 </div>
               </CardContent>
             </Card>

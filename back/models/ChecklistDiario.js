@@ -17,6 +17,7 @@ const ChecklistDiario = sequelize.define(
     itemsSnapshot: { type: DataTypes.JSON, allowNull: true },
     itemsTotal: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
     itemsOk: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+    nivelCombustible: { type: DataTypes.INTEGER, allowNull: true },
     observaciones: { type: DataTypes.TEXT, allowNull: true },
     notas: { type: DataTypes.TEXT, allowNull: true },
     userId: { type: DataTypes.UUID, allowNull: true },

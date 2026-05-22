@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { apiRequest, toAbsoluteAssetUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { getMaquinaClaseTipoLabel, getMaquinaTipoNombre } from "@/lib/maquina";
+import { FuelGauge, formatCombustibleLabel } from "@/components/checklist/FuelGauge";
 import { openChecklistPrintWindow } from "@/lib/checklist-publico";
 
 type MaquinaBackend = {
@@ -67,6 +68,7 @@ type ChecklistDiarioBackend = {
     | null;
   itemsTotal: number;
   itemsOk: number;
+  nivelCombustible: number | null;
   observaciones: string | null;
   notas: string | null;
   source: "interno" | "publico";
@@ -100,6 +102,7 @@ export default function Checklist() {
   const [numericValues, setNumericValues] = useState<Record<string, string>>({});
   const [operador, setOperador] = useState("");
   const [trabajadorId, setTrabajadorId] = useState("");
+  const [nivelCombustible, setNivelCombustible] = useState<number | null>(null);
   const [observaciones, setObservaciones] = useState("");
   const [notas, setNotas] = useState("");
 
@@ -199,6 +202,7 @@ export default function Checklist() {
     setNumericValues({});
     setOperador(user?.email || "");
     setTrabajadorId("");
+    setNivelCombustible(null);
     setObservaciones("");
     setNotas("");
     setIsModalOpen(true);
@@ -218,6 +222,10 @@ export default function Checklist() {
     if (!selectedMaquina) return;
     if (!operador.trim()) {
       toast.error("El nombre del operador es obligatorio");
+      return;
+    }
+    if (nivelCombustible === null) {
+      toast.error("Indica el nivel de gasolina");
       return;
     }
     if (checklistItems.length === 0) {
@@ -242,6 +250,7 @@ export default function Checklist() {
       fecha: today,
       operador: operador.trim(),
       trabajadorId: trabajadorId || null,
+      nivelCombustible,
       lecturas,
       respuestas,
       observaciones: observaciones.trim() || null,
@@ -421,6 +430,15 @@ export default function Checklist() {
                     </Select>
                   </div>
 
+                  <div className="space-y-2">
+                    <Label>Nivel de gasolina *</Label>
+                    <FuelGauge
+                      value={nivelCombustible}
+                      onChange={setNivelCombustible}
+                      mode="interactive"
+                    />
+                  </div>
+
                   {numericItems.length > 0 && (
                     <div className="grid grid-cols-2 gap-4">
                       {numericItems.map((item) => (
@@ -542,6 +560,12 @@ export default function Checklist() {
                           <p className="text-sm text-muted-foreground">
                             <span className="font-medium">Asignado a:</span>{" "}
                             {registro.trabajadorNombre}
+                          </p>
+                        )}
+                        {registro.nivelCombustible != null && (
+                          <p className="text-sm text-muted-foreground">
+                            <span className="font-medium">Combustible:</span>{" "}
+                            {formatCombustibleLabel(registro.nivelCombustible)}
                           </p>
                         )}
                         {lecturasEntries.length > 0 && (

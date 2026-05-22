@@ -41,6 +41,19 @@ const buildAndSaveChecklist = async ({ body, userId, source }) => {
     return { status: 400, message: "El nombre del operador es obligatorio." };
   }
 
+  const nivelRaw = body.nivelCombustible;
+  if (nivelRaw === undefined || nivelRaw === null || nivelRaw === "") {
+    return { status: 400, message: "El nivel de combustible es obligatorio." };
+  }
+  const nivelNum = Number(nivelRaw);
+  if (!Number.isFinite(nivelNum)) {
+    return { status: 400, message: "El nivel de combustible es obligatorio." };
+  }
+  const nivelCombustible = Math.round(nivelNum);
+  if (nivelCombustible < 0 || nivelCombustible > 100) {
+    return { status: 400, message: "El nivel de combustible debe estar entre 0 y 100." };
+  }
+
   const fecha = normalizeFecha(body.fecha);
   if (fecha === null) {
     return { status: 400, message: "Fecha inválida." };
@@ -118,6 +131,7 @@ const buildAndSaveChecklist = async ({ body, userId, source }) => {
     itemsSnapshot,
     itemsTotal,
     itemsOk,
+    nivelCombustible,
     observaciones: trimOrNull(body.observaciones),
     notas: trimOrNull(body.notas),
     userId: userId || null,
