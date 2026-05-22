@@ -10,6 +10,7 @@ const MaquinaPlanServicio = require("../models/MaquinaPlanServicio");
 const PlanServicioPieza = require("../models/PlanServicioPieza");
 const Articulo = require("../models/Articulo");
 const { ESTADOS_MAQUINA } = require("../models/Maquina");
+const { generateUniqueMaquinaIdu } = require("../utils/maquinaIdu");
 const P = require("../constants/permissions");
 const { hasMaquinasViewGlobal } = require("../middlewares/permissions");
 const {
@@ -190,7 +191,7 @@ const listMaquinas = async (req, res) => {
     const include = buildIncludeFromQuery(includeParam);
 
     if (search && String(search).trim()) {
-      const term = `%${String(search).trim()}%`;
+      const termLower = String(search).trim().toLowerCase();
       const maquinas = await Maquina.findAll({
         where,
         include,
@@ -200,8 +201,8 @@ const listMaquinas = async (req, res) => {
         const json = m.toJSON();
         const tipoNombre = json.tipoCatalogo?.nombre || "";
         const claseNombre = json.clase?.nombre || "";
-        const termLower = String(search).trim().toLowerCase();
         return (
+          (json.idu || "").toLowerCase().includes(termLower) ||
           (json.nombre || "").toLowerCase().includes(termLower) ||
           tipoNombre.toLowerCase().includes(termLower) ||
           claseNombre.toLowerCase().includes(termLower) ||
@@ -318,7 +319,10 @@ const createMaquina = async (req, res) => {
       return res.status(400).json({ message: "Estado inválido." });
     }
 
+    const idu = await generateUniqueMaquinaIdu();
+
     const created = await Maquina.create({
+      idu,
       nombre: normalizedNombre,
       claseId,
       tipoId,

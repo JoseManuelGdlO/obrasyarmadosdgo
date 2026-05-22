@@ -71,6 +71,8 @@ interface ApiPlanServicio {
 
 interface ApiMaquina {
   id: string;
+  /** API/DB: idu (ID user). En UI se etiqueta como "ID" — ver IMPLEMENTACION_MODULO_MAQUINAS.md */
+  idu: string;
   nombre: string;
   claseId: string;
   tipoId: string;
@@ -430,7 +432,8 @@ export default function Maquinas() {
       !searchTerm ||
       maquina.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tipoNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      maquina.placas.toLowerCase().includes(searchTerm.toLowerCase());
+      maquina.placas.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (maquina.idu || "").toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTipo = !selectedTipo || maquina.tipoId === selectedTipo;
     const matchesEstado = !selectedEstado || maquina.estado === selectedEstado;
     return matchesSearch && matchesTipo && matchesEstado;
@@ -541,7 +544,7 @@ export default function Maquinas() {
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Buscar por nombre, tipo o placas..."
+                  placeholder="Buscar por nombre, tipo, placas o ID..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -592,6 +595,7 @@ export default function Maquinas() {
             <TableHeader>
               <TableRow>
                 <TableHead>Máquina</TableHead>
+                <TableHead>ID</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Horómetro</TableHead>
                 <TableHead>Vida Útil</TableHead>
@@ -633,6 +637,11 @@ export default function Maquinas() {
                           </div>
                         </div>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="font-mono text-sm tracking-wide">
+                        {maquina.idu}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(maquina.estado)}>

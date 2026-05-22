@@ -51,6 +51,7 @@ erDiagram
 
   maquinas {
     uuid id PK
+    string idu UK
     uuid clienteId FK
     string nombre
     string tipo
@@ -181,6 +182,7 @@ Table articulos {
 
 Table maquinas {
   id uuid [pk]
+  idu varchar(3) [not null, unique, note: 'ID user; ver sección IDU']
   clienteId uuid [not null]
   nombre varchar [not null]
   tipo varchar [not null]
@@ -312,6 +314,14 @@ Ref: usuario_maquinas.maquinaId > maquinas.id [delete: cascade, update: cascade]
   - Guarda datos técnicos/operativos: estado, horómetros, disponibilidad, ubicación.
   - Se relaciona con checklist diario y planes de servicio.
   - Para `maquinista`, el acceso queda filtrado por asignaciones en `usuario_maquinas`.
+- **Campo `idu` (ID user)**:
+  - Código corto de 3 caracteres (`A-Z`, `0-9`), con al menos una letra y un dígito.
+  - Único en toda la tabla; índice `maquinas_idu_unique`.
+  - Distinto del `id` UUID interno.
+  - Se genera automáticamente en `POST /api/maquinas` (el cliente no lo envía).
+  - No es editable en `PATCH /api/maquinas/:id`.
+  - Incluido en búsqueda de listado (`?search=` y filtro en frontend).
+- **Convención frontend**: en la API y base de datos el campo es `idu`. En la pantalla de inventario (`front/src/pages/Maquinas.tsx`) se muestra como **ID** para los operadores. No renombrar el campo en el backend ni en el contrato JSON.
 - **Endpoints relacionados**:
   - `GET /api/maquinas`
   - `GET /api/maquinas/:id`

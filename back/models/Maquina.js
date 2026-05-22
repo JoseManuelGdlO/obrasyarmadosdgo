@@ -1,5 +1,6 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
+const { isValidMaquinaIdu } = require("../utils/maquinaIdu");
 
 const ESTADOS_MAQUINA = [
   "Operativa",
@@ -15,6 +16,20 @@ const Maquina = sequelize.define(
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
+    },
+    idu: {
+      type: DataTypes.STRING(3),
+      allowNull: false,
+      unique: true,
+      validate: {
+        isValidIdu(value) {
+          if (!isValidMaquinaIdu(value)) {
+            throw new Error(
+              "idu debe ser 3 caracteres alfanuméricos con al menos una letra y un dígito."
+            );
+          }
+        },
+      },
     },
     nombre: {
       type: DataTypes.STRING,
