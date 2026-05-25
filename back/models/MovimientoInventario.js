@@ -45,6 +45,10 @@ const MovimientoInventario = sequelize.define(
       type: DataTypes.UUID,
       allowNull: true,
     },
+    ordenTrabajoId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
   },
   {
     tableName: "movimientos_inventario",

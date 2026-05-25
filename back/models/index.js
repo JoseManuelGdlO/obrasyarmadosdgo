@@ -72,6 +72,15 @@ Articulo.hasMany(MovimientoInventario, {
   onDelete: "CASCADE",
 });
 MovimientoInventario.belongsTo(Articulo, { foreignKey: "articuloId", as: "articulo" });
+OrdenTrabajo.hasMany(MovimientoInventario, {
+  foreignKey: "ordenTrabajoId",
+  as: "movimientosInventario",
+  onDelete: "SET NULL",
+});
+MovimientoInventario.belongsTo(OrdenTrabajo, {
+  foreignKey: "ordenTrabajoId",
+  as: "ordenTrabajo",
+});
 
 User.belongsToMany(Maquina, {
   through: UsuarioMaquina,

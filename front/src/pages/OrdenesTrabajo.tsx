@@ -177,6 +177,8 @@ const OrdenesTrabajo = () => {
       toast.success("Orden cerrada y stock actualizado")
       queryClient.invalidateQueries({ queryKey: ["ordenes-trabajo"] })
       queryClient.invalidateQueries({ queryKey: ["articulos"] })
+      queryClient.invalidateQueries({ queryKey: ["inventario-resumen"] })
+      queryClient.invalidateQueries({ queryKey: ["inventario-alertas"] })
     },
     onError: (err: Error) => toast.error(err.message || "Error al cerrar la orden"),
   })

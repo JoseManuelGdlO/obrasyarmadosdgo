@@ -175,6 +175,11 @@ const NuevaOrdenModal = ({ open, onOpenChange, ordenId }: NuevaOrdenModalProps) 
     [maquinas, maquinaId]
   )
 
+  const isOrdenCerrada = estado === "cerrada"
+  const estadosEnSelect = ESTADOS.filter(
+    (s) => isEdit || s.value !== "cerrada"
+  )
+
   const resetForm = () => {
     setFolio("")
     setTitulo("")
@@ -340,10 +345,15 @@ const NuevaOrdenModal = ({ open, onOpenChange, ordenId }: NuevaOrdenModalProps) 
       isEdit
         ? apiRequest(`/ordenes-trabajo/${ordenId}`, { method: "PATCH", body: payload })
         : apiRequest(`/ordenes-trabajo`, { method: "POST", body: payload }),
-    onSuccess: () => {
+    onSuccess: (_data, payload) => {
       toast.success(isEdit ? "Orden actualizada" : "Orden creada")
       queryClient.invalidateQueries({ queryKey: ["ordenes-trabajo"] })
       if (ordenId) queryClient.invalidateQueries({ queryKey: ["orden-trabajo", ordenId] })
+      if (payload.estado === "cerrada") {
+        queryClient.invalidateQueries({ queryKey: ["articulos"] })
+        queryClient.invalidateQueries({ queryKey: ["inventario-resumen"] })
+        queryClient.invalidateQueries({ queryKey: ["inventario-alertas"] })
+      }
       onOpenChange(false)
     },
     onError: (err: Error) => toast.error(err.message || "Error al guardar la orden"),
@@ -476,12 +486,16 @@ const NuevaOrdenModal = ({ open, onOpenChange, ordenId }: NuevaOrdenModalProps) 
               </div>
               <div className="space-y-2">
                 <Label>Estado</Label>
-                <Select value={estado} onValueChange={(v) => setEstado(v as typeof estado)}>
+                <Select
+                  value={estado}
+                  disabled={isOrdenCerrada}
+                  onValueChange={(v) => setEstado(v as typeof estado)}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {ESTADOS.filter((s) => isEdit || s.value !== "cerrada").map((s) => (
+                    {estadosEnSelect.map((s) => (
                       <SelectItem key={s.value} value={s.value}>
                         {s.label}
                       </SelectItem>
