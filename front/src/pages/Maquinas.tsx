@@ -16,6 +16,7 @@ import {
   Share2,
   Download,
   Image as ImageIcon,
+  Check,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { Badge, badgeVariants } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatCard } from "@/components/ui/stat-card";
@@ -417,6 +425,18 @@ export default function Maquinas() {
     },
   });
 
+  const updateEstadoMutation = useMutation({
+    mutationFn: ({ id, estado }: { id: string; estado: (typeof estados)[number] }) =>
+      apiRequest(`/maquinas/${id}`, { method: "PATCH", body: { estado } }),
+    onSuccess: () => {
+      toast.success("Estado actualizado");
+      queryClient.invalidateQueries({ queryKey: ["maquinas"] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Error al actualizar el estado");
+    },
+  });
+
   const editingMaquina = useMemo(
     () => maquinas.find((m) => m.id === editingMaquinaId) || null,
     [maquinas, editingMaquinaId]
@@ -506,6 +526,21 @@ export default function Maquinas() {
         return "bg-red-100 text-red-800";
       default:
         return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const getStatusDotColor = (status: string) => {
+    switch (status) {
+      case "Operativa":
+        return "bg-green-600";
+      case "Disponible":
+        return "bg-blue-600";
+      case "Mantenimiento":
+        return "bg-yellow-600";
+      case "Fuera de Servicio":
+        return "bg-red-600";
+      default:
+        return "bg-gray-400";
     }
   };
 
@@ -699,9 +734,47 @@ export default function Maquinas() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge className={getStatusColor(maquina.estado)}>
-                        {maquina.estado}
-                      </Badge>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            disabled={
+                              updateEstadoMutation.isPending &&
+                              updateEstadoMutation.variables?.id === maquina.id
+                            }
+                            className={cn(
+                              badgeVariants(),
+                              getStatusColor(maquina.estado),
+                              "cursor-pointer border-transparent hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
+                            )}
+                          >
+                            {maquina.estado}
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                          {estados.map((estado) => (
+                            <DropdownMenuItem
+                              key={estado}
+                              onClick={() => {
+                                if (estado !== maquina.estado) {
+                                  updateEstadoMutation.mutate({ id: maquina.id, estado });
+                                }
+                              }}
+                            >
+                              <span
+                                className={cn(
+                                  "mr-2 h-2 w-2 shrink-0 rounded-full",
+                                  getStatusDotColor(estado)
+                                )}
+                              />
+                              {estado}
+                              {maquina.estado === estado && (
+                                <Check className="ml-auto h-4 w-4 text-primary" />
+                              )}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1">
