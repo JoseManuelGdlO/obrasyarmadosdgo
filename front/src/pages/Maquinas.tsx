@@ -544,10 +544,38 @@ export default function Maquinas() {
     }
   };
 
-  const getDisponibilidadColor = (disponibilidad: number) => {
-    if (disponibilidad >= 90) return "text-green-600";
-    if (disponibilidad >= 75) return "text-yellow-600";
-    return "text-red-600";
+  const getDisponibilidadEtiqueta = (maquina: ApiMaquina) => {
+    if (maquina.estado === "Mantenimiento") return "Mantenimiento";
+    if (maquina.estado === "Fuera de Servicio") return "No disponible";
+    const valor = Number(maquina.disponibilidad) || 0;
+    if (valor >= 90) return "Activa";
+    if (valor >= 75) return "Disponible";
+    if (valor >= 50) return "Regular";
+    return "No disponible";
+  };
+
+  const getDisponibilidadEtiquetaColor = (etiqueta: string) => {
+    switch (etiqueta) {
+      case "Activa":
+        return "text-green-600";
+      case "Disponible":
+        return "text-blue-600";
+      case "Regular":
+        return "text-yellow-600";
+      case "Mantenimiento":
+        return "text-yellow-600";
+      case "No disponible":
+        return "text-red-600";
+      default:
+        return "text-gray-600";
+    }
+  };
+
+  const getPromedioDisponibilidadEtiqueta = (promedio: number) => {
+    if (promedio >= 90) return "Activa";
+    if (promedio >= 75) return "Disponible";
+    if (promedio >= 50) return "Regular";
+    return "No disponible";
   };
 
   const calcularVidaUtil = (inicial: number, actual: number, final: number) => {
@@ -621,7 +649,7 @@ export default function Maquinas() {
         />
         <StatCard
           title="Disponibilidad Promedio"
-          value={`${promedioDisponibilidad}%`}
+          value={getPromedioDisponibilidadEtiqueta(promedioDisponibilidad)}
           icon={Building}
           trend={{ value: 0, isPositive: true }}
         />
@@ -701,6 +729,7 @@ export default function Maquinas() {
                   maquina.horometroActual,
                   maquina.horometroFinal
                 );
+                const disponibilidadEtiqueta = getDisponibilidadEtiqueta(maquina);
 
                 return (
                   <TableRow key={maquina.id} className="hover:bg-gray-50">
@@ -809,13 +838,12 @@ export default function Maquinas() {
                     <TableCell>
                       <div className="text-center">
                         <div
-                          className={`text-lg font-bold ${getDisponibilidadColor(
-                            maquina.disponibilidad
+                          className={`text-sm font-semibold ${getDisponibilidadEtiquetaColor(
+                            disponibilidadEtiqueta
                           )}`}
                         >
-                          {maquina.disponibilidad}%
+                          {disponibilidadEtiqueta}
                         </div>
-                        <div className="text-xs text-gray-500">disponible</div>
                       </div>
                     </TableCell>
                     <TableCell>
