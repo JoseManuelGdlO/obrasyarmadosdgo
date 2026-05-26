@@ -90,6 +90,7 @@ export type OrdenBackend = {
   responsable?: TrabajadorLite | null
   actividades?: ActividadBackend[]
   items?: ItemBackend[]
+  inventarioDescontado?: boolean
 }
 
 const PRIORIDAD_LABEL: Record<OrdenBackend["prioridad"], string> = {
@@ -174,7 +175,7 @@ const OrdenesTrabajo = () => {
     mutationFn: (id: string) =>
       apiRequest(`/ordenes-trabajo/${id}/cerrar`, { method: "PATCH" }),
     onSuccess: () => {
-      toast.success("Orden cerrada y stock actualizado")
+      toast.success("Orden cerrada")
       queryClient.invalidateQueries({ queryKey: ["ordenes-trabajo"] })
       queryClient.invalidateQueries({ queryKey: ["articulos"] })
       queryClient.invalidateQueries({ queryKey: ["inventario-resumen"] })

@@ -56,6 +56,7 @@ interface ArticuloOpt {
   nombre: string
   unidad?: string | null
   precioUnitario?: string | number | null
+  stockActual?: number | string | null
 }
 
 interface ActividadForm {
@@ -110,6 +111,8 @@ const NuevaOrdenModal = ({ open, onOpenChange, ordenId }: NuevaOrdenModalProps) 
   const [responsableId, setResponsableId] = useState("")
   const [actividades, setActividades] = useState<ActividadForm[]>([])
   const [items, setItems] = useState<ItemForm[]>([])
+  const [itemsIniciales, setItemsIniciales] = useState<Record<string, number>>({})
+  const [inventarioDescontado, setInventarioDescontado] = useState(false)
 
   const [necesitaProveedorExterno, setNecesitaProveedorExterno] = useState(false)
   const [proveedorId, setProveedorId] = useState("")
@@ -194,6 +197,8 @@ const NuevaOrdenModal = ({ open, onOpenChange, ordenId }: NuevaOrdenModalProps) 
     setResponsableId("")
     setActividades([])
     setItems([])
+    setItemsIniciales({})
+    setInventarioDescontado(false)
     setNecesitaProveedorExterno(false)
     setProveedorId("")
     setDescripcionProveedor("")
@@ -237,19 +242,25 @@ const NuevaOrdenModal = ({ open, onOpenChange, ordenId }: NuevaOrdenModalProps) 
         tecnicos: (a.tecnicos || []).map((t) => t.id),
       }))
     )
-    setItems(
-      (o.items || []).map((it) => ({
-        id: it.id,
-        articuloId: it.articuloId,
-        producto: it.articulo?.nombre || "",
-        cantidad: Number(it.cantidad) || 1,
-        unidad: it.unidad || it.articulo?.unidad || "",
-        costoUnitario:
-          it.costoUnitario !== null && it.costoUnitario !== undefined
-            ? Number(it.costoUnitario)
-            : null,
-      }))
+    const itemsCargados = (o.items || []).map((it) => ({
+      id: it.id,
+      articuloId: it.articuloId,
+      producto: it.articulo?.nombre || "",
+      cantidad: Number(it.cantidad) || 1,
+      unidad: it.unidad || it.articulo?.unidad || "",
+      costoUnitario:
+        it.costoUnitario !== null && it.costoUnitario !== undefined
+          ? Number(it.costoUnitario)
+          : null,
+    }))
+    setItems(itemsCargados)
+    setItemsIniciales(
+      itemsCargados.reduce<Record<string, number>>((acc, it) => {
+        acc[it.articuloId] = (acc[it.articuloId] || 0) + it.cantidad
+        return acc
+      }, {})
     )
+    setInventarioDescontado(Boolean(o.inventarioDescontado))
     setNecesitaProveedorExterno(Boolean(o.proveedorId))
     setProveedorId(o.proveedorId || "")
     setDescripcionProveedor(o.descripcionProveedor || "")
@@ -282,6 +293,21 @@ const NuevaOrdenModal = ({ open, onOpenChange, ordenId }: NuevaOrdenModalProps) 
     }))
   }
 
+  const cantidadEnBorrador = (articuloId: string) =>
+    items
+      .filter((i) => i.articuloId === articuloId)
+      .reduce((sum, i) => sum + i.cantidad, 0)
+
+  const stockDisponible = (articuloId: string) => {
+    const stock = Number(articulos.find((a) => a.id === articuloId)?.stockActual ?? 0)
+    const enBorrador = cantidadEnBorrador(articuloId)
+    if (inventarioDescontado) {
+      const yaEnOT = itemsIniciales[articuloId] ?? 0
+      return stock + yaEnOT - enBorrador
+    }
+    return stock - enBorrador
+  }
+
   const agregarItem = () => {
     const articulo = articulos.find((a) => a.id === productoTemp)
     if (!articulo || !cantidadTemp) {
@@ -295,6 +321,13 @@ const NuevaOrdenModal = ({ open, onOpenChange, ordenId }: NuevaOrdenModalProps) 
     const cantidad = parseInt(cantidadTemp, 10)
     if (!Number.isFinite(cantidad) || cantidad <= 0) {
       toast.error("Cantidad inválida")
+      return
+    }
+    const disponible = stockDisponible(articulo.id)
+    if (cantidad > disponible) {
+      toast.error(
+        `Stock insuficiente para "${articulo.nombre}". Disponible: ${disponible}`
+      )
       return
     }
     setItems((prev) => [
@@ -359,8 +392,9 @@ const NuevaOrdenModal = ({ open, onOpenChange, ordenId }: NuevaOrdenModalProps) 
         queryClient.invalidateQueries({ queryKey: ["maquinas"] })
         queryClient.invalidateQueries({ queryKey: ["maquinas-options"] })
       }
-      if (payload.estado === "cerrada") {
+      if (payload.items && payload.items.length > 0) {
         queryClient.invalidateQueries({ queryKey: ["articulos"] })
+        queryClient.invalidateQueries({ queryKey: ["articulos-options"] })
         queryClient.invalidateQueries({ queryKey: ["inventario-resumen"] })
         queryClient.invalidateQueries({ queryKey: ["inventario-alertas"] })
       }
@@ -779,7 +813,7 @@ const NuevaOrdenModal = ({ open, onOpenChange, ordenId }: NuevaOrdenModalProps) 
                     <SelectContent>
                       {articulos.map((a) => (
                         <SelectItem key={a.id} value={a.id}>
-                          {a.nombre}
+                          {a.nombre} (disp. {stockDisponible(a.id)})
                         </SelectItem>
                       ))}
                     </SelectContent>

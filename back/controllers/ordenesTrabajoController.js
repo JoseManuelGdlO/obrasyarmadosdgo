@@ -129,27 +129,57 @@ const referenciasOTLegacy = (orden) => {
   return refs;
 };
 
-const yaDescontoInventarioOT = async (orden, transaction) => {
-  const porOrden = await MovimientoInventario.count({
-    where: { ordenTrabajoId: orden.id, motivo: "Consumo OT" },
-    transaction,
-  });
-  if (porOrden > 0) return true;
+const yaDescontoInventarioOT = async (orden, transaction) =>
+  tieneConsumoNetoOT(orden, transaction);
 
-  const porReferenciaLegacy = await MovimientoInventario.count({
-    where: {
+const movimientosOTWhere = (orden) => ({
+  [Op.or]: [
+    { ordenTrabajoId: orden.id },
+    {
       ordenTrabajoId: null,
-      motivo: "Consumo OT",
       referencia: { [Op.in]: referenciasOTLegacy(orden) },
     },
+  ],
+  motivo: { [Op.in]: ["Consumo OT", "Reversión OT"] },
+});
+
+const consumoNetoPorArticuloOT = async (orden, transaction) => {
+  const movs = await MovimientoInventario.findAll({
+    where: movimientosOTWhere(orden),
     transaction,
   });
-  return porReferenciaLegacy > 0;
+  const netPorArticulo = {};
+  for (const mov of movs) {
+    const qty = Number(mov.cantidad || 0);
+    if (mov.motivo === "Consumo OT" && mov.tipo === "salida") {
+      netPorArticulo[mov.articuloId] = (netPorArticulo[mov.articuloId] || 0) + qty;
+    } else if (mov.motivo === "Reversión OT" && mov.tipo === "entrada") {
+      netPorArticulo[mov.articuloId] = (netPorArticulo[mov.articuloId] || 0) - qty;
+    }
+  }
+  return netPorArticulo;
 };
 
-const descontarInventarioOrden = async (orden, ordenTrabajoId, userId, transaction) => {
-  if (await yaDescontoInventarioOT(orden, transaction)) {
-    return;
+const tieneConsumoNetoOT = async (orden, transaction) => {
+  const net = await consumoNetoPorArticuloOT(orden, transaction);
+  return Object.values(net).some((qty) => qty > 0);
+};
+
+const aplicarConsumoOT = async (
+  orden,
+  ordenTrabajoId,
+  userId,
+  transaction,
+  { omitirSiYaConsumido = false } = {}
+) => {
+  if (
+    !omitirSiYaConsumido &&
+    (await tieneConsumoNetoOT(orden, transaction))
+  ) {
+    throw Object.assign(
+      new Error("El inventario de esta orden ya fue descontado."),
+      { statusCode: 409 }
+    );
   }
 
   const items = await OrdenTrabajoItem.findAll({
@@ -164,7 +194,7 @@ const descontarInventarioOrden = async (orden, ordenTrabajoId, userId, transacti
     });
     if (!articulo) {
       throw Object.assign(
-        new Error(`Artículo ${item.articuloId} no encontrado al cerrar la OT.`),
+        new Error(`Artículo ${item.articuloId} no encontrado en la OT.`),
         { statusCode: 404 }
       );
     }
@@ -197,6 +227,62 @@ const descontarInventarioOrden = async (orden, ordenTrabajoId, userId, transacti
       { transaction }
     );
   }
+};
+
+const revertirConsumoOT = async (orden, ordenTrabajoId, userId, transaction) => {
+  const netPorArticulo = await consumoNetoPorArticuloOT(orden, transaction);
+  for (const [articuloId, cantidad] of Object.entries(netPorArticulo)) {
+    if (cantidad <= 0) continue;
+    const articulo = await Articulo.findByPk(articuloId, {
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    if (!articulo) continue;
+    const stockAnterior = Number(articulo.stockActual || 0);
+    const stockNuevo = stockAnterior + cantidad;
+    await articulo.update({ stockActual: stockNuevo }, { transaction });
+    await MovimientoInventario.create(
+      {
+        articuloId: articulo.id,
+        ordenTrabajoId: ordenTrabajoId,
+        tipo: "entrada",
+        cantidad,
+        stockAnterior,
+        stockNuevo,
+        motivo: "Reversión OT",
+        referencia: referenciaOT(orden),
+        costoUnitario: null,
+        userId: userId || null,
+      },
+      { transaction }
+    );
+  }
+};
+
+const descontarInventarioOrden = async (orden, ordenTrabajoId, userId, transaction) => {
+  if (await yaDescontoInventarioOT(orden, transaction)) {
+    return;
+  }
+  await aplicarConsumoOT(orden, ordenTrabajoId, userId, transaction);
+};
+
+const reajustarInventarioOrden = async (orden, ordenTrabajoId, userId, transaction) => {
+  await revertirConsumoOT(orden, ordenTrabajoId, userId, transaction);
+  const items = await OrdenTrabajoItem.findAll({
+    where: { ordenTrabajoId },
+    transaction,
+  });
+  if (items.length > 0) {
+    await aplicarConsumoOT(orden, ordenTrabajoId, userId, transaction, {
+      omitirSiYaConsumido: true,
+    });
+  }
+};
+
+const ordenConInventarioFlag = async (orden, transaction = null) => {
+  const json = orden.toJSON ? orden.toJSON() : { ...orden };
+  json.inventarioDescontado = await yaDescontoInventarioOT(orden, transaction);
+  return json;
 };
 
 const list = async (req, res) => {
@@ -255,7 +341,7 @@ const getById = async (req, res) => {
     if (!orden) {
       return res.status(404).json({ message: "Orden de trabajo no encontrada." });
     }
-    return res.status(200).json({ orden });
+    return res.status(200).json({ orden: await ordenConInventarioFlag(orden) });
   } catch (error) {
     return res.status(500).json({
       message: "Error al obtener la orden de trabajo.",
@@ -453,11 +539,20 @@ const create = async (req, res) => {
 
     await orden.update({ horasInvertidas, costoTotal }, { transaction: tx });
 
-    if (orden.estado === "cerrada") {
-      await descontarInventarioOrden(orden, orden.id, req.user?.id, tx);
-      if (!orden.fechaCierre) {
-        await orden.update({ fechaCierre: todayStr() }, { transaction: tx });
+    if (itemsConCosto.length > 0) {
+      try {
+        await descontarInventarioOrden(orden, orden.id, req.user?.id, tx);
+      } catch (invError) {
+        await tx.rollback();
+        const status = invError.statusCode || 500;
+        return res.status(status).json({
+          message: invError.message || "Error al descontar inventario de la OT.",
+        });
       }
+    }
+
+    if (orden.estado === "cerrada" && !orden.fechaCierre) {
+      await orden.update({ fechaCierre: todayStr() }, { transaction: tx });
     }
 
     await aplicarMantenimientoMaquina(
@@ -473,7 +568,7 @@ const create = async (req, res) => {
     });
     return res.status(201).json({
       message: "Orden de trabajo creada correctamente.",
-      orden: ordenCompleta,
+      orden: await ordenConInventarioFlag(ordenCompleta),
     });
   } catch (error) {
     await tx.rollback();
@@ -598,6 +693,30 @@ const update = async (req, res) => {
         transaction: tx,
       });
       await persistItems(id, req.body.items, tx);
+      const yaDescontadoItems = await yaDescontoInventarioOT(orden, tx);
+      try {
+        if (yaDescontadoItems) {
+          await reajustarInventarioOrden(orden, id, req.user?.id, tx);
+        } else {
+          const itemsGuardados = await OrdenTrabajoItem.findAll({
+            where: { ordenTrabajoId: id },
+            transaction: tx,
+          });
+          if (itemsGuardados.length > 0) {
+            await aplicarConsumoOT(orden, id, req.user?.id, tx);
+          }
+        }
+      } catch (invError) {
+        await tx.rollback();
+        const status = invError.statusCode || 500;
+        return res.status(status).json({
+          message:
+            invError.message ||
+            (yaDescontadoItems
+              ? "Error al ajustar inventario de la OT."
+              : "Error al descontar inventario de la OT."),
+        });
+      }
     }
 
     if (
@@ -623,14 +742,17 @@ const update = async (req, res) => {
 
     await orden.reload({ transaction: tx });
     if (!estabaCerrada && orden.estado === "cerrada") {
-      try {
-        await descontarInventarioOrden(orden, id, req.user?.id, tx);
-      } catch (invError) {
-        await tx.rollback();
-        const status = invError.statusCode || 500;
-        return res.status(status).json({
-          message: invError.message || "Error al descontar inventario de la OT.",
-        });
+      const yaDescontado = await yaDescontoInventarioOT(orden, tx);
+      if (!yaDescontado) {
+        try {
+          await aplicarConsumoOT(orden, id, req.user?.id, tx);
+        } catch (invError) {
+          await tx.rollback();
+          const status = invError.statusCode || 500;
+          return res.status(status).json({
+            message: invError.message || "Error al descontar inventario de la OT.",
+          });
+        }
       }
       if (!orden.fechaCierre) {
         await orden.update({ fechaCierre: todayStr() }, { transaction: tx });
@@ -653,7 +775,7 @@ const update = async (req, res) => {
     });
     return res.status(200).json({
       message: "Orden de trabajo actualizada correctamente.",
-      orden: ordenCompleta,
+      orden: await ordenConInventarioFlag(ordenCompleta),
     });
   } catch (error) {
     await tx.rollback();
@@ -674,14 +796,15 @@ const close = async (req, res) => {
       await tx.rollback();
       return res.status(404).json({ message: "Orden de trabajo no encontrada." });
     }
+    const yaDescontado = await yaDescontoInventarioOT(orden, tx);
+
     if (orden.estado === "cerrada") {
-      const yaDescontado = await yaDescontoInventarioOT(orden, tx);
       if (yaDescontado) {
         await tx.rollback();
         return res.status(409).json({ message: "La orden ya está cerrada." });
       }
       try {
-        await descontarInventarioOrden(orden, id, req.user?.id, tx);
+        await aplicarConsumoOT(orden, id, req.user?.id, tx);
       } catch (invError) {
         await tx.rollback();
         const status = invError.statusCode || 500;
@@ -697,13 +820,29 @@ const close = async (req, res) => {
         include: includesFull(),
       });
       return res.status(200).json({
-        message: "Stock de inventario aplicado a la orden cerrada.",
+        message: "Inventario aplicado a la orden cerrada (legacy).",
         orden: ordenReparada,
       });
     }
 
+    if (yaDescontado) {
+      await orden.update(
+        { estado: "cerrada", fechaCierre: todayStr() },
+        { transaction: tx }
+      );
+      await regresarMaquinaOperativa(orden.maquinaId, tx);
+      await tx.commit();
+      const ordenYaConsumida = await OrdenTrabajo.findByPk(id, {
+        include: includesFull(),
+      });
+      return res.status(200).json({
+        message: "Orden de trabajo cerrada correctamente.",
+        orden: ordenYaConsumida,
+      });
+    }
+
     try {
-      await descontarInventarioOrden(orden, id, req.user?.id, tx);
+      await aplicarConsumoOT(orden, id, req.user?.id, tx);
     } catch (invError) {
       await tx.rollback();
       const status = invError.statusCode || 500;
@@ -725,7 +864,7 @@ const close = async (req, res) => {
       include: includesFull(),
     });
     return res.status(200).json({
-      message: "Orden de trabajo cerrada y stock actualizado.",
+      message: "Orden de trabajo cerrada correctamente.",
       orden: ordenCompleta,
     });
   } catch (error) {
