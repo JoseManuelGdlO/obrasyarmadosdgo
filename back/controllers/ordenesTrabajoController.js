@@ -35,6 +35,14 @@ const aplicarMantenimientoMaquina = async (maquinaId, flag, transaction) => {
   );
 };
 
+const regresarMaquinaOperativa = async (maquinaId, transaction) => {
+  if (!maquinaId) return;
+  await Maquina.update(
+    { estado: "Operativa" },
+    { where: { id: maquinaId, estado: "Mantenimiento" }, transaction }
+  );
+};
+
 const normalizeFecha = (value) => {
   if (value === undefined) return undefined;
   if (value === null || value === "") return null;
@@ -627,6 +635,7 @@ const update = async (req, res) => {
       if (!orden.fechaCierre) {
         await orden.update({ fechaCierre: todayStr() }, { transaction: tx });
       }
+      await regresarMaquinaOperativa(orden.maquinaId, tx);
     }
 
     if (req.body.mandarMaquinaAMantenimiento !== undefined) {
@@ -707,6 +716,8 @@ const close = async (req, res) => {
       { estado: "cerrada", fechaCierre: todayStr() },
       { transaction: tx }
     );
+
+    await regresarMaquinaOperativa(orden.maquinaId, tx);
 
     await tx.commit();
 
