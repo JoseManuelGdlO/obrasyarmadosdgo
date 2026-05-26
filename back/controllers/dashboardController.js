@@ -88,12 +88,7 @@ const getHome = async (req, res) => {
       0
     );
     const fueraServicio = Number(maquinasCountByState["Fuera de Servicio"] || 0);
-    const disponibilidadPromedio = maquinasTotal
-      ? Math.round(
-          maquinas.reduce((acc, maquina) => acc + Number(maquina.disponibilidad || 0), 0) /
-            maquinasTotal
-        )
-      : 0;
+    const maquinasEnMantenimiento = Number(maquinasCountByState["Mantenimiento"] || 0);
 
     let ordenesAbiertas = 0;
     let ordenesEnProgreso = 0;
@@ -202,7 +197,7 @@ const getHome = async (req, res) => {
         ordenesActivas: ordenesAbiertas + ordenesEnProgreso + ordenesPausadas,
         equiposFueraServicio: fueraServicio,
         maquinasActivas: maquinasActivas,
-        disponibilidad: disponibilidadPromedio,
+        maquinasEnMantenimiento,
         checklist: {
           completados: checklistCompletados,
           total: checklistTotal,
@@ -213,7 +208,7 @@ const getHome = async (req, res) => {
         ordenesActivas: trend(ordenesAbiertas + ordenesEnProgreso + ordenesPausadas, true),
         equiposFueraServicio: trend(fueraServicio, false),
         maquinasActivas: trend(maquinasActivas, true),
-        disponibilidad: trend(disponibilidadPromedio, disponibilidadPromedio >= 70),
+        maquinasEnMantenimiento: trend(maquinasEnMantenimiento, false),
       },
       recentOrders,
       checklist: {

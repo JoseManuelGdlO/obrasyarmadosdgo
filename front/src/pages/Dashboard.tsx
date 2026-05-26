@@ -10,7 +10,7 @@ import { apiRequest } from "@/lib/api"
 import {
   ClipboardList,
   AlertTriangle,
-  CheckCircle,
+  Wrench,
   Truck,
   Plus
 } from "lucide-react"
@@ -34,7 +34,7 @@ type DashboardHomeResponse = {
     ordenesActivas: number
     equiposFueraServicio: number
     maquinasActivas: number
-    disponibilidad: number
+    maquinasEnMantenimiento: number
     checklist: {
       completados: number
       total: number
@@ -45,7 +45,7 @@ type DashboardHomeResponse = {
     ordenesActivas: { value: number; isPositive: boolean }
     equiposFueraServicio: { value: number; isPositive: boolean }
     maquinasActivas: { value: number; isPositive: boolean }
-    disponibilidad: { value: number; isPositive: boolean }
+    maquinasEnMantenimiento: { value: number; isPositive: boolean }
   }
   recentOrders: DashboardOrder[]
   checklist: {
@@ -76,14 +76,14 @@ const Dashboard = () => {
           ordenesActivas: 0,
           equiposFueraServicio: 0,
           maquinasActivas: 0,
-          disponibilidad: 0,
+          maquinasEnMantenimiento: 0,
           checklist: { completados: 0, total: 0, porcentaje: 0 },
         },
         trends: {
           ordenesActivas: { value: 0, isPositive: true },
           equiposFueraServicio: { value: 0, isPositive: false },
           maquinasActivas: { value: 0, isPositive: true },
-          disponibilidad: { value: 0, isPositive: true },
+          maquinasEnMantenimiento: { value: 0, isPositive: false },
         },
         recentOrders: [],
         checklist: { total: 0, completados: 0, pendientes: 0, detalle: [] },
@@ -159,11 +159,11 @@ const Dashboard = () => {
           trend={dashboardData.trends.maquinasActivas}
         />
         <StatCard
-          title="Disponibilidad"
-          value={`${dashboardData.stats.disponibilidad}%`}
-          icon={CheckCircle}
-          description="Promedio mensual"
-          trend={dashboardData.trends.disponibilidad}
+          title="Máquinas en Mantenimiento"
+          value={dashboardData.stats.maquinasEnMantenimiento}
+          icon={Wrench}
+          description="En servicio de mantenimiento"
+          trend={dashboardData.trends.maquinasEnMantenimiento}
         />
         <StatCard
           title="Checklist Hoy"
