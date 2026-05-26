@@ -114,6 +114,7 @@ const NuevaOrdenModal = ({ open, onOpenChange, ordenId }: NuevaOrdenModalProps) 
   const [necesitaProveedorExterno, setNecesitaProveedorExterno] = useState(false)
   const [proveedorId, setProveedorId] = useState("")
   const [descripcionProveedor, setDescripcionProveedor] = useState("")
+  const [mandarMaquinaAMantenimiento, setMandarMaquinaAMantenimiento] = useState(false)
 
   const [actividadDraft, setActividadDraft] = useState<ActividadForm>({
     id: "",
@@ -196,6 +197,7 @@ const NuevaOrdenModal = ({ open, onOpenChange, ordenId }: NuevaOrdenModalProps) 
     setNecesitaProveedorExterno(false)
     setProveedorId("")
     setDescripcionProveedor("")
+    setMandarMaquinaAMantenimiento(false)
     setActividadDraft({ id: "", descripcion: "", tecnicos: [], horaInicio: "", horaFin: "" })
     setTecnicoTemp("")
     setProductoTemp("")
@@ -205,50 +207,53 @@ const NuevaOrdenModal = ({ open, onOpenChange, ordenId }: NuevaOrdenModalProps) 
   useEffect(() => {
     if (!open) {
       resetForm()
-      return
     }
-    if (!ordenId) {
-      resetForm()
-      return
-    }
-    if (ordenQuery.data?.orden) {
-      const o = ordenQuery.data.orden
-      setFolio(o.folio || "")
-      setTitulo(o.titulo || "")
-      setDescripcion(o.descripcion || "")
-      setPrioridad(o.prioridad)
-      setEstado(o.estado)
-      setFechaVencimiento(o.fechaVencimiento || "")
-      setMaquinaId(o.maquinaId || "")
-      setProyectoId(o.proyectoId || "")
-      setNomenclaturaId(o.nomenclaturaId || "")
-      setResponsableId(o.responsableId || "")
-      setActividades(
-        (o.actividades || []).map((a) => ({
-          id: a.id,
-          descripcion: a.descripcion || "",
-          horaInicio: (a.horaInicio || "").slice(0, 5),
-          horaFin: (a.horaFin || "").slice(0, 5),
-          tecnicos: (a.tecnicos || []).map((t) => t.id),
-        }))
-      )
-      setItems(
-        (o.items || []).map((it) => ({
-          id: it.id,
-          articuloId: it.articuloId,
-          producto: it.articulo?.nombre || "",
-          cantidad: Number(it.cantidad) || 1,
-          unidad: it.unidad || it.articulo?.unidad || "",
-          costoUnitario:
-            it.costoUnitario !== null && it.costoUnitario !== undefined
-              ? Number(it.costoUnitario)
-              : null,
-        }))
-      )
-      setNecesitaProveedorExterno(Boolean(o.proveedorId))
-      setProveedorId(o.proveedorId || "")
-      setDescripcionProveedor(o.descripcionProveedor || "")
-    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open || ordenId) return
+    resetForm()
+  }, [open, ordenId])
+
+  useEffect(() => {
+    if (!open || !ordenId || !ordenQuery.data?.orden) return
+    const o = ordenQuery.data.orden
+    setFolio(o.folio || "")
+    setTitulo(o.titulo || "")
+    setDescripcion(o.descripcion || "")
+    setPrioridad(o.prioridad)
+    setEstado(o.estado)
+    setFechaVencimiento(o.fechaVencimiento || "")
+    setMaquinaId(o.maquinaId || "")
+    setProyectoId(o.proyectoId || "")
+    setNomenclaturaId(o.nomenclaturaId || "")
+    setResponsableId(o.responsableId || "")
+    setActividades(
+      (o.actividades || []).map((a) => ({
+        id: a.id,
+        descripcion: a.descripcion || "",
+        horaInicio: (a.horaInicio || "").slice(0, 5),
+        horaFin: (a.horaFin || "").slice(0, 5),
+        tecnicos: (a.tecnicos || []).map((t) => t.id),
+      }))
+    )
+    setItems(
+      (o.items || []).map((it) => ({
+        id: it.id,
+        articuloId: it.articuloId,
+        producto: it.articulo?.nombre || "",
+        cantidad: Number(it.cantidad) || 1,
+        unidad: it.unidad || it.articulo?.unidad || "",
+        costoUnitario:
+          it.costoUnitario !== null && it.costoUnitario !== undefined
+            ? Number(it.costoUnitario)
+            : null,
+      }))
+    )
+    setNecesitaProveedorExterno(Boolean(o.proveedorId))
+    setProveedorId(o.proveedorId || "")
+    setDescripcionProveedor(o.descripcionProveedor || "")
+    setMandarMaquinaAMantenimiento(false)
   }, [open, ordenId, ordenQuery.data])
 
   const agregarActividad = () => {
@@ -338,6 +343,7 @@ const NuevaOrdenModal = ({ open, onOpenChange, ordenId }: NuevaOrdenModalProps) 
       unidad: it.unidad || null,
       costoUnitario: it.costoUnitario,
     })),
+    mandarMaquinaAMantenimiento: Boolean(maquinaId && mandarMaquinaAMantenimiento),
   })
 
   const saveMutation = useMutation({
@@ -349,6 +355,10 @@ const NuevaOrdenModal = ({ open, onOpenChange, ordenId }: NuevaOrdenModalProps) 
       toast.success(isEdit ? "Orden actualizada" : "Orden creada")
       queryClient.invalidateQueries({ queryKey: ["ordenes-trabajo"] })
       if (ordenId) queryClient.invalidateQueries({ queryKey: ["orden-trabajo", ordenId] })
+      if (payload.mandarMaquinaAMantenimiento) {
+        queryClient.invalidateQueries({ queryKey: ["maquinas"] })
+        queryClient.invalidateQueries({ queryKey: ["maquinas-options"] })
+      }
       if (payload.estado === "cerrada") {
         queryClient.invalidateQueries({ queryKey: ["articulos"] })
         queryClient.invalidateQueries({ queryKey: ["inventario-resumen"] })
@@ -502,6 +512,19 @@ const NuevaOrdenModal = ({ open, onOpenChange, ordenId }: NuevaOrdenModalProps) 
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="flex items-center space-x-2 md:col-span-1">
+                <Checkbox
+                  id="mandar-maquina-mantenimiento"
+                  checked={mandarMaquinaAMantenimiento}
+                  disabled={!maquinaId}
+                  onCheckedChange={(checked) =>
+                    setMandarMaquinaAMantenimiento(checked === true)
+                  }
+                />
+                <Label htmlFor="mandar-maquina-mantenimiento" className="text-sm font-medium">
+                  Mandar máquina a mantenimiento
+                </Label>
               </div>
               <div className="space-y-2">
                 <Label>Fecha Vencimiento</Label>

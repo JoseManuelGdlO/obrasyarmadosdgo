@@ -24,6 +24,17 @@ const trimOrNull = (value) => {
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
+const parseBool = (value) =>
+  value === true || value === "true" || value === 1 || value === "1";
+
+const aplicarMantenimientoMaquina = async (maquinaId, flag, transaction) => {
+  if (!parseBool(flag) || !maquinaId) return;
+  await Maquina.update(
+    { estado: "Mantenimiento" },
+    { where: { id: maquinaId }, transaction }
+  );
+};
+
 const normalizeFecha = (value) => {
   if (value === undefined) return undefined;
   if (value === null || value === "") return null;
@@ -441,6 +452,12 @@ const create = async (req, res) => {
       }
     }
 
+    await aplicarMantenimientoMaquina(
+      maquinaId,
+      req.body.mandarMaquinaAMantenimiento,
+      tx
+    );
+
     await tx.commit();
 
     const ordenCompleta = await OrdenTrabajo.findByPk(orden.id, {
@@ -610,6 +627,14 @@ const update = async (req, res) => {
       if (!orden.fechaCierre) {
         await orden.update({ fechaCierre: todayStr() }, { transaction: tx });
       }
+    }
+
+    if (req.body.mandarMaquinaAMantenimiento !== undefined) {
+      await aplicarMantenimientoMaquina(
+        orden.maquinaId,
+        req.body.mandarMaquinaAMantenimiento,
+        tx
+      );
     }
 
     await tx.commit();
