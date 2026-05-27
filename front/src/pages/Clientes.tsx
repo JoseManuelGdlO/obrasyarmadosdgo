@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { StatCard } from "@/components/ui/stat-card"
 import { 
   Plus, 
@@ -14,13 +17,57 @@ import {
   Users,
   Crown,
   MapPin,
-  UserCheck
+  UserCheck,
+  X,
 } from "lucide-react"
 import { apiRequest } from "@/lib/api"
 import ClienteModal, { ClienteFormData } from "@/components/modals/ClienteModal"
 
+type ClienteFilters = {
+  estados: string[]
+  industrias: string[]
+  paises: string[]
+  ciudades: string[]
+}
+
+const EMPTY_FILTERS: ClienteFilters = {
+  estados: [],
+  industrias: [],
+  paises: [],
+  ciudades: [],
+}
+
+const ESTADO_OPCIONES: { value: string; label: string }[] = [
+  { value: "activo", label: "Activo" },
+  { value: "en_configuracion", label: "En Configuración" },
+  { value: "suspendido", label: "Suspendido" },
+  { value: "inactivo", label: "Inactivo" },
+]
+
+const cleanText = (value: unknown) => {
+  const trimmed = String(value ?? "").trim()
+  return trimmed || "-"
+}
+
+/** Deduplica ignorando mayúsculas y espacios (p. ej. "Mexico" vs "Mexico "). */
+const uniqueSorted = (values: string[]) => {
+  const byKey = new Map<string, string>()
+  for (const raw of values) {
+    const trimmed = String(raw ?? "").trim()
+    if (!trimmed || trimmed === "-") continue
+    const key = trimmed.toLocaleLowerCase("es")
+    if (!byKey.has(key)) byKey.set(key, trimmed)
+  }
+  return [...byKey.values()].sort((a, b) => a.localeCompare(b, "es"))
+}
+
+const matchesFilterValue = (selected: string[], value: string) =>
+  selected.length === 0 ||
+  selected.some((item) => item.toLocaleLowerCase("es") === value.toLocaleLowerCase("es"))
+
 const Clientes = () => {
   const [searchTerm, setSearchTerm] = useState("")
+  const [filters, setFilters] = useState<ClienteFilters>(EMPTY_FILTERS)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingClientId, setEditingClientId] = useState<string | null>(null)
   const queryClient = useQueryClient()
@@ -33,9 +80,9 @@ const Clientes = () => {
   const clientes = (data?.clientes || []).map((cliente) => ({
     id: String(cliente.id || ""),
     nombre: String(cliente.nombre || ""),
-    tipoIndustria: String(cliente.tipoIndustria || "-"),
-    pais: String(cliente.pais || "-"),
-    ciudad: String(cliente.ciudad || "-"),
+    tipoIndustria: cleanText(cliente.tipoIndustria),
+    pais: cleanText(cliente.pais),
+    ciudad: cleanText(cliente.ciudad),
     encargadoNombre: String(cliente.encargadoNombre || "-"),
     telefono: String(cliente.telefono || "-"),
     fechaRegistro: String(cliente.createdAt || "").slice(0, 10),
@@ -61,9 +108,56 @@ const Clientes = () => {
     },
   })
 
-  const filteredClientes = clientes.filter((cliente) =>
-    [cliente.nombre, cliente.tipoIndustria, cliente.ciudad, cliente.pais].join(" ").toLowerCase().includes(searchTerm.toLowerCase())
+  const filterOptions = useMemo(
+    () => ({
+      industrias: uniqueSorted(clientes.map((c) => c.tipoIndustria)),
+      paises: uniqueSorted(clientes.map((c) => c.pais)),
+      ciudades: uniqueSorted(clientes.map((c) => c.ciudad)),
+    }),
+    [clientes]
   )
+
+  const activeFilterCount =
+    filters.estados.length +
+    filters.industrias.length +
+    filters.paises.length +
+    filters.ciudades.length
+
+  const toggleFilter = (field: keyof ClienteFilters, value: string) => {
+    setFilters((prev) => {
+      const current = prev[field]
+      const next = current.includes(value)
+        ? current.filter((v) => v !== value)
+        : [...current, value]
+      return { ...prev, [field]: next }
+    })
+  }
+
+  const clearFilters = () => setFilters(EMPTY_FILTERS)
+
+  const filteredClientes = useMemo(() => {
+    const term = searchTerm.toLowerCase()
+    return clientes.filter((cliente) => {
+      const matchesSearch =
+        term === "" ||
+        [cliente.nombre, cliente.tipoIndustria, cliente.ciudad, cliente.pais]
+          .join(" ")
+          .toLowerCase()
+          .includes(term)
+      const matchesEstado =
+        filters.estados.length === 0 || filters.estados.includes(cliente.estado)
+      const matchesIndustria = matchesFilterValue(filters.industrias, cliente.tipoIndustria)
+      const matchesPais = matchesFilterValue(filters.paises, cliente.pais)
+      const matchesCiudad = matchesFilterValue(filters.ciudades, cliente.ciudad)
+      return (
+        matchesSearch &&
+        matchesEstado &&
+        matchesIndustria &&
+        matchesPais &&
+        matchesCiudad
+      )
+    })
+  }, [clientes, searchTerm, filters])
 
   const selectedClient = clientes.find((cliente) => cliente.id === editingClientId)
   const initialData: Partial<ClienteFormData> | null = selectedClient
@@ -112,10 +206,10 @@ const Clientes = () => {
     createCliente.mutate(payload)
   }
 
-  const clientesActivos = filteredClientes.filter(c => c.estado === "activo").length
+  const clientesActivos = clientes.filter((c) => c.estado === "activo").length
   const totalProyectosKpi = clientes.reduce((total, c) => total + c.totalProyectos, 0)
   const totalCiudades = new Set(clientes.map((cliente) => cliente.ciudad).filter((ciudad) => ciudad && ciudad !== "-")).size
-  const clientesNuevos = filteredClientes.filter(c => new Date(c.fechaRegistro) > new Date("2024-01-01")).length
+  const clientesNuevos = clientes.filter((c) => new Date(c.fechaRegistro) > new Date("2024-01-01")).length
 
   return (
     <div className="space-y-6">
@@ -184,10 +278,123 @@ const Clientes = () => {
                 onChange={(event) => setSearchTerm(event.target.value)}
               />
             </div>
-            <Button variant="outline" className="flex items-center gap-2">
-              <Filter className="w-4 h-4" />
-              Filtros Avanzados
-            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2 w-full sm:w-auto justify-between sm:min-w-[140px]"
+                >
+                  <div className="flex items-center gap-2">
+                    <Filter className="w-4 h-4" />
+                    <span>
+                      Filtros{activeFilterCount > 0 && ` (${activeFilterCount})`}
+                    </span>
+                  </div>
+                  {activeFilterCount > 0 && (
+                    <X
+                      className="h-4 w-4 opacity-50 hover:opacity-100"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        clearFilters()
+                      }}
+                    />
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-4" align="end">
+                <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Estado</p>
+                    {ESTADO_OPCIONES.map(({ value, label }) => (
+                      <div key={value} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`filtro-estado-${value}`}
+                          checked={filters.estados.includes(value)}
+                          onCheckedChange={() => toggleFilter("estados", value)}
+                        />
+                        <Label
+                          htmlFor={`filtro-estado-${value}`}
+                          className="text-sm font-normal cursor-pointer flex-1"
+                        >
+                          {label}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                  {filterOptions.industrias.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Industria</p>
+                      {filterOptions.industrias.map((industria) => (
+                        <div key={industria} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`filtro-industria-${industria}`}
+                            checked={filters.industrias.includes(industria)}
+                            onCheckedChange={() => toggleFilter("industrias", industria)}
+                          />
+                          <Label
+                            htmlFor={`filtro-industria-${industria}`}
+                            className="text-sm font-normal cursor-pointer flex-1"
+                          >
+                            {industria}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {filterOptions.paises.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">País</p>
+                      {filterOptions.paises.map((pais) => (
+                        <div key={pais} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`filtro-pais-${pais}`}
+                            checked={filters.paises.includes(pais)}
+                            onCheckedChange={() => toggleFilter("paises", pais)}
+                          />
+                          <Label
+                            htmlFor={`filtro-pais-${pais}`}
+                            className="text-sm font-normal cursor-pointer flex-1"
+                          >
+                            {pais}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {filterOptions.ciudades.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Ciudad</p>
+                      {filterOptions.ciudades.map((ciudad) => (
+                        <div key={ciudad} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`filtro-ciudad-${ciudad}`}
+                            checked={filters.ciudades.includes(ciudad)}
+                            onCheckedChange={() => toggleFilter("ciudades", ciudad)}
+                          />
+                          <Label
+                            htmlFor={`filtro-ciudad-${ciudad}`}
+                            className="text-sm font-normal cursor-pointer flex-1"
+                          >
+                            {ciudad}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {activeFilterCount > 0 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full mt-3"
+                    onClick={clearFilters}
+                  >
+                    Limpiar filtros
+                  </Button>
+                )}
+              </PopoverContent>
+            </Popover>
           </div>
         </CardContent>
       </Card>
@@ -197,10 +404,15 @@ const Clientes = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Crown className="w-5 h-5 text-primary" />
-            Organizaciones Registradas
+            Organizaciones Registradas ({filteredClientes.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {filteredClientes.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              No se encontraron clientes que coincidan con los filtros
+            </p>
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -272,6 +484,7 @@ const Clientes = () => {
               ))}
             </TableBody>
           </Table>
+          )}
         </CardContent>
       </Card>
       <ClienteModal
