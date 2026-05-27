@@ -357,7 +357,7 @@ export default function Proveedores() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="contactoPrincipal">Contacto Principal</Label>
+                  <Label htmlFor="contactoPrincipal">Dueño o Encargado de la empresa</Label>
                   <Input
                     id="contactoPrincipal"
                     placeholder="Ej: Ing. Carlos Martínez"
