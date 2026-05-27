@@ -93,7 +93,7 @@ export default function ProyectoModal({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Nombre</Label>
+              <Label>Nombre del Proyecto</Label>
               <Input
                 value={form.nombre}
                 onChange={(event) => setForm((prev) => ({ ...prev, nombre: event.target.value }))}

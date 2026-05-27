@@ -40,7 +40,7 @@ const Clientes = () => {
     telefono: String(cliente.telefono || "-"),
     fechaRegistro: String(cliente.createdAt || "").slice(0, 10),
     estado: String(cliente.estado || "activo"),
-    proyectosActivos: Number(cliente.proyectosActivos || 0),
+    totalProyectos: Number(cliente.proyectosActivos ?? 0),
   }))
 
   const createCliente = useMutation({
@@ -113,7 +113,7 @@ const Clientes = () => {
   }
 
   const clientesActivos = filteredClientes.filter(c => c.estado === "activo").length
-  const totalProyectos = clientes.reduce((total, c) => total + c.proyectosActivos, 0)
+  const totalProyectosKpi = clientes.reduce((total, c) => total + c.totalProyectos, 0)
   const totalCiudades = new Set(clientes.map((cliente) => cliente.ciudad).filter((ciudad) => ciudad && ciudad !== "-")).size
   const clientesNuevos = filteredClientes.filter(c => new Date(c.fechaRegistro) > new Date("2024-01-01")).length
 
@@ -150,7 +150,7 @@ const Clientes = () => {
         />
         <StatCard
           title="Proyectos Totales"
-          value={totalProyectos}
+          value={totalProyectosKpi}
           icon={Users}
           description="En todas las organizaciones"
           trend={{ value: 8, isPositive: true }}
@@ -246,7 +246,7 @@ const Clientes = () => {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Users className="w-4 h-4 text-primary" />
-                      <span className="font-medium">{cliente.proyectosActivos}</span>
+                      <span className="font-medium">{cliente.totalProyectos}</span>
                     </div>
                   </TableCell>
                   <TableCell>

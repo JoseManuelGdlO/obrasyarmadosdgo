@@ -1,9 +1,30 @@
 const Cliente = require("../models/Cliente");
+const Proyecto = require("../models/Proyecto");
+
+const attachProyectoCounts = async (clientes) => {
+  if (!clientes.length) return [];
+
+  const proyectoCounts = await Proyecto.count({
+    where: { clienteId: clientes.map((cliente) => cliente.id) },
+    group: ["clienteId"],
+  });
+
+  const countByCliente = new Map(
+    proyectoCounts.map((row) => [row.clienteId, row.count])
+  );
+
+  return clientes.map((cliente) => {
+    const json = cliente.toJSON();
+    json.proyectosActivos = countByCliente.get(cliente.id) ?? 0;
+    return json;
+  });
+};
 
 const listClientes = async (_req, res) => {
   try {
     const clientes = await Cliente.findAll({ order: [["nombre", "ASC"]] });
-    return res.status(200).json({ clientes });
+    const clientesWithCounts = await attachProyectoCounts(clientes);
+    return res.status(200).json({ clientes: clientesWithCounts });
   } catch (error) {
     return res.status(500).json({
       message: "Error al listar clientes.",
@@ -19,7 +40,8 @@ const getClienteById = async (req, res) => {
     if (!cliente) {
       return res.status(404).json({ message: "Cliente no encontrado." });
     }
-    return res.status(200).json({ cliente });
+    const [clienteWithCount] = await attachProyectoCounts([cliente]);
+    return res.status(200).json({ cliente: clienteWithCount });
   } catch (error) {
     return res.status(500).json({
       message: "Error al obtener el cliente.",
@@ -38,7 +60,6 @@ const createCliente = async (req, res) => {
       encargadoNombre,
       telefono,
       estado,
-      proyectosActivos,
     } = req.body;
     if (!nombre || !String(nombre).trim()) {
       return res.status(400).json({ message: "El nombre es obligatorio." });
@@ -51,11 +72,11 @@ const createCliente = async (req, res) => {
       ...(encargadoNombre !== undefined ? { encargadoNombre } : {}),
       ...(telefono !== undefined ? { telefono } : {}),
       ...(estado !== undefined ? { estado } : {}),
-      ...(proyectosActivos !== undefined ? { proyectosActivos } : {}),
     });
+    const [clienteWithCount] = await attachProyectoCounts([created]);
     return res.status(201).json({
       message: "Cliente creado correctamente.",
-      cliente: created,
+      cliente: clienteWithCount,
     });
   } catch (error) {
     return res.status(500).json({
@@ -76,7 +97,6 @@ const updateCliente = async (req, res) => {
       "encargadoNombre",
       "telefono",
       "estado",
-      "proyectosActivos",
     ];
     const updates = {};
     const cliente = await Cliente.findByPk(id);
@@ -99,9 +119,10 @@ const updateCliente = async (req, res) => {
     }
     await cliente.update(updates);
     const updated = await Cliente.findByPk(id);
+    const [clienteWithCount] = await attachProyectoCounts([updated]);
     return res.status(200).json({
       message: "Cliente actualizado correctamente.",
-      cliente: updated,
+      cliente: clienteWithCount,
     });
   } catch (error) {
     return res.status(500).json({

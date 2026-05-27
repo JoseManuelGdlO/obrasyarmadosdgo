@@ -62,6 +62,8 @@ const Proyectos = () => {
     onSuccess: () => {
       setModalOpen(false)
       queryClient.invalidateQueries({ queryKey: ["proyectos"] })
+      queryClient.invalidateQueries({ queryKey: ["clientes"] })
+      queryClient.invalidateQueries({ queryKey: ["clientes-lite"] })
     },
   })
 
@@ -72,6 +74,8 @@ const Proyectos = () => {
       setModalOpen(false)
       setEditingProjectId(null)
       queryClient.invalidateQueries({ queryKey: ["proyectos"] })
+      queryClient.invalidateQueries({ queryKey: ["clientes"] })
+      queryClient.invalidateQueries({ queryKey: ["clientes-lite"] })
     },
   })
 
