@@ -5,6 +5,9 @@ const cors = require("cors");
 const path = require("path");
 const sequelize = require("./config/database");
 const routes = require("./routes");
+const requestLogger = require("./middlewares/requestLogger");
+const errorHandler = require("./middlewares/errorHandler");
+const { logger } = require("./utils/logger");
 const {
   MACHINE_UPLOADS_DIR,
   MACHINE_UPLOADS_ROUTE,
@@ -47,6 +50,7 @@ app.use(
     maxAge: "7d",
   })
 );
+app.use(requestLogger);
 
 // Endpoint liviano para chequeos de disponibilidad.
 app.get("/health", (_req, res) => {
@@ -55,6 +59,7 @@ app.get("/health", (_req, res) => {
 
 // Agrupa endpoints de API bajo /api.
 app.use("/api", routes);
+app.use(errorHandler);
 
 const startServer = async () => {
   try {
@@ -62,11 +67,10 @@ const startServer = async () => {
     await sequelize.authenticate();
 
     app.listen(PORT, HOST, () => {
-      console.log(`Servidor backend corriendo en el puerto ${PORT}`);
+      logger.info(`Servidor backend corriendo en http://${HOST}:${PORT}/health`);
     });
-    console.log(`Servidor backend corriendo en http://${HOST}:${PORT}/health`);
   } catch (error) {
-    console.error("Error al iniciar el servidor:", error.message);
+    logger.error(`Error al iniciar el servidor: ${error.message}`);
     process.exit(1);
   }
 };

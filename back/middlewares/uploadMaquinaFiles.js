@@ -6,6 +6,7 @@ const {
   MACHINE_UPLOADS_DIR,
   ensureMachineUploadsDir,
 } = require("../config/uploads");
+const { logger } = require("../utils/logger");
 
 const PORTADA_MAX_SIZE = 2 * 1024 * 1024;
 const DOCUMENT_MAX_SIZE = 5 * 1024 * 1024;
@@ -116,7 +117,7 @@ const cleanupUploadedFilesIfPresent = async (req) => {
       await fs.unlink(filePath);
     } catch (error) {
       if (error.code !== "ENOENT") {
-        console.error("No se pudo eliminar archivo temporal:", error.message);
+        logger.warn(`No se pudo eliminar archivo temporal: ${error.message}`);
       }
     }
   }
