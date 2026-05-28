@@ -14,6 +14,14 @@ import { toast } from "sonner";
 import logoObras from "@/assets/logo-obras.png";
 import { FuelGauge } from "@/components/checklist/FuelGauge";
 import { apiRequest, toAbsoluteAssetUrl } from "@/lib/api";
+import {
+  checklistFieldHighlightClass,
+  findFirstMissingChecklistField,
+  isChecklistFieldHighlighted,
+  missingChecklistFieldMessage,
+  scrollToChecklistField,
+} from "@/lib/checklist-validation";
+import { cn } from "@/lib/utils";
 
 type ChecklistItemBackend = {
   id: string;
@@ -55,6 +63,7 @@ export default function ChecklistPublico() {
   const [numericValues, setNumericValues] = useState<Record<string, string>>({});
   const [observaciones, setObservaciones] = useState("");
   const [notas, setNotas] = useState("");
+  const [highlightedField, setHighlightedField] = useState<string | null>(null);
 
   useEffect(() => {
     const data = searchParams.get("data");
@@ -105,6 +114,9 @@ export default function ChecklistPublico() {
 
   const handleToggleItem = (id: string) => {
     setCheckedItems((prev) => ({ ...prev, [id]: !prev[id] }));
+    if (highlightedField === `inspection:${id}`) {
+      setHighlightedField(null);
+    }
   };
 
   const checkItems = checklistItems.filter((i) => i.itemType === "check");
@@ -143,17 +155,22 @@ export default function ChecklistPublico() {
   });
 
   const handleSubmit = () => {
-    if (!operador.trim()) {
-      toast.error("Por favor ingresa el nombre del operador");
-      return;
-    }
-    if (nivelCombustible === null) {
-      toast.error("Indica el nivel de gasolina");
-      return;
-    }
     if (!maquina) return;
     if (checklistItems.length === 0) {
       toast.error("Esta máquina no tiene checklist configurado");
+      return;
+    }
+
+    const missing = findFirstMissingChecklistField({
+      operador,
+      nivelCombustible,
+      checkItems,
+      checkedItems,
+    });
+    if (missing) {
+      setHighlightedField(missing.field);
+      toast.error(missingChecklistFieldMessage(missing.label));
+      scrollToChecklistField(missing.field);
       return;
     }
 
@@ -228,6 +245,7 @@ export default function ChecklistPublico() {
                 setOperador("");
                 setTrabajadorId("");
                 setNivelCombustible(null);
+                setHighlightedField(null);
               }}
             >
               Realizar otro checklist
@@ -271,31 +289,33 @@ export default function ChecklistPublico() {
       <div
         className={`max-w-2xl mx-auto p-4 space-y-4 print:pb-4 ${isPrintMode ? "pb-4" : "pb-24"}`}
       >
-        {/* Info máquina */}
-        <Card className="print:break-inside-avoid">
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center gap-3">
-              {toAbsoluteAssetUrl(maquina.fotoPortadaPath) ? (
-                <img
-                  src={toAbsoluteAssetUrl(maquina.fotoPortadaPath) || ""}
-                  alt={`Portada ${maquina.nombre}`}
-                  className="h-12 w-16 rounded-lg object-cover border"
-                />
-              ) : (
-                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Truck className="h-5 w-5 text-primary" />
+        {/* Info máquina (oculta al imprimir; el encabezado ya identifica la unidad) */}
+        {!isPrintMode && (
+          <Card className="print:break-inside-avoid">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-3">
+                {toAbsoluteAssetUrl(maquina.fotoPortadaPath) ? (
+                  <img
+                    src={toAbsoluteAssetUrl(maquina.fotoPortadaPath) || ""}
+                    alt={`Portada ${maquina.nombre}`}
+                    className="h-12 w-16 rounded-lg object-cover border"
+                  />
+                ) : (
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Truck className="h-5 w-5 text-primary" />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <p className="font-medium text-foreground">{maquina.nombre}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {maquina.marca || ""} {maquina.modelo || ""}
+                    {maquina.numeroSerie ? ` · S/N: ${maquina.numeroSerie}` : ""}
+                  </p>
                 </div>
-              )}
-              <div className="flex-1">
-                <p className="font-medium text-foreground">{maquina.nombre}</p>
-                <p className="text-xs text-muted-foreground">
-                  {maquina.marca || ""} {maquina.modelo || ""}
-                  {maquina.numeroSerie ? ` · S/N: ${maquina.numeroSerie}` : ""}
-                </p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {itemsLoading ? (
           <Card>
@@ -322,12 +342,22 @@ export default function ChecklistPublico() {
                 <CardTitle className="text-sm">Datos del Operador</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="space-y-1">
+                <div
+                  id="checklist-field-operador"
+                  className={cn(
+                    "space-y-1 rounded-lg p-2 -m-2",
+                    isChecklistFieldHighlighted(highlightedField, "operador") &&
+                      checklistFieldHighlightClass
+                  )}
+                >
                   <Label className="text-xs">Nombre del Operador *</Label>
                   <Input
                     placeholder={isPrintMode ? undefined : "Ej: Juan Pérez"}
                     value={operador}
-                    onChange={(e) => setOperador(e.target.value)}
+                    onChange={(e) => {
+                      setOperador(e.target.value);
+                      if (highlightedField === "operador") setHighlightedField(null);
+                    }}
                   />
                 </div>
                 <div className="space-y-1">
@@ -356,11 +386,27 @@ export default function ChecklistPublico() {
                     </Select>
                   )}
                 </div>
-                <div className="space-y-2 pt-1">
+                <div
+                  id="checklist-field-nivel-combustible"
+                  className={cn(
+                    "space-y-2 pt-1 rounded-lg p-2 -m-2",
+                    isChecklistFieldHighlighted(highlightedField, "nivelCombustible") &&
+                      checklistFieldHighlightClass
+                  )}
+                >
                   <Label className="text-xs">Nivel de gasolina *</Label>
                   <FuelGauge
                     value={nivelCombustible}
-                    onChange={isPrintMode ? undefined : setNivelCombustible}
+                    onChange={
+                      isPrintMode
+                        ? undefined
+                        : (value) => {
+                            setNivelCombustible(value);
+                            if (highlightedField === "nivelCombustible") {
+                              setHighlightedField(null);
+                            }
+                          }
+                    }
                     mode={isPrintMode ? "print" : "interactive"}
                   />
                 </div>
@@ -415,7 +461,16 @@ export default function ChecklistPublico() {
                 <div className="space-y-1">
                   {checkItems.map((item, idx) => (
                     <div key={item.id}>
-                      <label className="flex items-center gap-3 py-2.5 px-2 rounded-md hover:bg-muted/50 cursor-pointer">
+                      <label
+                        id={`checklist-field-${item.id}`}
+                        className={cn(
+                          "flex items-center gap-3 py-2.5 px-2 rounded-md hover:bg-muted/50 cursor-pointer",
+                          isChecklistFieldHighlighted(
+                            highlightedField,
+                            `inspection:${item.id}`
+                          ) && checklistFieldHighlightClass
+                        )}
+                      >
                         <Checkbox
                           checked={!!checkedItems[item.id]}
                           onCheckedChange={() => handleToggleItem(item.id)}

@@ -24,6 +24,14 @@ import { useAuth } from "@/lib/auth-context";
 import { getMaquinaClaseTipoLabel, getMaquinaTipoNombre } from "@/lib/maquina";
 import { FuelGauge, formatCombustibleLabel } from "@/components/checklist/FuelGauge";
 import { openChecklistPrintWindow } from "@/lib/checklist-publico";
+import {
+  checklistFieldHighlightClass,
+  findFirstMissingChecklistField,
+  isChecklistFieldHighlighted,
+  missingChecklistFieldMessage,
+  scrollToChecklistField,
+} from "@/lib/checklist-validation";
+import { cn } from "@/lib/utils";
 
 type MaquinaBackend = {
   id: string;
@@ -105,6 +113,7 @@ export default function Checklist() {
   const [nivelCombustible, setNivelCombustible] = useState<number | null>(null);
   const [observaciones, setObservaciones] = useState("");
   const [notas, setNotas] = useState("");
+  const [highlightedField, setHighlightedField] = useState<string | null>(null);
 
   const today = useMemo(() => todayISO(), []);
 
@@ -205,6 +214,7 @@ export default function Checklist() {
     setNivelCombustible(null);
     setObservaciones("");
     setNotas("");
+    setHighlightedField(null);
     setIsModalOpen(true);
   };
 
@@ -216,20 +226,28 @@ export default function Checklist() {
 
   const handleToggleItem = (id: string) => {
     setCheckedItems((prev) => ({ ...prev, [id]: !prev[id] }));
+    if (highlightedField === `inspection:${id}`) {
+      setHighlightedField(null);
+    }
   };
 
   const handleSubmitChecklist = () => {
     if (!selectedMaquina) return;
-    if (!operador.trim()) {
-      toast.error("El nombre del operador es obligatorio");
-      return;
-    }
-    if (nivelCombustible === null) {
-      toast.error("Indica el nivel de gasolina");
-      return;
-    }
     if (checklistItems.length === 0) {
       toast.error("Esta máquina no tiene checklist configurado");
+      return;
+    }
+
+    const missing = findFirstMissingChecklistField({
+      operador,
+      nivelCombustible,
+      checkItems,
+      checkedItems,
+    });
+    if (missing) {
+      setHighlightedField(missing.field);
+      toast.error(missingChecklistFieldMessage(missing.label));
+      scrollToChecklistField(missing.field);
       return;
     }
 
@@ -397,14 +415,24 @@ export default function Checklist() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 pb-6">
                 {/* Col 1: Datos generales */}
                 <div className="space-y-5">
-                  <div className="space-y-2">
+                  <div
+                    id="checklist-field-operador"
+                    className={cn(
+                      "space-y-2 p-2 -m-2",
+                      isChecklistFieldHighlighted(highlightedField, "operador") &&
+                        checklistFieldHighlightClass
+                    )}
+                  >
                     <Label className="flex items-center gap-2">
                       <User className="h-4 w-4" /> Operador
                     </Label>
                     <Input
                       placeholder="Nombre del operador"
                       value={operador}
-                      onChange={(e) => setOperador(e.target.value)}
+                      onChange={(e) => {
+                        setOperador(e.target.value);
+                        if (highlightedField === "operador") setHighlightedField(null);
+                      }}
                     />
                   </div>
 
@@ -430,11 +458,21 @@ export default function Checklist() {
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
+                  <div
+                    id="checklist-field-nivel-combustible"
+                    className={cn(
+                      "space-y-2 p-2 -m-2",
+                      isChecklistFieldHighlighted(highlightedField, "nivelCombustible") &&
+                        checklistFieldHighlightClass
+                    )}
+                  >
                     <Label>Nivel de gasolina *</Label>
                     <FuelGauge
                       value={nivelCombustible}
-                      onChange={setNivelCombustible}
+                      onChange={(value) => {
+                        setNivelCombustible(value);
+                        if (highlightedField === "nivelCombustible") setHighlightedField(null);
+                      }}
                       mode="interactive"
                     />
                   </div>
@@ -498,7 +536,14 @@ export default function Checklist() {
                     {checkItems.map((item) => (
                       <label
                         key={item.id}
-                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer"
+                        id={`checklist-field-${item.id}`}
+                        className={cn(
+                          "flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer",
+                          isChecklistFieldHighlighted(
+                            highlightedField,
+                            `inspection:${item.id}`
+                          ) && checklistFieldHighlightClass
+                        )}
                       >
                         <Checkbox
                           checked={!!checkedItems[item.id]}
