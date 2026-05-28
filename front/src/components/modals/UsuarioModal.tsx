@@ -70,7 +70,6 @@ export default function UsuarioModal({
           <div className="space-y-2">
             <Label>{isEdit ? "Nueva contraseña (opcional)" : "Contraseña"}</Label>
             <Input
-              type="password"
               value={form.password}
               onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
               required={!isEdit}
