@@ -120,7 +120,7 @@ const create = async (req, res) => {
     const trabajadorId = trimOrNull(req.body.trabajadorId);
     if (trabajadorId) {
       const trabajador = await Trabajador.findByPk(trabajadorId);
-      if (!trabajador) {
+      if (!trabajador || trabajador.bajaLogica) {
         return res.status(404).json({ message: "Trabajador no encontrado." });
       }
     }
@@ -195,7 +195,7 @@ const update = async (req, res) => {
       const trabajadorId = trimOrNull(req.body.trabajadorId);
       if (trabajadorId) {
         const trabajador = await Trabajador.findByPk(trabajadorId);
-        if (!trabajador) {
+        if (!trabajador || trabajador.bajaLogica) {
           return res.status(404).json({ message: "Trabajador no encontrado." });
         }
       }

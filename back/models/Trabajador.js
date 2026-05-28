@@ -22,6 +22,12 @@ const Trabajador = sequelize.define(
       allowNull: false,
       defaultValue: "activo",
     },
+    bajaLogica: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    fechaBaja: { type: DataTypes.DATEONLY, allowNull: true },
   },
   { tableName: "trabajadores", timestamps: true }
 );

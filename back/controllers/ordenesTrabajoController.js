@@ -378,7 +378,9 @@ const validarRefs = async ({
   }
   if (responsableId) {
     const trabajador = await Trabajador.findByPk(responsableId);
-    if (!trabajador) return { error: "Responsable no encontrado.", code: 404 };
+    if (!trabajador || trabajador.bajaLogica) {
+      return { error: "Responsable no encontrado.", code: 404 };
+    }
   }
   return null;
 };
@@ -404,9 +406,12 @@ const persistActividades = async (ordenTrabajoId, actividades, transaction) => {
       : [];
     if (tecnicos.length > 0) {
       const trabajadoresValidos = await Trabajador.findAll({
-        where: { id: { [Op.in]: tecnicos } },
+        where: { id: { [Op.in]: tecnicos }, bajaLogica: false },
         transaction,
       });
+      if (trabajadoresValidos.length !== tecnicos.length) {
+        throw new Error("Uno o más técnicos no son válidos o están dados de baja.");
+      }
       await actividad.setTecnicos(trabajadoresValidos, { transaction });
     }
   }

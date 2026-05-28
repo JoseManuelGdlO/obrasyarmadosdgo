@@ -7,6 +7,7 @@ const {
   WORKER_UPLOADS_ROUTE,
 } = require("../config/uploads");
 const { cleanupUploadedFilesIfPresent } = require("../middlewares/uploadTrabajadorFiles");
+const { todayDateOnly, normalizeDateOnly } = require("../utils/dateOnly");
 const { logError } = require("../utils/logger");
 
 const ESTADOS_TRABAJADOR = ["activo", "inactivo", "vacaciones", "licencia"];
@@ -51,6 +52,40 @@ const pickUploadedAvatarPath = (req) => {
 
 const parseTruthyFlag = (value) => value === true || value === "true";
 
+const buildListWhere = (q) => {
+  const baseWhere = { bajaLogica: false };
+  if (!q || !String(q).trim()) return baseWhere;
+  const term = `%${String(q).trim()}%`;
+  return {
+    [Op.and]: [
+      baseWhere,
+      {
+        [Op.or]: [
+          { nombre: { [Op.like]: term } },
+          { puesto: { [Op.like]: term } },
+          { cargo: { [Op.like]: term } },
+          { email: { [Op.like]: term } },
+          { departamento: { [Op.like]: term } },
+          { especialidad: { [Op.like]: term } },
+        ],
+      },
+    ],
+  };
+};
+
+const applyEstadoBajaSideEffects = (trabajador, payload) => {
+  if (payload.estado === "inactivo" && trabajador.estado !== "inactivo") {
+    payload.fechaBaja = todayDateOnly();
+  }
+  if (
+    payload.estado !== undefined &&
+    payload.estado !== "inactivo" &&
+    trabajador.estado === "inactivo"
+  ) {
+    payload.fechaBaja = null;
+  }
+};
+
 const trimOrNull = (value) => {
   if (value === undefined || value === null) return null;
   const str = String(value).trim();
@@ -65,16 +100,6 @@ const normalizeEstado = (value) => {
   if (str === "vacaciones") return "vacaciones";
   if (str === "licencia") return "licencia";
   return null;
-};
-
-const normalizeFecha = (value) => {
-  if (value === undefined) return undefined;
-  if (value === null || value === "") return null;
-  const str = String(value).trim();
-  if (str === "") return null;
-  const date = new Date(str);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString().slice(0, 10);
 };
 
 const buildPayload = (body, { partial = false } = {}) => {
@@ -100,7 +125,7 @@ const buildPayload = (body, { partial = false } = {}) => {
   if (body.avatar !== undefined) payload.avatar = trimOrNull(body.avatar);
 
   if (body.fechaIngreso !== undefined) {
-    const fecha = normalizeFecha(body.fechaIngreso);
+    const fecha = normalizeDateOnly(body.fechaIngreso);
     if (fecha === null && body.fechaIngreso !== null && body.fechaIngreso !== "") {
       errors.push("La fecha de ingreso no es válida.");
     } else {
@@ -136,20 +161,8 @@ const applyAvatarToPayload = (req, payload, { partial = false } = {}) => {
 const list = async (req, res) => {
   try {
     const { q } = req.query;
-    const where = {};
-    if (q && String(q).trim()) {
-      const term = `%${String(q).trim()}%`;
-      where[Op.or] = [
-        { nombre: { [Op.like]: term } },
-        { puesto: { [Op.like]: term } },
-        { cargo: { [Op.like]: term } },
-        { email: { [Op.like]: term } },
-        { departamento: { [Op.like]: term } },
-        { especialidad: { [Op.like]: term } },
-      ];
-    }
     const trabajadores = await Trabajador.findAll({
-      where,
+      where: buildListWhere(q),
       order: [["nombre", "ASC"]],
     });
     return res.status(200).json({ trabajadores });
@@ -165,7 +178,7 @@ const list = async (req, res) => {
 const getById = async (req, res) => {
   try {
     const trabajador = await Trabajador.findByPk(req.params.id);
-    if (!trabajador) {
+    if (!trabajador || trabajador.bajaLogica) {
       return res.status(404).json({ message: "Trabajador no encontrado." });
     }
     return res.status(200).json({ trabajador });
@@ -205,7 +218,7 @@ const update = async (req, res) => {
   try {
     const { id } = req.params;
     const trabajador = await Trabajador.findByPk(id);
-    if (!trabajador) {
+    if (!trabajador || trabajador.bajaLogica) {
       await cleanupUploadedFilesIfPresent(req);
       return res.status(404).json({ message: "Trabajador no encontrado." });
     }
@@ -214,6 +227,7 @@ const update = async (req, res) => {
       await cleanupUploadedFilesIfPresent(req);
       return res.status(400).json({ message: errors.join(" ") });
     }
+    applyEstadoBajaSideEffects(trabajador, payload);
     applyAvatarToPayload(req, payload, { partial: true });
     if (Object.keys(payload).length === 0) {
       await cleanupUploadedFilesIfPresent(req);
@@ -244,15 +258,15 @@ const remove = async (req, res) => {
   try {
     const { id } = req.params;
     const trabajador = await Trabajador.findByPk(id);
-    if (!trabajador) {
+    if (!trabajador || trabajador.bajaLogica) {
       return res.status(404).json({ message: "Trabajador no encontrado." });
     }
-    const oldAvatar = trabajador.avatar;
-    await trabajador.destroy();
-    if (oldAvatar) {
-      await safeDeleteStoredUpload(oldAvatar);
-    }
-    return res.status(200).json({ message: "Trabajador eliminado correctamente." });
+    await trabajador.update({
+      bajaLogica: true,
+      estado: "inactivo",
+      fechaBaja: trabajador.fechaBaja || todayDateOnly(),
+    });
+    return res.status(200).json({ message: "Trabajador dado de baja correctamente." });
   } catch (error) {
     logError("Error al eliminar trabajador.", error);
     return res.status(500).json({

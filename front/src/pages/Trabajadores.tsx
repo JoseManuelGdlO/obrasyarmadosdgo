@@ -21,6 +21,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import ConfirmDeleteButton from "@/components/common/ConfirmDeleteButton";
 import { apiRequest, toAbsoluteAssetUrl } from "@/lib/api";
+import { formatDateOnlyLocale } from "@/lib/utils";
 
 type EstadoBackend = "activo" | "inactivo" | "vacaciones" | "licencia";
 type EstadoUi = "Activo" | "Inactivo" | "Vacaciones" | "Licencia";
@@ -35,6 +36,7 @@ type TrabajadorBackend = {
   telefono?: string | null;
   email?: string | null;
   fechaIngreso?: string | null;
+  fechaBaja?: string | null;
   experiencia?: string | null;
   avatar?: string | null;
   estado: EstadoBackend;
@@ -49,6 +51,7 @@ type TrabajadorVM = {
   telefono: string;
   email: string;
   fechaIngreso: string;
+  fechaBaja: string;
   experiencia: string;
   avatar: string;
   estado: EstadoUi;
@@ -85,6 +88,16 @@ const estadoToUi = (estado: EstadoBackend | string | null | undefined): EstadoUi
   }
 };
 
+const formatTrabajadorSubtitulo = (t: TrabajadorVM) => {
+  if (t.estado === "Inactivo" && t.fechaBaja) {
+    return `Dado de baja el ${formatDateOnlyLocale(t.fechaBaja)}`;
+  }
+  if (t.fechaIngreso) {
+    return `Desde ${formatDateOnlyLocale(t.fechaIngreso)}`;
+  }
+  return "—";
+};
+
 const mapTrabajador = (t: TrabajadorBackend): TrabajadorVM => ({
   id: t.id,
   nombre: t.nombre || "",
@@ -94,6 +107,7 @@ const mapTrabajador = (t: TrabajadorBackend): TrabajadorVM => ({
   telefono: t.telefono || "",
   email: t.email || "",
   fechaIngreso: t.fechaIngreso || "",
+  fechaBaja: t.fechaBaja || "",
   experiencia: t.experiencia || "",
   avatar: t.avatar || "",
   estado: estadoToUi(t.estado),
@@ -240,10 +254,10 @@ export default function Trabajadores() {
   const deleteTrabajadorMutation = useMutation({
     mutationFn: (id: string) => apiRequest(`/trabajadores/${id}`, { method: "DELETE" }),
     onSuccess: () => {
-      toast.success("Trabajador eliminado");
+      toast.success("Trabajador dado de baja");
       queryClient.invalidateQueries({ queryKey: ["trabajadores"] });
     },
-    onError: (err: Error) => toast.error(err.message || "Error eliminando trabajador"),
+    onError: (err: Error) => toast.error(err.message || "Error al dar de baja al trabajador"),
   });
 
   const closeDialog = () => {
@@ -626,9 +640,7 @@ export default function Trabajadores() {
                       <div>
                         <div className="font-medium">{trabajador.nombre}</div>
                         <div className="text-sm text-gray-600">
-                          {trabajador.fechaIngreso
-                            ? `Desde ${new Date(trabajador.fechaIngreso).toLocaleDateString()}`
-                            : "—"}
+                          {formatTrabajadorSubtitulo(trabajador)}
                         </div>
                       </div>
                     </div>
@@ -687,8 +699,8 @@ export default function Trabajadores() {
                       </Button>
                       <ConfirmDeleteButton
                         className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                        title="¿Eliminar trabajador?"
-                        description={`Esta acción eliminará a "${trabajador.nombre}" permanentemente.`}
+                        title="¿Dar de baja al trabajador?"
+                        description={`Esta acción dará de baja a "${trabajador.nombre}" y dejará de aparecer en listados y estadísticas.`}
                         onConfirm={() => deleteTrabajadorMutation.mutate(trabajador.id)}
                       >
                         <Trash2 className="h-3 w-3" />

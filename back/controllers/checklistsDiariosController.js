@@ -115,7 +115,7 @@ const buildAndSaveChecklist = async ({ body, userId, source }) => {
   let trabajadorNombre = trimOrNull(body.trabajadorNombre);
   if (trabajadorId) {
     const trabajador = await Trabajador.findByPk(trabajadorId);
-    if (!trabajador) {
+    if (!trabajador || trabajador.bajaLogica) {
       return { status: 400, message: "Trabajador no encontrado." };
     }
     trabajadorNombre = trabajador.nombre;

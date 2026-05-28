@@ -73,7 +73,7 @@ router.get("/trabajadores", async (_req, res) => {
   try {
     const trabajadores = await Trabajador.findAll({
       attributes: ["id", "nombre"],
-      where: { estado: "activo" },
+      where: { estado: "activo", bajaLogica: false },
       order: [["nombre", "ASC"]],
     });
     return res.status(200).json({ trabajadores });
