@@ -371,10 +371,33 @@ export default function Checklist() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="shrink-0"
+                  className="shrink-0 mr-4"
                   disabled={isLoadingItems}
                   onClick={() => {
-                    if (!openChecklistPrintWindow(selectedMaquina)) {
+                    if (
+                      !openChecklistPrintWindow(
+                        {
+                          id: selectedMaquina.id,
+                          nombre: selectedMaquina.nombre,
+                          marca: selectedMaquina.marca,
+                          modelo: selectedMaquina.modelo,
+                          placas: selectedMaquina.placas,
+                          numeroSerie: selectedMaquina.numeroSerie,
+                        },
+                        {
+                          operador,
+                          trabajadorId,
+                          trabajadorNombre: trabajadorId
+                            ? trabajadores.find((t) => t.id === trabajadorId)?.nombre
+                            : undefined,
+                          nivelCombustible,
+                          checkedItems,
+                          numericValues,
+                          observaciones,
+                          notas,
+                        }
+                      )
+                    ) {
                       toast.error("No se pudo abrir la ventana de impresión");
                     }
                   }}

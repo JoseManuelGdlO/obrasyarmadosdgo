@@ -160,21 +160,22 @@ export function FuelGauge({ value, onChange, mode = "interactive", className }: 
         {/* Pivote */}
         <circle cx={CX} cy={CY} r={10} className="fill-foreground" />
 
-        {/* Aguja (oculta en impresión) */}
-        {!isPrint && value !== null && (
+        {/* Aguja */}
+        {value !== null && (
           <line
             x1={CX}
             y1={CY}
             x2={needleEnd.x}
             y2={needleEnd.y}
-            stroke="#dc2626"
-            strokeWidth={3}
+            stroke={isPrint ? "#111827" : "#dc2626"}
+            strokeWidth={isPrint ? 4 : 3}
             strokeLinecap="round"
+            style={isPrint ? { printColorAdjust: "exact" } : undefined}
           />
         )}
       </svg>
 
-      {!isPrint && (
+      {(!isPrint || value !== null) && (
         <p className="text-sm text-muted-foreground mt-1 text-center min-h-[1.25rem]">
           {value !== null ? (
             <span className="font-medium text-foreground">{formatCombustibleLabel(value)}</span>

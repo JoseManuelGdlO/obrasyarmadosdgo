@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ClipboardCheck, Save, CheckCircle2, Truck } from "lucide-react";
+import { ClipboardCheck, Save, CheckCircle2, Truck, Printer, Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import logoObras from "@/assets/logo-obras.png";
 import { FuelGauge } from "@/components/checklist/FuelGauge";
 import { apiRequest, toAbsoluteAssetUrl } from "@/lib/api";
+import { openChecklistPrintWindow, readChecklistPrintDraft } from "@/lib/checklist-publico";
 import {
   checklistFieldHighlightClass,
   findFirstMissingChecklistField,
@@ -64,6 +65,27 @@ export default function ChecklistPublico() {
   const [observaciones, setObservaciones] = useState("");
   const [notas, setNotas] = useState("");
   const [highlightedField, setHighlightedField] = useState<string | null>(null);
+  const [trabajadorNombreDraft, setTrabajadorNombreDraft] = useState("");
+  const [draftHydrated, setDraftHydrated] = useState(() => !searchParams.get("draftKey"));
+
+  useEffect(() => {
+    const draftKey = searchParams.get("draftKey");
+    if (!draftKey) return;
+    const draft = readChecklistPrintDraft(draftKey);
+    if (draft) {
+      if (draft.operador != null) setOperador(draft.operador);
+      if (draft.trabajadorId != null) setTrabajadorId(draft.trabajadorId);
+      if (draft.trabajadorNombre) setTrabajadorNombreDraft(draft.trabajadorNombre);
+      if (draft.nivelCombustible !== undefined) {
+        setNivelCombustible(draft.nivelCombustible ?? null);
+      }
+      if (draft.checkedItems) setCheckedItems(draft.checkedItems);
+      if (draft.numericValues) setNumericValues(draft.numericValues);
+      if (draft.observaciones != null) setObservaciones(draft.observaciones);
+      if (draft.notas != null) setNotas(draft.notas);
+    }
+    setDraftHydrated(true);
+  }, [searchParams]);
 
   useEffect(() => {
     const data = searchParams.get("data");
@@ -129,7 +151,39 @@ export default function ChecklistPublico() {
     Boolean(maquinaIdFromQR) &&
     !maquinaLoading &&
     !itemsLoading &&
-    Boolean(maquina);
+    Boolean(maquina) &&
+    draftHydrated;
+
+  const trabajadorLabel = trabajadorId
+    ? trabajadorNombreDraft || trabajadores.find((t) => t.id === trabajadorId)?.nombre || ""
+    : "";
+
+  const handlePrintChecklist = () => {
+    if (!maquina) return;
+    const opened = openChecklistPrintWindow(
+      {
+        id: maquina.id,
+        nombre: maquina.nombre,
+        marca: maquina.marca,
+        modelo: maquina.modelo,
+        placas: maquina.placas,
+        numeroSerie: maquina.numeroSerie,
+      },
+      {
+        operador,
+        trabajadorId,
+        trabajadorNombre: trabajadorId ? trabajadorLabel || undefined : undefined,
+        nivelCombustible,
+        checkedItems,
+        numericValues,
+        observaciones,
+        notas,
+      }
+    );
+    if (!opened) {
+      toast.error("No se pudo abrir la ventana de impresión");
+    }
+  };
 
   useEffect(() => {
     if (!isPrintMode) return;
@@ -244,6 +298,7 @@ export default function ChecklistPublico() {
                 setNotas("");
                 setOperador("");
                 setTrabajadorId("");
+                setTrabajadorNombreDraft("");
                 setNivelCombustible(null);
                 setHighlightedField(null);
               }}
@@ -276,12 +331,26 @@ export default function ChecklistPublico() {
               {maquina.nombre} · {maquina.placas}
             </p>
           </div>
-          <div className="text-xs text-muted-foreground text-right">
-            {new Date().toLocaleDateString("es-MX", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-            })}
+          <div className="flex items-center gap-2 shrink-0">
+            {!isPrintMode && checklistItems.length > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={handlePrintChecklist}
+              >
+                <Printer className="h-4 w-4 mr-1.5" />
+                Imprimir
+              </Button>
+            )}
+            <div className="text-xs text-muted-foreground text-right">
+              {new Date().toLocaleDateString("es-MX", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -363,10 +432,9 @@ export default function ChecklistPublico() {
                 <div className="space-y-1">
                   <Label className="text-xs">Trabajador Asignado</Label>
                   {isPrintMode ? (
-                    <div
-                      className="flex h-10 w-full rounded-md border border-input bg-background"
-                      aria-hidden
-                    />
+                    <div className="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 text-sm">
+                      {trabajadorLabel}
+                    </div>
                   ) : (
                     <Select
                       value={trabajadorId || "none"}
@@ -471,16 +539,31 @@ export default function ChecklistPublico() {
                           ) && checklistFieldHighlightClass
                         )}
                       >
-                        <Checkbox
-                          checked={!!checkedItems[item.id]}
-                          onCheckedChange={() => handleToggleItem(item.id)}
-                        />
+                        {isPrintMode ? (
+                          <span
+                            className={cn(
+                              "checklist-print-checkbox flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border-2 border-foreground bg-background",
+                              checkedItems[item.id] && "bg-foreground text-background"
+                            )}
+                            aria-hidden
+                          >
+                            {checkedItems[item.id] ? (
+                              <Check className="h-3 w-3 stroke-[3]" />
+                            ) : null}
+                          </span>
+                        ) : (
+                          <Checkbox
+                            checked={!!checkedItems[item.id]}
+                            onCheckedChange={() => handleToggleItem(item.id)}
+                          />
+                        )}
                         <span
-                          className={`text-sm ${
-                            checkedItems[item.id]
-                              ? "line-through text-muted-foreground"
-                              : "text-foreground"
-                          }`}
+                          className={cn(
+                            "text-sm text-foreground",
+                            !isPrintMode &&
+                              checkedItems[item.id] &&
+                              "line-through text-muted-foreground"
+                          )}
                         >
                           {item.label}
                         </span>
