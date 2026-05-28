@@ -44,6 +44,8 @@ type ProyectoBackend = {
 
 type ClienteLite = { id: string; nombre: string };
 
+type TrabajadorLite = { id: string; nombre: string };
+
 type AsignacionBackend = {
   id: string;
   maquinaId: string;
@@ -53,6 +55,7 @@ type AsignacionBackend = {
   fechaFin: string | null;
   estado: "activa" | "cerrada";
   proyecto?: ProyectoBackend & { cliente?: ClienteLite | null };
+  trabajador?: TrabajadorLite | null;
 };
 
 type ProyectoAsignadoVM = {
@@ -60,6 +63,7 @@ type ProyectoAsignadoVM = {
   proyectoId: string;
   proyectoNombre: string;
   clienteNombre: string;
+  encargadoNombre: string | null;
   fechaAsignacion: string;
   tiempoAsignada: string;
 };
@@ -115,6 +119,7 @@ export default function Asignaciones() {
   const [formData, setFormData] = useState({
     maquinaId: "",
     proyectoId: "",
+    trabajadorId: "",
   });
 
   const { data: maquinasData } = useQuery({
@@ -137,11 +142,18 @@ export default function Asignaciones() {
 
   const tiposCatalogo = tiposCatalogData?.tipos || [];
 
+  const { data: trabajadoresData } = useQuery({
+    queryKey: ["asign-trabajadores"],
+    queryFn: () => apiRequest<{ trabajadores: TrabajadorLite[] }>("/trabajadores"),
+  });
+
+  const trabajadores = trabajadoresData?.trabajadores ?? [];
+
   const { data: asignacionesData } = useQuery({
     queryKey: ["asignaciones-activas"],
     queryFn: () =>
       apiRequest<{ asignaciones: AsignacionBackend[] }>(
-        "/asignaciones?estado=activa&include=proyecto"
+        "/asignaciones?estado=activa&include=proyecto,trabajador"
       ),
   });
 
@@ -168,6 +180,7 @@ export default function Asignaciones() {
         proyectoId: a.proyectoId,
         proyectoNombre,
         clienteNombre,
+        encargadoNombre: a.trabajador?.nombre?.trim() || null,
         fechaAsignacion: a.fechaInicio || "",
         tiempoAsignada: formatTiempoAsignada(a.fechaInicio),
       });
@@ -176,12 +189,15 @@ export default function Asignaciones() {
   }, [asignaciones]);
 
   const createAsignacionMutation = useMutation({
-    mutationFn: (payload: { maquinaId: string; proyectoId: string }) =>
-      apiRequest("/asignaciones", { method: "POST", body: payload }),
+    mutationFn: (payload: {
+      maquinaId: string;
+      proyectoId: string;
+      trabajadorId?: string;
+    }) => apiRequest("/asignaciones", { method: "POST", body: payload }),
     onSuccess: () => {
       toast.success("Asignación creada");
       setIsDialogOpen(false);
-      setFormData({ maquinaId: "", proyectoId: "" });
+      setFormData({ maquinaId: "", proyectoId: "", trabajadorId: "" });
       queryClient.invalidateQueries({ queryKey: ["asignaciones-activas"] });
     },
     onError: (err: Error) => toast.error(err.message || "Error creando asignación"),
@@ -236,9 +252,14 @@ export default function Asignaciones() {
       toast.error("Selecciona máquina y proyecto");
       return;
     }
+    if (!formData.trabajadorId) {
+      toast.error("Selecciona un encargado");
+      return;
+    }
     createAsignacionMutation.mutate({
       maquinaId: formData.maquinaId,
       proyectoId: formData.proyectoId,
+      trabajadorId: formData.trabajadorId,
     });
   };
 
@@ -308,6 +329,29 @@ export default function Asignaciones() {
                       <SelectItem key={proyecto.id} value={proyecto.id}>
                         {proyecto.nombre}
                         {proyecto.cliente?.nombre ? ` - ${proyecto.cliente.nombre}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="encargado">
+                  Encargado
+                </Label>
+                <Select
+                  value={formData.trabajadorId}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, trabajadorId: value })
+                  }
+                  required
+                >
+                  <SelectTrigger id="encargado">
+                    <SelectValue placeholder="Seleccionar encargado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {trabajadores.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.nombre}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -520,6 +564,11 @@ export default function Asignaciones() {
                           <div className="font-medium text-sm">
                             {proyectoAsignado.proyectoNombre}
                           </div>
+                          {proyectoAsignado.encargadoNombre && (
+                            <div className="text-xs text-gray-600">
+                              Encargado: {proyectoAsignado.encargadoNombre}
+                            </div>
+                          )}
                           {proyectoAsignado.fechaAsignacion && (
                             <div className="text-xs text-gray-600">
                               Desde:{" "}
@@ -575,6 +624,7 @@ export default function Asignaciones() {
                                 setFormData({
                                   maquinaId: maquina.id,
                                   proyectoId: "",
+                                  trabajadorId: "",
                                 });
                                 setIsDialogOpen(true);
                               }}
