@@ -1,3 +1,5 @@
+const { Op } = require("sequelize");
+const sequelize = require("../config/database");
 const Asignacion = require("../models/Asignacion");
 const Maquina = require("../models/Maquina");
 const Proyecto = require("../models/Proyecto");
@@ -6,6 +8,44 @@ const Trabajador = require("../models/Trabajador");
 const { logError } = require("../utils/logger");
 
 const ESTADOS_ASIGNACION = ["activa", "cerrada"];
+const ESTADOS_MAQUINA_SIN_OPERATIVA = new Set(["Fuera de Servicio"]);
+const ESTADOS_MAQUINA_SIN_LIBERAR = new Set(["Mantenimiento", "Fuera de Servicio"]);
+
+/** Asignación activa en obra → máquina operativa (salvo fuera de servicio). */
+const marcarMaquinaOperativaPorAsignacion = async (maquinaId, transaction) => {
+  if (!maquinaId) return;
+  await Maquina.update(
+    { estado: "Operativa" },
+    {
+      where: {
+        id: maquinaId,
+        estado: { [Op.notIn]: [...ESTADOS_MAQUINA_SIN_OPERATIVA] },
+      },
+      transaction,
+    }
+  );
+};
+
+/** Sin asignación activa → disponible (respeta mantenimiento / fuera de servicio). */
+const liberarMaquinaPorCierreAsignacion = async (maquinaId, transaction) => {
+  if (!maquinaId) return;
+  const otraActiva = await Asignacion.findOne({
+    where: { maquinaId, estado: "activa" },
+    transaction,
+  });
+  if (otraActiva) return;
+
+  await Maquina.update(
+    { estado: "Disponible" },
+    {
+      where: {
+        id: maquinaId,
+        estado: { [Op.notIn]: [...ESTADOS_MAQUINA_SIN_LIBERAR] },
+      },
+      transaction,
+    }
+  );
+};
 
 const trimOrNull = (value) => {
   if (value === undefined || value === null) return null;
@@ -112,6 +152,11 @@ const create = async (req, res) => {
     if (!maquina) {
       return res.status(404).json({ message: "Máquina no encontrada." });
     }
+    if (maquina.estado === "Fuera de Servicio") {
+      return res.status(400).json({
+        message: "No se puede asignar una máquina fuera de servicio.",
+      });
+    }
     const proyecto = await Proyecto.findByPk(proyectoId);
     if (!proyecto) {
       return res.status(404).json({ message: "Proyecto no encontrado." });
@@ -145,22 +190,37 @@ const create = async (req, res) => {
       }
     }
 
-    const created = await Asignacion.create({
-      maquinaId,
-      proyectoId,
-      trabajadorId: trabajadorId || null,
-      fechaInicio,
-      fechaFin,
-      estado,
-    });
+    const tx = await sequelize.transaction();
+    try {
+      const created = await Asignacion.create(
+        {
+          maquinaId,
+          proyectoId,
+          trabajadorId: trabajadorId || null,
+          fechaInicio,
+          fechaFin,
+          estado,
+        },
+        { transaction: tx }
+      );
 
-    const asignacion = await Asignacion.findByPk(created.id, {
-      include: buildIncludes("all"),
-    });
-    return res.status(201).json({
-      message: "Asignación creada correctamente.",
-      asignacion,
-    });
+      if (estado === "activa") {
+        await marcarMaquinaOperativaPorAsignacion(maquinaId, tx);
+      }
+
+      await tx.commit();
+
+      const asignacion = await Asignacion.findByPk(created.id, {
+        include: buildIncludes("all"),
+      });
+      return res.status(201).json({
+        message: "Asignación creada correctamente.",
+        asignacion,
+      });
+    } catch (err) {
+      await tx.rollback();
+      throw err;
+    }
   } catch (error) {
     logError("Error al crear asignación.", error);
     return res.status(500).json({
@@ -242,7 +302,33 @@ const update = async (req, res) => {
       return res.status(400).json({ message: "No hay campos para actualizar." });
     }
 
-    await asignacion.update(updates);
+    const estadoAnterior = asignacion.estado;
+    const estadoNuevo = updates.estado ?? estadoAnterior;
+    const maquinaId = asignacion.maquinaId;
+
+    const tx = await sequelize.transaction();
+    try {
+      await asignacion.update(updates, { transaction: tx });
+
+      if (estadoNuevo === "activa" && estadoAnterior !== "activa") {
+        const maquina = await Maquina.findByPk(maquinaId, { transaction: tx });
+        if (maquina?.estado === "Fuera de Servicio") {
+          await tx.rollback();
+          return res.status(400).json({
+            message: "No se puede reactivar una asignación: la máquina está fuera de servicio.",
+          });
+        }
+        await marcarMaquinaOperativaPorAsignacion(maquinaId, tx);
+      } else if (estadoNuevo === "cerrada" && estadoAnterior === "activa") {
+        await liberarMaquinaPorCierreAsignacion(maquinaId, tx);
+      }
+
+      await tx.commit();
+    } catch (err) {
+      await tx.rollback();
+      throw err;
+    }
+
     const updated = await Asignacion.findByPk(id, {
       include: buildIncludes("all"),
     });
@@ -266,7 +352,20 @@ const remove = async (req, res) => {
     if (!asignacion) {
       return res.status(404).json({ message: "Asignación no encontrada." });
     }
-    await asignacion.destroy();
+
+    const { maquinaId, estado } = asignacion;
+    const tx = await sequelize.transaction();
+    try {
+      await asignacion.destroy({ transaction: tx });
+      if (estado === "activa") {
+        await liberarMaquinaPorCierreAsignacion(maquinaId, tx);
+      }
+      await tx.commit();
+    } catch (err) {
+      await tx.rollback();
+      throw err;
+    }
+
     return res
       .status(200)
       .json({ message: "Asignación eliminada correctamente." });

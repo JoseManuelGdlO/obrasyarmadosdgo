@@ -199,6 +199,8 @@ export default function Asignaciones() {
       setIsDialogOpen(false);
       setFormData({ maquinaId: "", proyectoId: "", trabajadorId: "" });
       queryClient.invalidateQueries({ queryKey: ["asignaciones-activas"] });
+      queryClient.invalidateQueries({ queryKey: ["asign-maquinas"] });
+      queryClient.invalidateQueries({ queryKey: ["maquinas"] });
     },
     onError: (err: Error) => toast.error(err.message || "Error creando asignación"),
   });
@@ -212,6 +214,8 @@ export default function Asignaciones() {
     onSuccess: () => {
       toast.success("Asignación cerrada");
       queryClient.invalidateQueries({ queryKey: ["asignaciones-activas"] });
+      queryClient.invalidateQueries({ queryKey: ["asign-maquinas"] });
+      queryClient.invalidateQueries({ queryKey: ["maquinas"] });
     },
     onError: (err: Error) => toast.error(err.message || "Error al desasignar"),
   });
