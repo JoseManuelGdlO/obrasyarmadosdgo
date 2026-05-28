@@ -10,6 +10,7 @@ const Proyecto = sequelize.define(
     descripcion: { type: DataTypes.TEXT, allowNull: true },
     ubicacion: { type: DataTypes.STRING, allowNull: true },
     presupuesto: { type: DataTypes.DECIMAL(15, 2), allowNull: false, defaultValue: 0 },
+    precioEstimado: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
     progreso: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
     maquinasAsignadas: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
     responsable: { type: DataTypes.STRING, allowNull: true },

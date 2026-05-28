@@ -16,6 +16,7 @@ export type ProyectoFormData = {
   estado: "planeado" | "en_progreso" | "pausado" | "completado";
   presupuesto: string;
   progreso: string;
+  precioEstimado: string;
   responsable: string;
 };
 
@@ -29,6 +30,7 @@ const defaultForm: ProyectoFormData = {
   estado: "planeado",
   presupuesto: "0",
   progreso: "0",
+  precioEstimado: "0",
   responsable: "",
 };
 
@@ -163,9 +165,19 @@ export default function ProyectoModal({
               <Input
                 type="number"
                 min="0"
-                max="100"
+                step={1}
                 value={form.progreso}
                 onChange={(event) => setForm((prev) => ({ ...prev, progreso: event.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Precio estimado</Label>
+              <Input
+                type="number"
+                min="0"
+                step={1}
+                value={form.precioEstimado}
+                onChange={(event) => setForm((prev) => ({ ...prev, precioEstimado: event.target.value }))}
               />
             </div>
           </div>

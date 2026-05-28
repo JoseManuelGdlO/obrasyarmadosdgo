@@ -52,6 +52,7 @@ const Proyectos = () => {
     estado: String(proyecto.estado || "planeado"),
     presupuesto: Number(proyecto.presupuesto || 0),
     progreso: Number(proyecto.progreso || 0),
+    precioEstimado: Number(proyecto.precioEstimado || 0),
     maquinasAsignadas: Number(proyecto.maquinasAsignadas || 0),
     responsable: String(proyecto.responsable || ""),
   }))
@@ -95,6 +96,7 @@ const Proyectos = () => {
         estado: (selectedProject.estado as ProyectoFormData["estado"]) || "planeado",
         presupuesto: String(selectedProject.presupuesto || 0),
         progreso: String(selectedProject.progreso || 0),
+        precioEstimado: String(selectedProject.precioEstimado || 0),
         responsable: selectedProject.responsable,
       }
     : null
@@ -110,6 +112,7 @@ const Proyectos = () => {
       estado: data.estado,
       presupuesto: Number(data.presupuesto || 0),
       progreso: Number(data.progreso || 0),
+      precioEstimado: Math.trunc(Number(data.precioEstimado || 0)),
       responsable: data.responsable || null,
     }
 
