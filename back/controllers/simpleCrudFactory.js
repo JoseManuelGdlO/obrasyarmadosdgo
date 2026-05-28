@@ -1,4 +1,5 @@
 const { Op } = require("sequelize");
+const { logError } = require("../utils/logger");
 
 const buildSimpleCrudController = ({
   model,
@@ -19,7 +20,8 @@ const buildSimpleCrudController = ({
       }
       const rows = await model.findAll({ where, order: [["createdAt", "DESC"]] });
       return res.status(200).json({ [listKey]: rows });
-    } catch (_error) {
+    } catch (error) {
+      logError(`Error al listar ${entityName}.`, error);
       return res.status(500).json({ message: `Error al listar ${entityName}.` });
     }
   };
@@ -29,7 +31,8 @@ const buildSimpleCrudController = ({
       const row = await model.findByPk(req.params.id);
       if (!row) return res.status(404).json({ message: `${entityName} no encontrado.` });
       return res.status(200).json({ [entityName]: row });
-    } catch (_error) {
+    } catch (error) {
+      logError(`Error al obtener ${entityName}.`, error);
       return res.status(500).json({ message: `Error al obtener ${entityName}.` });
     }
   };
@@ -42,7 +45,8 @@ const buildSimpleCrudController = ({
       }
       const row = await model.create(req.body);
       return res.status(201).json({ message: `${entityName} creado correctamente.`, [entityName]: row });
-    } catch (_error) {
+    } catch (error) {
+      logError(`Error al crear ${entityName}.`, error);
       return res.status(500).json({ message: `Error al crear ${entityName}.` });
     }
   };
@@ -53,7 +57,8 @@ const buildSimpleCrudController = ({
       if (!row) return res.status(404).json({ message: `${entityName} no encontrado.` });
       await row.update(req.body);
       return res.status(200).json({ message: `${entityName} actualizado correctamente.`, [entityName]: row });
-    } catch (_error) {
+    } catch (error) {
+      logError(`Error al actualizar ${entityName}.`, error);
       return res.status(500).json({ message: `Error al actualizar ${entityName}.` });
     }
   };
@@ -64,7 +69,8 @@ const buildSimpleCrudController = ({
       if (!row) return res.status(404).json({ message: `${entityName} no encontrado.` });
       await row.destroy();
       return res.status(200).json({ message: `${entityName} eliminado correctamente.` });
-    } catch (_error) {
+    } catch (error) {
+      logError(`Error al eliminar ${entityName}.`, error);
       return res.status(500).json({ message: `Error al eliminar ${entityName}.` });
     }
   };

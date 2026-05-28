@@ -1,6 +1,7 @@
 const { Op } = require("sequelize");
 const User = require("../models/User");
 const Role = require("../models/Role");
+const { logError } = require("../utils/logger");
 
 const ALLOWED_STATUS = ["activo", "suspendido"];
 
@@ -11,6 +12,7 @@ const listUsers = async (_req, res) => {
     });
     return res.status(200).json({ users });
   } catch (error) {
+    logError("Error al listar usuarios.", error);
     return res.status(500).json({
       message: "Error al listar usuarios.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -27,6 +29,7 @@ const getUserById = async (req, res) => {
     }
     return res.status(200).json({ user });
   } catch (error) {
+    logError("Error al obtener el usuario.", error);
     return res.status(500).json({
       message: "Error al obtener el usuario.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -74,6 +77,7 @@ const createUser = async (req, res) => {
       user,
     });
   } catch (error) {
+    logError("Error al crear usuario.", error);
     return res.status(500).json({
       message: "Error al crear usuario.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -136,6 +140,7 @@ const updateUser = async (req, res) => {
       user: safe,
     });
   } catch (error) {
+    logError("Error al actualizar usuario.", error);
     return res.status(500).json({
       message: "Error al actualizar usuario.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -163,6 +168,7 @@ const deleteUser = async (req, res) => {
       user: safe,
     });
   } catch (error) {
+    logError("Error al suspender usuario.", error);
     return res.status(500).json({
       message: "Error al suspender usuario.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,

@@ -4,6 +4,7 @@ const MaquinaClase = require("../models/MaquinaClase");
 const MaquinaTipo = require("../models/MaquinaTipo");
 const MaquinaChecklistItem = require("../models/MaquinaChecklistItem");
 const Trabajador = require("../models/Trabajador");
+const { logError } = require("../utils/logger");
 const {
   buildAndSaveChecklist,
 } = require("../controllers/checklistsDiariosController");
@@ -40,6 +41,7 @@ router.get("/maquinas/:id", async (req, res) => {
       },
     });
   } catch (error) {
+    logError("Error al obtener la máquina.", error);
     return res.status(500).json({
       message: "Error al obtener la máquina.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -59,6 +61,7 @@ router.get("/maquinas/:id/checklist-items", async (req, res) => {
     });
     return res.status(200).json({ checklistItems });
   } catch (error) {
+    logError("Error al listar ítems del checklist.", error);
     return res.status(500).json({
       message: "Error al listar ítems del checklist.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -75,6 +78,7 @@ router.get("/trabajadores", async (_req, res) => {
     });
     return res.status(200).json({ trabajadores });
   } catch (error) {
+    logError("Error al listar trabajadores.", error);
     return res.status(500).json({
       message: "Error al listar trabajadores.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -97,6 +101,7 @@ router.post("/checklists-diarios", async (req, res) => {
       checklistDiario: result.checklistDiario,
     });
   } catch (error) {
+    logError("Error al registrar checklist.", error);
     return res.status(500).json({
       message: "Error al registrar checklist.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,

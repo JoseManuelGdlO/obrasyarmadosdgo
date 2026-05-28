@@ -1,6 +1,7 @@
 const { Op } = require("sequelize");
 const MaquinaClase = require("../models/MaquinaClase");
 const { buildSimpleCrudController } = require("./simpleCrudFactory");
+const { logError } = require("../utils/logger");
 
 const base = buildSimpleCrudController({
   model: MaquinaClase,
@@ -24,7 +25,8 @@ const list = async (req, res) => {
       order: [["nombre", "ASC"]],
     });
     return res.status(200).json({ clases });
-  } catch (_error) {
+  } catch (error) {
+    logError("Error al listar clases de máquina.", error);
     return res.status(500).json({ message: "Error al listar clases de máquina." });
   }
 };

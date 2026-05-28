@@ -2,6 +2,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const RolePermission = require("../models/RolePermission");
+const { logError } = require("../utils/logger");
 
 const buildAuthPayload = async (user, token) => {
   const permissionsRows = await RolePermission.findAll({
@@ -77,6 +78,7 @@ const login = async (req, res) => {
       ...(await buildAuthPayload(user, token)),
     });
   } catch (error) {
+    logError("Error interno al iniciar sesión.", error);
     return res.status(500).json({
       message: "Error interno al iniciar sesión.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -96,6 +98,7 @@ const me = async (req, res) => {
       ...(await buildAuthPayload(user, req.headers.authorization?.split(" ")[1] || null)),
     });
   } catch (error) {
+    logError("Error al obtener sesión actual.", error);
     return res.status(500).json({
       message: "Error al obtener sesión actual.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -143,6 +146,7 @@ const issuePermanentToken = async (req, res) => {
       token,
     });
   } catch (error) {
+    logError("Error interno al generar token permanente.", error);
     return res.status(500).json({
       message: "Error interno al generar token permanente.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,

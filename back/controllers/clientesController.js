@@ -1,5 +1,6 @@
 const Cliente = require("../models/Cliente");
 const Proyecto = require("../models/Proyecto");
+const { logError } = require("../utils/logger");
 
 const attachProyectoCounts = async (clientes) => {
   if (!clientes.length) return [];
@@ -26,6 +27,7 @@ const listClientes = async (_req, res) => {
     const clientesWithCounts = await attachProyectoCounts(clientes);
     return res.status(200).json({ clientes: clientesWithCounts });
   } catch (error) {
+    logError("Error al listar clientes.", error);
     return res.status(500).json({
       message: "Error al listar clientes.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -43,6 +45,7 @@ const getClienteById = async (req, res) => {
     const [clienteWithCount] = await attachProyectoCounts([cliente]);
     return res.status(200).json({ cliente: clienteWithCount });
   } catch (error) {
+    logError("Error al obtener el cliente.", error);
     return res.status(500).json({
       message: "Error al obtener el cliente.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -79,6 +82,7 @@ const createCliente = async (req, res) => {
       cliente: clienteWithCount,
     });
   } catch (error) {
+    logError("Error al crear cliente.", error);
     return res.status(500).json({
       message: "Error al crear cliente.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -125,6 +129,7 @@ const updateCliente = async (req, res) => {
       cliente: clienteWithCount,
     });
   } catch (error) {
+    logError("Error al actualizar cliente.", error);
     return res.status(500).json({
       message: "Error al actualizar cliente.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -142,6 +147,7 @@ const deleteCliente = async (req, res) => {
     await cliente.destroy();
     return res.status(200).json({ message: "Cliente eliminado correctamente." });
   } catch (error) {
+    logError("Error al eliminar cliente.", error);
     return res.status(500).json({
       message: "Error al eliminar cliente.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,

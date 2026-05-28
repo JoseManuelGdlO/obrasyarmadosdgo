@@ -2,6 +2,7 @@ const { Op } = require("sequelize");
 const sequelize = require("../config/database");
 const Articulo = require("../models/Articulo");
 const MovimientoInventario = require("../models/MovimientoInventario");
+const { logError } = require("../utils/logger");
 
 const TIPOS = ["entrada", "salida", "ajuste"];
 
@@ -24,6 +25,7 @@ const listMovimientos = async (req, res) => {
     });
     return res.status(200).json({ movimientos });
   } catch (error) {
+    logError("Error al listar movimientos.", error);
     return res.status(500).json({
       message: "Error al listar movimientos.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -49,6 +51,7 @@ const listKardexArticulo = async (req, res) => {
     });
     return res.status(200).json({ movimientos });
   } catch (error) {
+    logError("Error al obtener kardex del artículo.", error);
     return res.status(500).json({
       message: "Error al obtener kardex del artículo.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -127,6 +130,7 @@ const createMovimiento = async (req, res) => {
     });
   } catch (error) {
     await tx.rollback();
+    logError("Error al registrar movimiento.", error);
     return res.status(500).json({
       message: "Error al registrar movimiento.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -146,6 +150,7 @@ const listAlertasStockMinimo = async (_req, res) => {
     });
     return res.status(200).json({ alertas: articulos });
   } catch (error) {
+    logError("Error al obtener alertas de stock mínimo.", error);
     return res.status(500).json({
       message: "Error al obtener alertas de stock mínimo.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,

@@ -1,4 +1,5 @@
 const Notification = require("../models/Notification");
+const { logError } = require("../utils/logger");
 
 const listNotifications = async (req, res) => {
   try {
@@ -10,6 +11,7 @@ const listNotifications = async (req, res) => {
     const unreadCount = notifications.filter((notification) => !notification.isRead).length;
     return res.status(200).json({ notifications, unreadCount });
   } catch (error) {
+    logError("Error al listar notificaciones.", error);
     return res.status(500).json({
       message: "Error al listar notificaciones.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -33,6 +35,7 @@ const markAsRead = async (req, res) => {
       notification,
     });
   } catch (error) {
+    logError("Error al actualizar notificación.", error);
     return res.status(500).json({
       message: "Error al actualizar notificación.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -56,6 +59,7 @@ const markAllAsRead = async (req, res) => {
       updated,
     });
   } catch (error) {
+    logError("Error al actualizar notificaciones.", error);
     return res.status(500).json({
       message: "Error al actualizar notificaciones.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,

@@ -2,6 +2,7 @@ const { Op } = require("sequelize");
 const MaquinaPlanServicio = require("../models/MaquinaPlanServicio");
 const PlanServicioPieza = require("../models/PlanServicioPieza");
 const Articulo = require("../models/Articulo");
+const { logError } = require("../utils/logger");
 
 const ensurePlan = async (planId) => {
   return MaquinaPlanServicio.findByPk(planId);
@@ -20,6 +21,7 @@ const listPiezas = async (req, res) => {
     });
     return res.status(200).json({ piezas });
   } catch (error) {
+    logError("Error al listar piezas del plan.", error);
     return res.status(500).json({
       message: "Error al listar piezas del plan.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -43,6 +45,7 @@ const getPiezaById = async (req, res) => {
     }
     return res.status(200).json({ pieza });
   } catch (error) {
+    logError("Error al obtener la pieza.", error);
     return res.status(500).json({
       message: "Error al obtener la pieza.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -92,6 +95,7 @@ const createPieza = async (req, res) => {
       pieza,
     });
   } catch (error) {
+    logError("Error al agregar pieza al plan.", error);
     return res.status(500).json({
       message: "Error al agregar pieza al plan.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -155,6 +159,7 @@ const updatePieza = async (req, res) => {
       pieza: updated,
     });
   } catch (error) {
+    logError("Error al actualizar pieza.", error);
     return res.status(500).json({
       message: "Error al actualizar pieza.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -178,6 +183,7 @@ const deletePieza = async (req, res) => {
     await pieza.destroy();
     return res.status(200).json({ message: "Pieza eliminada del plan correctamente." });
   } catch (error) {
+    logError("Error al eliminar pieza.", error);
     return res.status(500).json({
       message: "Error al eliminar pieza.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,

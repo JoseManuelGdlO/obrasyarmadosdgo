@@ -1,5 +1,6 @@
 const { Op } = require("sequelize");
 const Articulo = require("../models/Articulo");
+const { logError } = require("../utils/logger");
 
 const listArticulos = async (req, res) => {
   try {
@@ -26,6 +27,7 @@ const listArticulos = async (req, res) => {
     });
     return res.status(200).json({ articulos });
   } catch (error) {
+    logError("Error al listar artículos.", error);
     return res.status(500).json({
       message: "Error al listar artículos.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -42,6 +44,7 @@ const getArticuloById = async (req, res) => {
     }
     return res.status(200).json({ articulo });
   } catch (error) {
+    logError("Error al obtener el artículo.", error);
     return res.status(500).json({
       message: "Error al obtener el artículo.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -84,6 +87,7 @@ const createArticulo = async (req, res) => {
       articulo: created,
     });
   } catch (error) {
+    logError("Error al crear artículo.", error);
     return res.status(500).json({
       message: "Error al crear artículo.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -153,6 +157,7 @@ const updateArticulo = async (req, res) => {
       articulo: updated,
     });
   } catch (error) {
+    logError("Error al actualizar artículo.", error);
     return res.status(500).json({
       message: "Error al actualizar artículo.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -170,6 +175,7 @@ const deleteArticulo = async (req, res) => {
     await articulo.destroy();
     return res.status(200).json({ message: "Artículo eliminado correctamente." });
   } catch (error) {
+    logError("Error al eliminar artículo.", error);
     return res.status(500).json({
       message: "Error al eliminar artículo.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -195,6 +201,7 @@ const getInventarioResumen = async (_req, res) => {
     );
     return res.status(200).json({ resumen });
   } catch (error) {
+    logError("Error al obtener resumen de inventario.", error);
     return res.status(500).json({
       message: "Error al obtener resumen de inventario.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,

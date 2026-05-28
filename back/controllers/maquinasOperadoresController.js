@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const Maquina = require("../models/Maquina");
 const UsuarioMaquina = require("../models/UsuarioMaquina");
+const { logError } = require("../utils/logger");
 
 const listOperadores = async (req, res) => {
   try {
@@ -15,6 +16,7 @@ const listOperadores = async (req, res) => {
     });
     return res.status(200).json({ operadores: links });
   } catch (error) {
+    logError("Error al listar operadores.", error);
     return res.status(500).json({
       message: "Error al listar operadores.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -54,6 +56,7 @@ const assignOperador = async (req, res) => {
       asignacion: row,
     });
   } catch (error) {
+    logError("Error al asignar operador.", error);
     return res.status(500).json({
       message: "Error al asignar operador.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -76,6 +79,7 @@ const unassignOperador = async (req, res) => {
     }
     return res.status(200).json({ message: "Operador desasignado correctamente." });
   } catch (error) {
+    logError("Error al desasignar operador.", error);
     return res.status(500).json({
       message: "Error al desasignar operador.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,

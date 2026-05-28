@@ -11,6 +11,7 @@ const Nomenclatura = require("../models/Nomenclatura");
 const Trabajador = require("../models/Trabajador");
 const Articulo = require("../models/Articulo");
 const MovimientoInventario = require("../models/MovimientoInventario");
+const { logError } = require("../utils/logger");
 
 const PRIORIDADES = ["baja", "media", "alta", "critica"];
 const ESTADOS = ["abierta", "en_progreso", "pausada", "cerrada"];
@@ -326,6 +327,7 @@ const list = async (req, res) => {
     });
     return res.status(200).json({ ordenes });
   } catch (error) {
+    logError("Error al listar órdenes de trabajo.", error);
     return res.status(500).json({
       message: "Error al listar órdenes de trabajo.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -343,6 +345,7 @@ const getById = async (req, res) => {
     }
     return res.status(200).json({ orden: await ordenConInventarioFlag(orden) });
   } catch (error) {
+    logError("Error al obtener la orden de trabajo.", error);
     return res.status(500).json({
       message: "Error al obtener la orden de trabajo.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -545,6 +548,9 @@ const create = async (req, res) => {
       } catch (invError) {
         await tx.rollback();
         const status = invError.statusCode || 500;
+        if (status >= 500) {
+          logError("Error de inventario en orden de trabajo", invError);
+        }
         return res.status(status).json({
           message: invError.message || "Error al descontar inventario de la OT.",
         });
@@ -573,6 +579,9 @@ const create = async (req, res) => {
   } catch (error) {
     await tx.rollback();
     const status = error.statusCode || 500;
+    if (status >= 500) {
+      logError("Error al crear la orden de trabajo.", error);
+    }
     return res.status(status).json({
       message: error.message || "Error al crear la orden de trabajo.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -709,6 +718,9 @@ const update = async (req, res) => {
       } catch (invError) {
         await tx.rollback();
         const status = invError.statusCode || 500;
+        if (status >= 500) {
+          logError("Error de inventario en orden de trabajo", invError);
+        }
         return res.status(status).json({
           message:
             invError.message ||
@@ -749,6 +761,9 @@ const update = async (req, res) => {
         } catch (invError) {
           await tx.rollback();
           const status = invError.statusCode || 500;
+          if (status >= 500) {
+            logError("Error de inventario en orden de trabajo", invError);
+          }
           return res.status(status).json({
             message: invError.message || "Error al descontar inventario de la OT.",
           });
@@ -780,6 +795,9 @@ const update = async (req, res) => {
   } catch (error) {
     await tx.rollback();
     const status = error.statusCode || 500;
+    if (status >= 500) {
+      logError("Error al actualizar la orden de trabajo.", error);
+    }
     return res.status(status).json({
       message: error.message || "Error al actualizar la orden de trabajo.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -808,6 +826,9 @@ const close = async (req, res) => {
       } catch (invError) {
         await tx.rollback();
         const status = invError.statusCode || 500;
+        if (status >= 500) {
+          logError("Error de inventario en orden de trabajo", invError);
+        }
         return res.status(status).json({
           message: invError.message || "Error al descontar inventario de la OT.",
         });
@@ -846,6 +867,9 @@ const close = async (req, res) => {
     } catch (invError) {
       await tx.rollback();
       const status = invError.statusCode || 500;
+      if (status >= 500) {
+        logError("Error de inventario en orden de trabajo", invError);
+      }
       return res.status(status).json({
         message: invError.message || "Error al descontar inventario de la OT.",
       });
@@ -869,6 +893,7 @@ const close = async (req, res) => {
     });
   } catch (error) {
     await tx.rollback();
+    logError("Error al cerrar la orden de trabajo.", error);
     return res.status(500).json({
       message: "Error al cerrar la orden de trabajo.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -887,6 +912,7 @@ const remove = async (req, res) => {
       .status(200)
       .json({ message: "Orden de trabajo eliminada correctamente." });
   } catch (error) {
+    logError("Error al eliminar la orden de trabajo.", error);
     return res.status(500).json({
       message: "Error al eliminar la orden de trabajo.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,

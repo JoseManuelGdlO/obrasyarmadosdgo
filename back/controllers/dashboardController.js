@@ -8,6 +8,7 @@ const UsuarioMaquina = require("../models/UsuarioMaquina");
 const Articulo = require("../models/Articulo");
 const P = require("../constants/permissions");
 const { hasMaquinasViewGlobal } = require("../middlewares/permissions");
+const { logError } = require("../utils/logger");
 
 const ACTIVE_MACHINE_STATES = ["Operativa", "Disponible"];
 
@@ -229,6 +230,7 @@ const getHome = async (req, res) => {
       },
     });
   } catch (error) {
+    logError("Error al obtener datos del dashboard.", error);
     return res.status(500).json({
       message: "Error al obtener datos del dashboard.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,

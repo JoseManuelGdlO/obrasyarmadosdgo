@@ -1,5 +1,6 @@
 const RolePermission = require("../models/RolePermission");
 const Role = require("../models/Role");
+const { logError } = require("../utils/logger");
 
 const listRolePermissions = async (_req, res) => {
   try {
@@ -11,6 +12,7 @@ const listRolePermissions = async (_req, res) => {
     });
     return res.status(200).json({ rolePermissions: rows });
   } catch (error) {
+    logError("Error al listar permisos por rol.", error);
     return res.status(500).json({
       message: "Error al listar permisos por rol.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -40,6 +42,7 @@ const createRolePermission = async (req, res) => {
       rolePermission: created,
     });
   } catch (error) {
+    logError("Error al asignar permiso al rol.", error);
     return res.status(500).json({
       message: "Error al asignar permiso al rol.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -57,6 +60,7 @@ const deleteRolePermission = async (req, res) => {
     await row.destroy();
     return res.status(200).json({ message: "Permiso removido del rol correctamente." });
   } catch (error) {
+    logError("Error al remover permiso del rol.", error);
     return res.status(500).json({
       message: "Error al remover permiso del rol.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,

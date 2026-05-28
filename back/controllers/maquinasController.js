@@ -18,6 +18,7 @@ const {
   MACHINE_UPLOADS_ROUTE,
 } = require("../config/uploads");
 const { cleanupUploadedFilesIfPresent } = require("../middlewares/uploadMaquinaFiles");
+const { logError } = require("../utils/logger");
 
 const buildPublicMachineUploadPath = (filename) =>
   `${MACHINE_UPLOADS_ROUTE}/${encodeURIComponent(filename)}`;
@@ -233,6 +234,7 @@ const listMaquinas = async (req, res) => {
     });
     return res.status(200).json({ maquinas });
   } catch (error) {
+    logError("Error al listar máquinas.", error);
     return res.status(500).json({
       message: "Error al listar máquinas.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -264,6 +266,7 @@ const getMaquinaById = async (req, res) => {
 
     return res.status(200).json({ maquina });
   } catch (error) {
+    logError("Error al obtener la máquina.", error);
     return res.status(500).json({
       message: "Error al obtener la máquina.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -363,6 +366,7 @@ const createMaquina = async (req, res) => {
     });
   } catch (error) {
     await cleanupUploadedFilesIfPresent(req);
+    logError("Error al crear máquina.", error);
     return res.status(500).json({
       message: "Error al crear máquina.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -520,6 +524,7 @@ const updateMaquina = async (req, res) => {
     });
   } catch (error) {
     await cleanupUploadedFilesIfPresent(req);
+    logError("Error al actualizar máquina.", error);
     return res.status(500).json({
       message: "Error al actualizar máquina.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -550,6 +555,7 @@ const deleteMaquina = async (req, res) => {
     }
     return res.status(200).json({ message: "Máquina eliminada correctamente." });
   } catch (error) {
+    logError("Error al eliminar máquina.", error);
     return res.status(500).json({
       message: "Error al eliminar máquina.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,

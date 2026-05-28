@@ -1,5 +1,6 @@
 const { Op } = require("sequelize");
 const Proveedor = require("../models/Proveedor");
+const { logError } = require("../utils/logger");
 
 const ESTADOS_PROVEEDOR = ["activo", "inactivo", "en_evaluacion"];
 
@@ -145,6 +146,7 @@ const list = async (req, res) => {
     });
     return res.status(200).json({ proveedores });
   } catch (error) {
+    logError("Error al listar proveedores.", error);
     return res.status(500).json({
       message: "Error al listar proveedores.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -160,6 +162,7 @@ const getById = async (req, res) => {
     }
     return res.status(200).json({ proveedor });
   } catch (error) {
+    logError("Error al obtener el proveedor.", error);
     return res.status(500).json({
       message: "Error al obtener el proveedor.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -179,6 +182,7 @@ const create = async (req, res) => {
       proveedor,
     });
   } catch (error) {
+    logError("Error al crear proveedor.", error);
     return res.status(500).json({
       message: "Error al crear proveedor.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -207,6 +211,7 @@ const update = async (req, res) => {
       proveedor: updated,
     });
   } catch (error) {
+    logError("Error al actualizar proveedor.", error);
     return res.status(500).json({
       message: "Error al actualizar proveedor.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -224,6 +229,7 @@ const remove = async (req, res) => {
     await proveedor.destroy();
     return res.status(200).json({ message: "Proveedor eliminado correctamente." });
   } catch (error) {
+    logError("Error al eliminar proveedor.", error);
     return res.status(500).json({
       message: "Error al eliminar proveedor.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,

@@ -2,6 +2,7 @@ const MaquinaPlanServicio = require("../models/MaquinaPlanServicio");
 const RolePermission = require("../models/RolePermission");
 const UsuarioMaquina = require("../models/UsuarioMaquina");
 const P = require("../constants/permissions");
+const { logError } = require("../utils/logger");
 
 const loadRolePermissions = async (req, res, next) => {
   try {
@@ -12,6 +13,7 @@ const loadRolePermissions = async (req, res, next) => {
     req.permissions = new Set(rows.map((r) => r.permission));
     return next();
   } catch (error) {
+    logError("Error al cargar permisos.", error);
     return res.status(500).json({
       message: "Error al cargar permisos.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -89,6 +91,7 @@ const requireMaquinaAssignment = async (req, res, next) => {
     }
     return next();
   } catch (error) {
+    logError("Error al verificar acceso a la máquina.", error);
     return res.status(500).json({
       message: "Error al verificar acceso a la máquina.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,

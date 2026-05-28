@@ -2,6 +2,7 @@ const { Op } = require("sequelize");
 const MaquinaTipo = require("../models/MaquinaTipo");
 const MaquinaClase = require("../models/MaquinaClase");
 const { buildSimpleCrudController } = require("./simpleCrudFactory");
+const { logError } = require("../utils/logger");
 
 const base = buildSimpleCrudController({
   model: MaquinaTipo,
@@ -27,7 +28,8 @@ const list = async (req, res) => {
       order: [["nombre", "ASC"]],
     });
     return res.status(200).json({ tipos });
-  } catch (_error) {
+  } catch (error) {
+    logError("Error al listar tipos de máquina.", error);
     return res.status(500).json({ message: "Error al listar tipos de máquina." });
   }
 };
@@ -57,6 +59,7 @@ const create = async (req, res) => {
         message: "Ya existe un tipo con ese nombre en la clase seleccionada.",
       });
     }
+    logError("Error al crear tipo de máquina.", error);
     return res.status(500).json({ message: "Error al crear tipo de máquina." });
   }
 };

@@ -1,11 +1,13 @@
 const { Op } = require("sequelize");
 const Role = require("../models/Role");
+const { logError } = require("../utils/logger");
 
 const listRoles = async (_req, res) => {
   try {
     const roles = await Role.findAll({ order: [["nombre", "ASC"]] });
     return res.status(200).json({ roles });
   } catch (error) {
+    logError("Error al listar roles.", error);
     return res.status(500).json({
       message: "Error al listar roles.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -30,6 +32,7 @@ const createRole = async (req, res) => {
     });
     return res.status(201).json({ message: "Rol creado correctamente.", role });
   } catch (error) {
+    logError("Error al crear rol.", error);
     return res.status(500).json({
       message: "Error al crear rol.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -64,6 +67,7 @@ const updateRole = async (req, res) => {
     await role.update(updates);
     return res.status(200).json({ message: "Rol actualizado correctamente.", role });
   } catch (error) {
+    logError("Error al actualizar rol.", error);
     return res.status(500).json({
       message: "Error al actualizar rol.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -81,6 +85,7 @@ const deleteRole = async (req, res) => {
     await role.destroy();
     return res.status(200).json({ message: "Rol eliminado correctamente." });
   } catch (error) {
+    logError("Error al eliminar rol.", error);
     return res.status(500).json({
       message: "Error al eliminar rol.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,

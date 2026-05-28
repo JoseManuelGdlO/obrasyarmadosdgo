@@ -1,5 +1,6 @@
 const { Op } = require("sequelize");
 const Trabajador = require("../models/Trabajador");
+const { logError } = require("../utils/logger");
 
 const ESTADOS_TRABAJADOR = ["activo", "inactivo", "vacaciones", "licencia"];
 
@@ -93,6 +94,7 @@ const list = async (req, res) => {
     });
     return res.status(200).json({ trabajadores });
   } catch (error) {
+    logError("Error al listar trabajadores.", error);
     return res.status(500).json({
       message: "Error al listar trabajadores.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -108,6 +110,7 @@ const getById = async (req, res) => {
     }
     return res.status(200).json({ trabajador });
   } catch (error) {
+    logError("Error al obtener el trabajador.", error);
     return res.status(500).json({
       message: "Error al obtener el trabajador.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -127,6 +130,7 @@ const create = async (req, res) => {
       trabajador,
     });
   } catch (error) {
+    logError("Error al crear trabajador.", error);
     return res.status(500).json({
       message: "Error al crear trabajador.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -155,6 +159,7 @@ const update = async (req, res) => {
       trabajador: updated,
     });
   } catch (error) {
+    logError("Error al actualizar trabajador.", error);
     return res.status(500).json({
       message: "Error al actualizar trabajador.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -172,6 +177,7 @@ const remove = async (req, res) => {
     await trabajador.destroy();
     return res.status(200).json({ message: "Trabajador eliminado correctamente." });
   } catch (error) {
+    logError("Error al eliminar trabajador.", error);
     return res.status(500).json({
       message: "Error al eliminar trabajador.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,

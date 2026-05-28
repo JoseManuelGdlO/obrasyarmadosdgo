@@ -120,9 +120,26 @@ const logger = {
   debug: (message) => write("debug", message),
 };
 
+const logError = (context, error) => {
+  const err = error instanceof Error ? error : new Error(String(error));
+  logger.error(`${context}: ${err.message}`);
+
+  if (!err.stack) {
+    return;
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    logger.error(err.stack);
+    return;
+  }
+
+  logger.debug(err.stack);
+};
+
 module.exports = {
   logger,
   sanitizePayload,
   formatRequestLine,
   colorGreen,
+  logError,
 };

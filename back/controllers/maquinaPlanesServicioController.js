@@ -2,6 +2,7 @@ const Maquina = require("../models/Maquina");
 const MaquinaPlanServicio = require("../models/MaquinaPlanServicio");
 const PlanServicioPieza = require("../models/PlanServicioPieza");
 const Articulo = require("../models/Articulo");
+const { logError } = require("../utils/logger");
 
 const FRECUENCIA_TIPOS = ["km", "hrs", "meses"];
 
@@ -28,6 +29,7 @@ const listPlanesServicio = async (req, res) => {
     });
     return res.status(200).json({ planesServicio: planes });
   } catch (error) {
+    logError("Error al listar planes de servicio.", error);
     return res.status(500).json({
       message: "Error al listar planes de servicio.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -58,6 +60,7 @@ const getPlanServicioById = async (req, res) => {
     }
     return res.status(200).json({ planServicio: plan });
   } catch (error) {
+    logError("Error al obtener el plan de servicio.", error);
     return res.status(500).json({
       message: "Error al obtener el plan de servicio.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -94,6 +97,7 @@ const createPlanServicio = async (req, res) => {
       planServicio: created,
     });
   } catch (error) {
+    logError("Error al crear plan de servicio.", error);
     return res.status(500).json({
       message: "Error al crear plan de servicio.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -149,6 +153,7 @@ const updatePlanServicio = async (req, res) => {
       planServicio: updated,
     });
   } catch (error) {
+    logError("Error al actualizar plan de servicio.", error);
     return res.status(500).json({
       message: "Error al actualizar plan de servicio.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -172,6 +177,7 @@ const deletePlanServicio = async (req, res) => {
     await plan.destroy();
     return res.status(200).json({ message: "Plan de servicio eliminado correctamente." });
   } catch (error) {
+    logError("Error al eliminar plan de servicio.", error);
     return res.status(500).json({
       message: "Error al eliminar plan de servicio.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,

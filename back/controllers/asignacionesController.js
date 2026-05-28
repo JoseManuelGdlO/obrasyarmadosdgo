@@ -3,6 +3,7 @@ const Maquina = require("../models/Maquina");
 const Proyecto = require("../models/Proyecto");
 const Cliente = require("../models/Cliente");
 const Trabajador = require("../models/Trabajador");
+const { logError } = require("../utils/logger");
 
 const ESTADOS_ASIGNACION = ["activa", "cerrada"];
 
@@ -71,6 +72,7 @@ const list = async (req, res) => {
     });
     return res.status(200).json({ asignaciones });
   } catch (error) {
+    logError("Error al listar asignaciones.", error);
     return res.status(500).json({
       message: "Error al listar asignaciones.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -88,6 +90,7 @@ const getById = async (req, res) => {
     }
     return res.status(200).json({ asignacion });
   } catch (error) {
+    logError("Error al obtener la asignación.", error);
     return res.status(500).json({
       message: "Error al obtener la asignación.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -159,6 +162,7 @@ const create = async (req, res) => {
       asignacion,
     });
   } catch (error) {
+    logError("Error al crear asignación.", error);
     return res.status(500).json({
       message: "Error al crear asignación.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -247,6 +251,7 @@ const update = async (req, res) => {
       asignacion: updated,
     });
   } catch (error) {
+    logError("Error al actualizar asignación.", error);
     return res.status(500).json({
       message: "Error al actualizar asignación.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -266,6 +271,7 @@ const remove = async (req, res) => {
       .status(200)
       .json({ message: "Asignación eliminada correctamente." });
   } catch (error) {
+    logError("Error al eliminar asignación.", error);
     return res.status(500).json({
       message: "Error al eliminar asignación.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,

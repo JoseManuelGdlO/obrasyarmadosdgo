@@ -3,6 +3,7 @@ const ChecklistDiario = require("../models/ChecklistDiario");
 const Maquina = require("../models/Maquina");
 const MaquinaChecklistItem = require("../models/MaquinaChecklistItem");
 const Trabajador = require("../models/Trabajador");
+const { logError } = require("../utils/logger");
 
 const trimOrNull = (value) => {
   if (value === undefined || value === null) return null;
@@ -161,6 +162,7 @@ const list = async (req, res) => {
     });
     return res.status(200).json({ checklistsDiarios });
   } catch (error) {
+    logError("Error al listar checklists diarios.", error);
     return res.status(500).json({
       message: "Error al listar checklists diarios.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -181,6 +183,7 @@ const getById = async (req, res) => {
     }
     return res.status(200).json({ checklistDiario });
   } catch (error) {
+    logError("Error al obtener el checklist.", error);
     return res.status(500).json({
       message: "Error al obtener el checklist.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -203,6 +206,7 @@ const create = async (req, res) => {
       checklistDiario: result.checklistDiario,
     });
   } catch (error) {
+    logError("Error al registrar checklist.", error);
     return res.status(500).json({
       message: "Error al registrar checklist.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,

@@ -1,5 +1,6 @@
 const Maquina = require("../models/Maquina");
 const MaquinaChecklistItem = require("../models/MaquinaChecklistItem");
+const { logError } = require("../utils/logger");
 
 const ensureMaquina = async (maquinaId) => {
   return Maquina.findByPk(maquinaId);
@@ -18,6 +19,7 @@ const listChecklistItems = async (req, res) => {
     });
     return res.status(200).json({ checklistItems: items });
   } catch (error) {
+    logError("Error al listar ítems del checklist.", error);
     return res.status(500).json({
       message: "Error al listar ítems del checklist.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -40,6 +42,7 @@ const getChecklistItemById = async (req, res) => {
     }
     return res.status(200).json({ checklistItem: item });
   } catch (error) {
+    logError("Error al obtener el ítem.", error);
     return res.status(500).json({
       message: "Error al obtener el ítem.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -75,6 +78,7 @@ const createChecklistItem = async (req, res) => {
       checklistItem: created,
     });
   } catch (error) {
+    logError("Error al crear ítem del checklist.", error);
     return res.status(500).json({
       message: "Error al crear ítem del checklist.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -128,6 +132,7 @@ const updateChecklistItem = async (req, res) => {
       checklistItem: updated,
     });
   } catch (error) {
+    logError("Error al actualizar ítem.", error);
     return res.status(500).json({
       message: "Error al actualizar ítem.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -151,6 +156,7 @@ const deleteChecklistItem = async (req, res) => {
     await item.destroy();
     return res.status(200).json({ message: "Ítem eliminado correctamente." });
   } catch (error) {
+    logError("Error al eliminar ítem.", error);
     return res.status(500).json({
       message: "Error al eliminar ítem.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
