@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Filter, Edit, Trash2, Phone, Mail, User, Briefcase, X } from "lucide-react";
+import { Plus, Search, Filter, Edit, Trash2, Phone, Mail, User, Briefcase, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +12,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { Badge, badgeVariants } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,7 +27,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import ConfirmDeleteButton from "@/components/common/ConfirmDeleteButton";
 import { apiRequest, toAbsoluteAssetUrl } from "@/lib/api";
-import { formatDateOnlyLocale } from "@/lib/utils";
+import { cn, formatDateOnlyLocale } from "@/lib/utils";
 
 type EstadoBackend = "activo" | "inactivo" | "vacaciones" | "licencia";
 type EstadoUi = "Activo" | "Inactivo" | "Vacaciones" | "Licencia";
@@ -260,6 +266,19 @@ export default function Trabajadores() {
     onError: (err: Error) => toast.error(err.message || "Error al dar de baja al trabajador"),
   });
 
+  const updateEstadoMutation = useMutation({
+    mutationFn: ({ id, estado }: { id: string; estado: EstadoUi }) =>
+      apiRequest(`/trabajadores/${id}`, {
+        method: "PATCH",
+        body: { estado: estadoToBackend(estado) },
+      }),
+    onSuccess: () => {
+      toast.success("Estado actualizado");
+      queryClient.invalidateQueries({ queryKey: ["trabajadores"] });
+    },
+    onError: (err: Error) => toast.error(err.message || "Error al actualizar el estado"),
+  });
+
   const closeDialog = () => {
     setIsDialogOpen(false);
     setEditingId(null);
@@ -328,6 +347,16 @@ export default function Trabajadores() {
       case "Vacaciones": return "bg-blue-100 text-blue-800";
       case "Licencia": return "bg-yellow-100 text-yellow-800";
       default: return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const getStatusDotColor = (status: string) => {
+    switch (status) {
+      case "Activo": return "bg-green-600";
+      case "Inactivo": return "bg-red-600";
+      case "Vacaciones": return "bg-blue-600";
+      case "Licencia": return "bg-yellow-600";
+      default: return "bg-gray-400";
     }
   };
 
@@ -680,9 +709,47 @@ export default function Trabajadores() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge className={getStatusColor(trabajador.estado)}>
-                      {trabajador.estado}
-                    </Badge>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          disabled={
+                            updateEstadoMutation.isPending &&
+                            updateEstadoMutation.variables?.id === trabajador.id
+                          }
+                          className={cn(
+                            badgeVariants(),
+                            getStatusColor(trabajador.estado),
+                            "cursor-pointer border-transparent hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
+                          )}
+                        >
+                          {trabajador.estado}
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        {estados.map((estado) => (
+                          <DropdownMenuItem
+                            key={estado}
+                            onClick={() => {
+                              if (estado !== trabajador.estado) {
+                                updateEstadoMutation.mutate({ id: trabajador.id, estado });
+                              }
+                            }}
+                          >
+                            <span
+                              className={cn(
+                                "mr-2 h-2 w-2 shrink-0 rounded-full",
+                                getStatusDotColor(estado)
+                              )}
+                            />
+                            {estado}
+                            {trabajador.estado === estado && (
+                              <Check className="ml-auto h-4 w-4 text-primary" />
+                            )}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                   <TableCell className="text-gray-600">
                     {trabajador.experiencia || "—"}
