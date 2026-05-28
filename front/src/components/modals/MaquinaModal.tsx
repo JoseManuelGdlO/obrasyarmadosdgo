@@ -130,7 +130,7 @@ const defaultForm: MaquinaFormData = {
   horometroFinal: "",
   disponibilidad: "",
   fechaAdquisicion: "",
-  estado: "Operativa",
+  estado: "Disponible",
   ultimoMantenimiento: "",
   tipoCombustible: "",
   pedimento: "",

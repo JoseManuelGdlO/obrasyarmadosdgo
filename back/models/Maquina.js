@@ -62,7 +62,7 @@ const Maquina = sequelize.define(
     estado: {
       type: DataTypes.ENUM(...ESTADOS_MAQUINA),
       allowNull: false,
-      defaultValue: "Operativa",
+      defaultValue: "Disponible",
     },
     horometroInicial: {
       type: DataTypes.INTEGER,
