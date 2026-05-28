@@ -17,7 +17,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -238,10 +237,14 @@ function DocumentUploadBlock({
       {hasDocument && (
         <div className="flex items-center justify-between">
           <Label className="text-xs">{removeLabel}</Label>
-          <Switch
-            checked={remove}
-            onCheckedChange={onRemoveChange}
-          />
+          <button
+            type="button"
+            onClick={() => onRemoveChange(true)}
+            className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+            aria-label={removeLabel}
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
       )}
     </div>
@@ -982,6 +985,7 @@ export default function MaquinaModal({
                           fotoPortadaFile: file,
                           removeFotoPortada: false,
                         }));
+                        e.target.value = "";
                       }}
                     />
                     {previewPortadaUrl && (
@@ -991,19 +995,23 @@ export default function MaquinaModal({
                         className="h-28 w-full rounded-md border object-cover"
                       />
                     )}
-                    {(form.fotoPortadaPath || form.fotoPortadaFile) && (
+                    {(form.fotoPortadaPath || form.fotoPortadaFile) && !form.removeFotoPortada && (
                       <div className="flex items-center justify-between">
                         <Label className="text-xs">Quitar portada</Label>
-                        <Switch
-                          checked={form.removeFotoPortada}
-                          onCheckedChange={(checked) =>
+                        <button
+                          type="button"
+                          onClick={() =>
                             setForm((prev) => ({
                               ...prev,
-                              removeFotoPortada: checked,
-                              ...(checked ? { fotoPortadaFile: null } : {}),
+                              removeFotoPortada: true,
+                              fotoPortadaFile: null,
                             }))
                           }
-                        />
+                          className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+                          aria-label="Quitar portada"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
                       </div>
                     )}
                   </div>
