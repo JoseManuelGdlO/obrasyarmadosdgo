@@ -12,6 +12,9 @@ const {
   MACHINE_UPLOADS_DIR,
   MACHINE_UPLOADS_ROUTE,
   ensureMachineUploadsDir,
+  WORKER_UPLOADS_DIR,
+  WORKER_UPLOADS_ROUTE,
+  ensureWorkerUploadsDir,
 } = require("./config/uploads");
 // Registra modelos y asociaciones Sequelize al iniciar la app.
 require("./models");
@@ -44,9 +47,16 @@ app.use(
 );
 app.use(express.json());
 ensureMachineUploadsDir();
+ensureWorkerUploadsDir();
 app.use(
   MACHINE_UPLOADS_ROUTE,
   express.static(path.resolve(MACHINE_UPLOADS_DIR), {
+    maxAge: "7d",
+  })
+);
+app.use(
+  WORKER_UPLOADS_ROUTE,
+  express.static(path.resolve(WORKER_UPLOADS_DIR), {
     maxAge: "7d",
   })
 );

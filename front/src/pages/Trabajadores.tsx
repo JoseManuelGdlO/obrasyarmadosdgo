@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Filter, Edit, Trash2, Phone, Mail, User, Briefcase } from "lucide-react";
+import { Plus, Search, Filter, Edit, Trash2, Phone, Mail, User, Briefcase, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +20,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import ConfirmDeleteButton from "@/components/common/ConfirmDeleteButton";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, toAbsoluteAssetUrl } from "@/lib/api";
 
 type EstadoBackend = "activo" | "inactivo" | "vacaciones" | "licencia";
 type EstadoUi = "Activo" | "Inactivo" | "Vacaciones" | "Licencia";
@@ -99,7 +99,22 @@ const mapTrabajador = (t: TrabajadorBackend): TrabajadorVM => ({
   estado: estadoToUi(t.estado),
 });
 
-const defaultForm = {
+type TrabajadorFormData = {
+  nombre: string;
+  email: string;
+  telefono: string;
+  cargo: string;
+  departamento: string;
+  especialidad: string;
+  fechaIngreso: string;
+  experiencia: string;
+  avatarPath: string;
+  avatarFile: File | null;
+  removeAvatar: boolean;
+  estado: EstadoUi;
+};
+
+const defaultForm: TrabajadorFormData = {
   nombre: "",
   email: "",
   telefono: "",
@@ -108,8 +123,34 @@ const defaultForm = {
   especialidad: "",
   fechaIngreso: "",
   experiencia: "",
-  avatar: "",
-  estado: "Activo" as EstadoUi,
+  avatarPath: "",
+  avatarFile: null,
+  removeAvatar: false,
+  estado: "Activo",
+};
+
+const appendPayloadToFormData = (
+  body: FormData,
+  payload: Record<string, string | number | boolean | null>
+) => {
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value !== null && value !== undefined) {
+      body.append(key, String(value));
+    }
+  });
+};
+
+const validateAvatarFile = (file: File | null) => {
+  if (!file) return null;
+  const maxSize = 2 * 1024 * 1024;
+  const allowedTypes = new Set(["image/jpeg", "image/png"]);
+  if (!allowedTypes.has(file.type)) {
+    return "El avatar debe ser JPG o PNG.";
+  }
+  if (file.size > maxSize) {
+    return "El avatar no puede superar 2MB.";
+  }
+  return null;
 };
 
 export default function Trabajadores() {
@@ -119,7 +160,8 @@ export default function Trabajadores() {
   const [selectedEstado, setSelectedEstado] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState(defaultForm);
+  const [formData, setFormData] = useState<TrabajadorFormData>(defaultForm);
+  const [previewAvatarUrl, setPreviewAvatarUrl] = useState("");
 
   const { data: trabajadoresData } = useQuery({
     queryKey: ["trabajadores", searchTerm],
@@ -144,13 +186,38 @@ export default function Trabajadores() {
     especialidad: formData.especialidad.trim() || null,
     fechaIngreso: formData.fechaIngreso || null,
     experiencia: formData.experiencia.trim() || null,
-    avatar: formData.avatar.trim() || null,
     estado: estadoToBackend(formData.estado),
   });
 
+  const buildSubmitFormData = () => {
+    const body = new FormData();
+    appendPayloadToFormData(body, buildPayload());
+    if (formData.avatarFile) {
+      body.append("avatar", formData.avatarFile);
+    }
+    if (editingId && formData.removeAvatar) {
+      body.append("removeAvatar", "true");
+    }
+    return body;
+  };
+
+  useEffect(() => {
+    if (!isDialogOpen) return;
+    if (formData.avatarFile) {
+      const tempUrl = URL.createObjectURL(formData.avatarFile);
+      setPreviewAvatarUrl(tempUrl);
+      return () => URL.revokeObjectURL(tempUrl);
+    }
+    if (formData.removeAvatar) {
+      setPreviewAvatarUrl("");
+      return;
+    }
+    setPreviewAvatarUrl(formData.avatarPath || "");
+  }, [isDialogOpen, formData.avatarFile, formData.avatarPath, formData.removeAvatar]);
+
   const createTrabajadorMutation = useMutation({
-    mutationFn: (payload: Record<string, unknown>) =>
-      apiRequest("/trabajadores", { method: "POST", body: payload }),
+    mutationFn: (body: FormData) =>
+      apiRequest("/trabajadores", { method: "POST", body }),
     onSuccess: () => {
       toast.success("Trabajador creado");
       closeDialog();
@@ -160,8 +227,8 @@ export default function Trabajadores() {
   });
 
   const updateTrabajadorMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Record<string, unknown> }) =>
-      apiRequest(`/trabajadores/${id}`, { method: "PATCH", body: payload }),
+    mutationFn: ({ id, body }: { id: string; body: FormData }) =>
+      apiRequest(`/trabajadores/${id}`, { method: "PATCH", body }),
     onSuccess: () => {
       toast.success("Trabajador actualizado");
       closeDialog();
@@ -183,6 +250,7 @@ export default function Trabajadores() {
     setIsDialogOpen(false);
     setEditingId(null);
     setFormData(defaultForm);
+    setPreviewAvatarUrl("");
   };
 
   const openCreateDialog = (open: boolean) => {
@@ -206,7 +274,9 @@ export default function Trabajadores() {
       especialidad: t.especialidad,
       fechaIngreso: t.fechaIngreso,
       experiencia: t.experiencia,
-      avatar: t.avatar,
+      avatarPath: toAbsoluteAssetUrl(t.avatar) || "",
+      avatarFile: null,
+      removeAvatar: false,
       estado: t.estado,
     });
     setIsDialogOpen(true);
@@ -218,11 +288,16 @@ export default function Trabajadores() {
       toast.error("El nombre es obligatorio");
       return;
     }
-    const payload = buildPayload();
+    const avatarError = validateAvatarFile(formData.avatarFile);
+    if (avatarError) {
+      toast.error(avatarError);
+      return;
+    }
+    const body = buildSubmitFormData();
     if (editingId) {
-      updateTrabajadorMutation.mutate({ id: editingId, payload });
+      updateTrabajadorMutation.mutate({ id: editingId, body });
     } else {
-      createTrabajadorMutation.mutate(payload);
+      createTrabajadorMutation.mutate(body);
     }
   };
 
@@ -379,14 +454,48 @@ export default function Trabajadores() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="avatar">Avatar (URL)</Label>
+              <div className="space-y-2 rounded-lg border p-3">
+                <Label htmlFor="avatar">Avatar (JPG/PNG, máx 2MB)</Label>
                 <Input
                   id="avatar"
-                  placeholder="https://…"
-                  value={formData.avatar}
-                  onChange={(e) => setFormData({ ...formData, avatar: e.target.value })}
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setFormData((prev) => ({
+                      ...prev,
+                      avatarFile: file,
+                      removeAvatar: false,
+                    }));
+                    e.target.value = "";
+                  }}
                 />
+                {previewAvatarUrl && (
+                  <img
+                    src={previewAvatarUrl}
+                    alt="Avatar del trabajador"
+                    className="h-28 w-full rounded-md border object-cover"
+                  />
+                )}
+                {(formData.avatarPath || formData.avatarFile) && !formData.removeAvatar && (
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Quitar avatar</Label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          removeAvatar: true,
+                          avatarFile: null,
+                        }))
+                      }
+                      className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+                      aria-label="Quitar avatar"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="flex gap-2 pt-4">
                 <Button type="submit" className="flex-1" disabled={isSubmitting}>
@@ -509,7 +618,7 @@ export default function Trabajadores() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={trabajador.avatar || undefined} />
+                        <AvatarImage src={toAbsoluteAssetUrl(trabajador.avatar) || undefined} />
                         <AvatarFallback className="bg-blue-100 text-blue-700 text-xs">
                           {getInitials(trabajador.nombre)}
                         </AvatarFallback>

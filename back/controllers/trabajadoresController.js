@@ -1,8 +1,55 @@
+const path = require("path");
+const fs = require("fs/promises");
 const { Op } = require("sequelize");
 const Trabajador = require("../models/Trabajador");
+const {
+  WORKER_UPLOADS_DIR,
+  WORKER_UPLOADS_ROUTE,
+} = require("../config/uploads");
+const { cleanupUploadedFilesIfPresent } = require("../middlewares/uploadTrabajadorFiles");
 const { logError } = require("../utils/logger");
 
 const ESTADOS_TRABAJADOR = ["activo", "inactivo", "vacaciones", "licencia"];
+
+const buildPublicWorkerUploadPath = (filename) =>
+  `${WORKER_UPLOADS_ROUTE}/${encodeURIComponent(filename)}`;
+
+const resolveStoredUploadToAbsolute = (storedPath) => {
+  if (!storedPath || typeof storedPath !== "string") return null;
+  const normalizedRoute = `${WORKER_UPLOADS_ROUTE}/`;
+  if (!storedPath.startsWith(normalizedRoute)) return null;
+  const filename = decodeURIComponent(storedPath.slice(normalizedRoute.length));
+  const absolutePath = path.resolve(WORKER_UPLOADS_DIR, filename);
+  const uploadsRoot = path.resolve(WORKER_UPLOADS_DIR);
+  if (!absolutePath.startsWith(`${uploadsRoot}${path.sep}`) && absolutePath !== uploadsRoot) {
+    return null;
+  }
+  return absolutePath;
+};
+
+const safeDeleteStoredUpload = async (storedPath) => {
+  const absolutePath = resolveStoredUploadToAbsolute(storedPath);
+  if (!absolutePath) return;
+  try {
+    await fs.unlink(absolutePath);
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      throw error;
+    }
+  }
+};
+
+const getUploadedAvatar = (req) => req.files?.avatar?.[0] || null;
+
+const pickUploadedAvatarPath = (req) => {
+  const file = getUploadedAvatar(req);
+  if (file?.filename) {
+    return buildPublicWorkerUploadPath(file.filename);
+  }
+  return null;
+};
+
+const parseTruthyFlag = (value) => value === true || value === "true";
 
 const trimOrNull = (value) => {
   if (value === undefined || value === null) return null;
@@ -73,6 +120,19 @@ const buildPayload = (body, { partial = false } = {}) => {
   return { payload, errors };
 };
 
+const applyAvatarToPayload = (req, payload, { partial = false } = {}) => {
+  const uploadedPath = pickUploadedAvatarPath(req);
+  const wantsToRemove = partial && parseTruthyFlag(req.body?.removeAvatar);
+
+  if (uploadedPath) {
+    payload.avatar = uploadedPath;
+    return;
+  }
+  if (wantsToRemove) {
+    payload.avatar = null;
+  }
+};
+
 const list = async (req, res) => {
   try {
     const { q } = req.query;
@@ -122,14 +182,17 @@ const create = async (req, res) => {
   try {
     const { payload, errors } = buildPayload(req.body, { partial: false });
     if (errors.length > 0) {
+      await cleanupUploadedFilesIfPresent(req);
       return res.status(400).json({ message: errors.join(" ") });
     }
+    applyAvatarToPayload(req, payload, { partial: false });
     const trabajador = await Trabajador.create(payload);
     return res.status(201).json({
       message: "Trabajador creado correctamente.",
       trabajador,
     });
   } catch (error) {
+    await cleanupUploadedFilesIfPresent(req);
     logError("Error al crear trabajador.", error);
     return res.status(500).json({
       message: "Error al crear trabajador.",
@@ -143,22 +206,32 @@ const update = async (req, res) => {
     const { id } = req.params;
     const trabajador = await Trabajador.findByPk(id);
     if (!trabajador) {
+      await cleanupUploadedFilesIfPresent(req);
       return res.status(404).json({ message: "Trabajador no encontrado." });
     }
     const { payload, errors } = buildPayload(req.body, { partial: true });
     if (errors.length > 0) {
+      await cleanupUploadedFilesIfPresent(req);
       return res.status(400).json({ message: errors.join(" ") });
     }
+    applyAvatarToPayload(req, payload, { partial: true });
     if (Object.keys(payload).length === 0) {
+      await cleanupUploadedFilesIfPresent(req);
       return res.status(400).json({ message: "No hay campos para actualizar." });
     }
+    const oldAvatar = trabajador.avatar;
     await trabajador.update(payload);
+    const newAvatar = payload.avatar !== undefined ? payload.avatar : oldAvatar;
+    if (oldAvatar && oldAvatar !== newAvatar) {
+      await safeDeleteStoredUpload(oldAvatar);
+    }
     const updated = await Trabajador.findByPk(id);
     return res.status(200).json({
       message: "Trabajador actualizado correctamente.",
       trabajador: updated,
     });
   } catch (error) {
+    await cleanupUploadedFilesIfPresent(req);
     logError("Error al actualizar trabajador.", error);
     return res.status(500).json({
       message: "Error al actualizar trabajador.",
@@ -174,7 +247,11 @@ const remove = async (req, res) => {
     if (!trabajador) {
       return res.status(404).json({ message: "Trabajador no encontrado." });
     }
+    const oldAvatar = trabajador.avatar;
     await trabajador.destroy();
+    if (oldAvatar) {
+      await safeDeleteStoredUpload(oldAvatar);
+    }
     return res.status(200).json({ message: "Trabajador eliminado correctamente." });
   } catch (error) {
     logError("Error al eliminar trabajador.", error);
