@@ -65,6 +65,7 @@ export interface MaquinaFormData {
   modelo: string;
   placas: string;
   numeroSerie: string;
+  numeroEconomico: string;
   ubicacion: string;
   horometroInicial: string;
   horometroActual: string;
@@ -124,6 +125,7 @@ const defaultForm: MaquinaFormData = {
   modelo: "",
   placas: "",
   numeroSerie: "",
+  numeroEconomico: "",
   ubicacion: "",
   horometroInicial: "",
   horometroActual: "",
@@ -681,6 +683,16 @@ export default function MaquinaModal({
                         required
                       />
                     </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Número económico</Label>
+                    <Input
+                      placeholder="Ej: EC-001"
+                      value={form.numeroEconomico}
+                      onChange={(e) =>
+                        setForm((prev) => ({ ...prev, numeroEconomico: e.target.value }))
+                      }
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label>Ubicación</Label>

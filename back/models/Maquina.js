@@ -59,6 +59,10 @@ const Maquina = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    numeroEconomico: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     estado: {
       type: DataTypes.ENUM(...ESTADOS_MAQUINA),
       allowNull: false,

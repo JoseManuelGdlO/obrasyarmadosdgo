@@ -75,6 +75,7 @@ const catalogInclude = [
 ];
 
 const DOC_FIELDS = [
+  "numeroEconomico",
   "tipoCombustible",
   "pedimento",
   "pedimentoNumero",

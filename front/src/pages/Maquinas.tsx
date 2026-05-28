@@ -90,6 +90,7 @@ interface ApiMaquina {
   modelo: string;
   placas: string;
   numeroSerie: string;
+  numeroEconomico?: string | null;
   estado: string;
   horometroInicial: number;
   horometroActual: number;
@@ -127,6 +128,7 @@ const buildMaquinaPayload = (form: MaquinaFormData) => ({
   modelo: form.modelo,
   placas: form.placas,
   numeroSerie: form.numeroSerie,
+  numeroEconomico: form.numeroEconomico || null,
   ubicacion: form.ubicacion,
   estado: form.estado,
   horometroInicial: Number(form.horometroInicial) || 0,
@@ -468,6 +470,7 @@ export default function Maquinas() {
       modelo: editingMaquina.modelo || "",
       placas: editingMaquina.placas || "",
       numeroSerie: editingMaquina.numeroSerie || "",
+      numeroEconomico: editingMaquina.numeroEconomico || "",
       ubicacion: editingMaquina.ubicacion || "",
       horometroInicial: String(editingMaquina.horometroInicial ?? ""),
       horometroActual: String(editingMaquina.horometroActual ?? ""),
