@@ -76,10 +76,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="min-h-screen flex w-full min-w-0 bg-background">
         <AppSidebar />
         
-        <div className="flex flex-col flex-1">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           {/* Header */}
           <header className="h-16 border-b bg-card/50 backdrop-blur-sm flex items-center justify-between px-6">
             <div className="flex items-center gap-4">
@@ -173,7 +173,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           </header>
 
           {/* Main Content */}
-          <main className="flex-1 p-6 bg-background">
+          <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-6 bg-background">
             {children}
           </main>
         </div>

@@ -2,7 +2,8 @@ import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import NuevaOrdenModal from "@/components/modals/NuevaOrdenModal"
@@ -212,8 +213,8 @@ const OrdenesTrabajo = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="min-w-0 space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between min-w-0">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Órdenes de Trabajo</h1>
           <p className="text-muted-foreground">Gestiona todas las órdenes de mantenimiento</p>
@@ -253,7 +254,7 @@ const OrdenesTrabajo = () => {
         </CardContent>
       </Card>
 
-      <Card className="border-none shadow-md">
+      <Card className="border-none shadow-md min-w-0 overflow-hidden">
         <CardHeader>
           <CardTitle>
             {mostrarHistorico
@@ -261,8 +262,9 @@ const OrdenesTrabajo = () => {
               : `Órdenes de Trabajo Activas (${ordenes.length})`}
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <Table>
+        <CardContent className="min-w-0 p-6 pt-0">
+          <div className="scrollbar-always-x max-w-full rounded-md border border-border/60">
+            <table className={cn("w-max min-w-full caption-bottom text-sm")}>
             <TableHeader>
               <TableRow>
                 <TableHead>Folio</TableHead>
@@ -429,7 +431,8 @@ const OrdenesTrabajo = () => {
                 ))
               )}
             </TableBody>
-          </Table>
+            </table>
+          </div>
         </CardContent>
       </Card>
 
