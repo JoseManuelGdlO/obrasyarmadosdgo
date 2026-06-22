@@ -891,7 +891,7 @@ export default function MaquinaModal({
                         <Label>Costo del vehículo</Label>
                         <Input
                           type="number"
-                          step="1.00"
+                          step="0.01"
                           min="0"
                           placeholder="0.00"
                           value={form.costoVehiculo}
