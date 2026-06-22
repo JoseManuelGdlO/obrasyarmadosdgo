@@ -28,6 +28,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 export type MaquinaEstado = "Operativa" | "Disponible" | "Mantenimiento" | "Fuera de Servicio";
 
@@ -116,6 +117,9 @@ const estados: MaquinaEstado[] = [
 
 const ADD_CLASE_VALUE = "__add_clase__";
 const ADD_TIPO_VALUE = "__add_tipo__";
+
+const isValidCatalogSelection = (value: string) =>
+  Boolean(value && value !== ADD_CLASE_VALUE && value !== ADD_TIPO_VALUE);
 
 const defaultForm: MaquinaFormData = {
   nombre: "",
@@ -293,6 +297,7 @@ export default function MaquinaModal({
   const [newServiceFreqValor, setNewServiceFreqValor] = useState("");
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
   const [servicePiezaSearch, setServicePiezaSearch] = useState("");
+  const [catalogErrors, setCatalogErrors] = useState<{ claseId?: string; tipoId?: string }>({});
 
   const isEdit = useMemo(() => mode === "edit", [mode]);
 
@@ -333,6 +338,7 @@ export default function MaquinaModal({
       invalidateCatalog();
       if (newId) {
         setForm((prev) => ({ ...prev, claseId: newId, tipoId: "" }));
+        setCatalogErrors((prev) => ({ ...prev, claseId: undefined }));
       }
     },
     onError: (err: Error) => toast.error(err.message),
@@ -356,6 +362,7 @@ export default function MaquinaModal({
       invalidateCatalog();
       if (newId) {
         setForm((prev) => ({ ...prev, tipoId: newId }));
+        setCatalogErrors((prev) => ({ ...prev, tipoId: undefined }));
       }
     },
     onError: (err: Error) => toast.error(err.message),
@@ -394,6 +401,7 @@ export default function MaquinaModal({
       setNewServiceFreqTipo("km");
       setEditingServiceId(null);
       setServicePiezaSearch("");
+      setCatalogErrors({});
     }
   }, [open, initialData]);
 
@@ -495,6 +503,26 @@ export default function MaquinaModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const errors: { claseId?: string; tipoId?: string } = {};
+    if (!isValidCatalogSelection(form.claseId)) {
+      errors.claseId = "Selecciona una clase.";
+    }
+    if (!isValidCatalogSelection(form.tipoId)) {
+      errors.tipoId = "Selecciona un tipo.";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setCatalogErrors(errors);
+      toast.error(
+        errors.claseId && errors.tipoId
+          ? "Selecciona clase y tipo."
+          : errors.claseId || errors.tipoId
+      );
+      return;
+    }
+
+    setCatalogErrors({});
     onSubmit(form);
   };
 
@@ -545,10 +573,14 @@ export default function MaquinaModal({
                             openNewClase();
                             return;
                           }
+                          setCatalogErrors((prev) => ({ ...prev, claseId: undefined, tipoId: undefined }));
                           setForm((prev) => ({ ...prev, claseId: value, tipoId: "" }));
                         }}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger
+                          aria-invalid={Boolean(catalogErrors.claseId)}
+                          className={cn(catalogErrors.claseId && "border-destructive")}
+                        >
                           <SelectValue placeholder="Seleccionar clase" />
                         </SelectTrigger>
                         <SelectContent>
@@ -585,6 +617,9 @@ export default function MaquinaModal({
                           )}
                         </SelectContent>
                       </Select>
+                      {catalogErrors.claseId && (
+                        <p className="text-sm text-destructive">{catalogErrors.claseId}</p>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <Label>Tipo</Label>
@@ -599,11 +634,15 @@ export default function MaquinaModal({
                             openNewTipo();
                             return;
                           }
+                          setCatalogErrors((prev) => ({ ...prev, tipoId: undefined }));
                           setForm((prev) => ({ ...prev, tipoId: value }));
                         }}
                         disabled={!form.claseId || form.claseId === ADD_CLASE_VALUE}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger
+                          aria-invalid={Boolean(catalogErrors.tipoId)}
+                          className={cn(catalogErrors.tipoId && "border-destructive")}
+                        >
                           <SelectValue placeholder="Seleccionar tipo" />
                         </SelectTrigger>
                         <SelectContent>
@@ -640,6 +679,9 @@ export default function MaquinaModal({
                           )}
                         </SelectContent>
                       </Select>
+                      {catalogErrors.tipoId && (
+                        <p className="text-sm text-destructive">{catalogErrors.tipoId}</p>
+                      )}
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
