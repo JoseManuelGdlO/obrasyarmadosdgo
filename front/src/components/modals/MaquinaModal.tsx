@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiRequest } from "@/lib/api";
@@ -165,6 +165,23 @@ const defaultForm: MaquinaFormData = {
   planesServicio: [],
 };
 
+function buildFormFromInitialData(
+  initialData?: Partial<MaquinaFormData> | null
+): MaquinaFormData {
+  return {
+    ...defaultForm,
+    ...(initialData || {}),
+    fotoPortadaFile: null,
+    removeFotoPortada: false,
+    pedimentoArchivoFile: null,
+    removePedimentoArchivo: false,
+    polizaSeguroFile: null,
+    removePolizaSeguro: false,
+    checklistItems: initialData?.checklistItems || [],
+    planesServicio: initialData?.planesServicio || [],
+  };
+}
+
 const DOCUMENT_ACCEPT =
   ".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png";
 
@@ -281,7 +298,12 @@ export default function MaquinaModal({
   const canEditCatalog = can(PERMISSIONS.MAQUINAS_EDIT);
 
   const [form, setForm] = useState<MaquinaFormData>(defaultForm);
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [catalogClaseId, setCatalogClaseId] = useState("");
   const [previewPortadaUrl, setPreviewPortadaUrl] = useState<string>("");
+  const wasOpenRef = useRef(false);
+  const initialDataRef = useRef(initialData);
+  initialDataRef.current = initialData;
 
   const [claseDialogOpen, setClaseDialogOpen] = useState(false);
   const [tipoDialogOpen, setTipoDialogOpen] = useState(false);
@@ -308,12 +330,12 @@ export default function MaquinaModal({
   });
 
   const { data: tiposData } = useQuery({
-    queryKey: ["maquina-tipos", form.claseId],
+    queryKey: ["maquina-tipos", catalogClaseId],
     queryFn: () =>
       apiRequest<{ tipos: CatalogOption[] }>(
-        `/maquina-tipos?activo=true&claseId=${form.claseId}`
+        `/maquina-tipos?activo=true&claseId=${catalogClaseId}`
       ),
-    enabled: open && Boolean(form.claseId),
+    enabled: open && isHydrated && Boolean(catalogClaseId),
   });
 
   const clasesActivas = clasesData?.clases || [];
@@ -337,6 +359,7 @@ export default function MaquinaModal({
       setClaseForm({ nombre: "", activo: true });
       invalidateCatalog();
       if (newId) {
+        setCatalogClaseId(newId);
         setForm((prev) => ({ ...prev, claseId: newId, tipoId: "" }));
         setCatalogErrors((prev) => ({ ...prev, claseId: undefined }));
       }
@@ -378,21 +401,13 @@ export default function MaquinaModal({
     setTipoDialogOpen(true);
   };
 
-  useEffect(() => {
-    if (open) {
-      setForm({
-        ...defaultForm,
-        ...(initialData || {}),
-        fotoPortadaFile: null,
-        removeFotoPortada: false,
-        pedimentoArchivoFile: null,
-        removePedimentoArchivo: false,
-        polizaSeguroFile: null,
-        removePolizaSeguro: false,
-        checklistItems: initialData?.checklistItems || [],
-        planesServicio: initialData?.planesServicio || [],
-      });
-      setPreviewPortadaUrl(initialData?.fotoPortadaPath || "");
+  useLayoutEffect(() => {
+    if (open && !wasOpenRef.current) {
+      const data = initialDataRef.current;
+      const nextForm = buildFormFromInitialData(data);
+      setForm(nextForm);
+      setCatalogClaseId(nextForm.claseId);
+      setPreviewPortadaUrl(data?.fotoPortadaPath || "");
       setNewItemLabel("");
       setNewItemUnit("");
       setNewItemType("check");
@@ -402,8 +417,16 @@ export default function MaquinaModal({
       setEditingServiceId(null);
       setServicePiezaSearch("");
       setCatalogErrors({});
+      setIsHydrated(true);
     }
-  }, [open, initialData]);
+
+    if (!open && wasOpenRef.current) {
+      setIsHydrated(false);
+      setCatalogClaseId("");
+    }
+
+    wasOpenRef.current = open;
+  }, [open]);
 
   useEffect(() => {
     if (form.fotoPortadaFile) {
@@ -574,6 +597,7 @@ export default function MaquinaModal({
                             return;
                           }
                           setCatalogErrors((prev) => ({ ...prev, claseId: undefined, tipoId: undefined }));
+                          setCatalogClaseId(value);
                           setForm((prev) => ({ ...prev, claseId: value, tipoId: "" }));
                         }}
                       >
