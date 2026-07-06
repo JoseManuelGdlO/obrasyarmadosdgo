@@ -14,6 +14,7 @@ import MaquinaCatalogo from "./pages/MaquinaCatalogo";
 import Proveedores from "./pages/Proveedores";
 import Inventario from "./pages/Inventario";
 import Proyectos from "./pages/Proyectos";
+import ProyectoDetalle from "./pages/ProyectoDetalle";
 import Clientes from "./pages/Clientes";
 import GestionUsuarios from "./pages/GestionUsuarios";
 import RolesPermisos from "./pages/RolesPermisos";
@@ -114,6 +115,14 @@ const App = () => (
                         element={
                           <ProtectedRoute requiredPermissions={[PERMISSIONS.PROYECTOS_VIEW]}>
                             <Proyectos />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/proyectos/:id"
+                        element={
+                          <ProtectedRoute requiredPermissions={[PERMISSIONS.PROYECTOS_VIEW]}>
+                            <ProyectoDetalle />
                           </ProtectedRoute>
                         }
                       />

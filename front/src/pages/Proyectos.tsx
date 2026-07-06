@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -6,23 +7,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { StatCard } from "@/components/ui/stat-card"
-import { 
-  Plus, 
-  Search, 
-  Filter, 
+import {
+  Plus,
+  Search,
+  Filter,
   FolderOpen,
   Calendar,
   MapPin,
   DollarSign,
-  Users
+  Users,
 } from "lucide-react"
 import { apiRequest } from "@/lib/api"
 import ProyectoModal, { ProyectoFormData } from "@/components/modals/ProyectoModal"
 
 const Proyectos = () => {
+  const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState("")
   const [modalOpen, setModalOpen] = useState(false)
-  const [editingProjectId, setEditingProjectId] = useState<string | null>(null)
   const queryClient = useQueryClient()
 
   const { data: projectsResponse } = useQuery({
@@ -52,54 +53,26 @@ const Proyectos = () => {
     estado: String(proyecto.estado || "planeado"),
     presupuesto: Number(proyecto.presupuesto || 0),
     progreso: Number(proyecto.progreso || 0),
-    precioEstimado: Number(proyecto.precioEstimado || 0),
     maquinasAsignadas: Number(proyecto.maquinasAsignadas || 0),
     responsable: String(proyecto.responsable || ""),
   }))
 
   const createProject = useMutation({
     mutationFn: (payload: Record<string, unknown>) =>
-      apiRequest("/proyectos", { method: "POST", body: payload }),
-    onSuccess: () => {
+      apiRequest<{ proyecto: { id: string } }>("/proyectos", { method: "POST", body: payload }),
+    onSuccess: (data) => {
       setModalOpen(false)
       queryClient.invalidateQueries({ queryKey: ["proyectos"] })
       queryClient.invalidateQueries({ queryKey: ["clientes"] })
       queryClient.invalidateQueries({ queryKey: ["clientes-lite"] })
-    },
-  })
-
-  const updateProject = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Record<string, unknown> }) =>
-      apiRequest(`/proyectos/${id}`, { method: "PATCH", body: payload }),
-    onSuccess: () => {
-      setModalOpen(false)
-      setEditingProjectId(null)
-      queryClient.invalidateQueries({ queryKey: ["proyectos"] })
-      queryClient.invalidateQueries({ queryKey: ["clientes"] })
-      queryClient.invalidateQueries({ queryKey: ["clientes-lite"] })
+      const newId = data?.proyecto?.id
+      if (newId) navigate(`/proyectos/${newId}`)
     },
   })
 
   const filteredProjects = proyectos.filter((proyecto) =>
     [proyecto.nombre, proyecto.cliente, proyecto.ubicacion].join(" ").toLowerCase().includes(searchTerm.toLowerCase())
   )
-
-  const selectedProject = proyectos.find((proyecto) => proyecto.id === editingProjectId)
-  const initialData: Partial<ProyectoFormData> | null = selectedProject
-    ? {
-        clienteId: selectedProject.clienteId,
-        nombre: selectedProject.nombre,
-        descripcion: selectedProject.descripcion,
-        ubicacion: selectedProject.ubicacion,
-        fechaInicio: selectedProject.fechaInicio,
-        fechaFin: selectedProject.fechaFin,
-        estado: (selectedProject.estado as ProyectoFormData["estado"]) || "planeado",
-        presupuesto: String(selectedProject.presupuesto || 0),
-        progreso: String(selectedProject.progreso || 0),
-        precioEstimado: String(selectedProject.precioEstimado || 0),
-        responsable: selectedProject.responsable,
-      }
-    : null
 
   const saveProject = (data: ProyectoFormData) => {
     const payload = {
@@ -109,16 +82,14 @@ const Proyectos = () => {
       ubicacion: data.ubicacion || null,
       fechaInicio: data.fechaInicio || null,
       fechaFin: data.fechaFin || null,
+      fechaModificatoria: data.fechaModificatoria || null,
       estado: data.estado,
       presupuesto: Number(data.presupuesto || 0),
       progreso: Number(data.progreso || 0),
       precioEstimado: Math.trunc(Number(data.precioEstimado || 0)),
+      cantidadContrato: Number(data.cantidadContrato || 0),
+      modificacionContrato: Number(data.modificacionContrato || 0),
       responsable: data.responsable || null,
-    }
-
-    if (editingProjectId) {
-      updateProject.mutate({ id: editingProjectId, payload })
-      return
     }
     createProject.mutate(payload)
   }
@@ -142,22 +113,21 @@ const Proyectos = () => {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
+    return new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: "COP",
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0
+      maximumFractionDigits: 0,
     }).format(amount)
   }
 
-  const enProgreso = filteredProjects.filter(p => p.estado === "en_progreso").length
-  const completados = filteredProjects.filter(p => p.estado === "completado").length
-  const pendientes = filteredProjects.filter(p => p.estado === "planeado").length
+  const enProgreso = filteredProjects.filter((p) => p.estado === "en_progreso").length
+  const completados = filteredProjects.filter((p) => p.estado === "completado").length
+  const pendientes = filteredProjects.filter((p) => p.estado === "planeado").length
   const valorTotal = proyectos.reduce((total, p) => total + p.presupuesto, 0)
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Proyectos</h1>
@@ -165,17 +135,13 @@ const Proyectos = () => {
         </div>
         <Button
           className="bg-gradient-to-r from-primary to-accent text-white shadow-lg hover:shadow-xl transition-all"
-          onClick={() => {
-            setEditingProjectId(null)
-            setModalOpen(true)
-          }}
+          onClick={() => setModalOpen(true)}
         >
           <Plus className="w-4 h-4 mr-2" />
           Nuevo Proyecto
         </Button>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="En Progreso"
@@ -200,21 +166,20 @@ const Proyectos = () => {
         />
         <StatCard
           title="Valor Total"
-          value={formatCurrency(valorTotal).replace('COP', '')}
+          value={formatCurrency(valorTotal).replace("COP", "")}
           icon={DollarSign}
           description="Portafolio total"
           trend={{ value: 12, isPositive: true }}
         />
       </div>
 
-      {/* Filters */}
       <Card className="border-none shadow-md">
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Buscar por nombre, cliente, ubicación..." 
+              <Input
+                placeholder="Buscar por nombre, cliente, ubicación..."
                 className="pl-10"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
@@ -228,7 +193,6 @@ const Proyectos = () => {
         </CardContent>
       </Card>
 
-      {/* Projects Table */}
       <Card className="border-none shadow-md">
         <CardHeader>
           <CardTitle>Lista de Proyectos</CardTitle>
@@ -300,7 +264,7 @@ const Proyectos = () => {
                         <span className="text-sm font-medium">{proyecto.progreso}%</span>
                       </div>
                       <div className="w-20 bg-muted rounded-full h-2">
-                        <div 
+                        <div
                           className="h-2 bg-gradient-to-r from-primary to-accent rounded-full transition-all"
                           style={{ width: `${proyecto.progreso}%` }}
                         />
@@ -319,18 +283,13 @@ const Proyectos = () => {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => {
-                          setEditingProjectId(proyecto.id)
-                          setModalOpen(true)
-                        }}
-                      >
-                        Gestionar
-                      </Button>
-                    </div>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => navigate(`/proyectos/${proyecto.id}`)}
+                    >
+                      Gestionar
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -338,15 +297,13 @@ const Proyectos = () => {
           </Table>
         </CardContent>
       </Card>
+
       <ProyectoModal
         open={modalOpen}
-        onOpenChange={(open) => {
-          setModalOpen(open)
-          if (!open) setEditingProjectId(null)
-        }}
+        onOpenChange={setModalOpen}
         onSubmit={saveProject}
-        isSubmitting={createProject.isPending || updateProject.isPending}
-        initialData={initialData}
+        isSubmitting={createProject.isPending}
+        initialData={null}
         clientes={clientes}
       />
     </div>

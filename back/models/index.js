@@ -14,6 +14,7 @@ const PlanServicioPieza = require("./PlanServicioPieza");
 const Proveedor = require("./Proveedor");
 const Trabajador = require("./Trabajador");
 const Proyecto = require("./Proyecto");
+const ProyectoEstimacion = require("./ProyectoEstimacion");
 const Asignacion = require("./Asignacion");
 const Nomenclatura = require("./Nomenclatura");
 const OrdenTrabajo = require("./OrdenTrabajo");
@@ -104,6 +105,13 @@ Maquina.hasMany(UsuarioMaquina, { foreignKey: "maquinaId", as: "asignacionesOper
 Cliente.hasMany(Proyecto, { foreignKey: "clienteId", as: "proyectos" });
 Proyecto.belongsTo(Cliente, { foreignKey: "clienteId", as: "cliente" });
 
+Proyecto.hasMany(ProyectoEstimacion, {
+  foreignKey: "proyectoId",
+  as: "estimaciones",
+  onDelete: "CASCADE",
+});
+ProyectoEstimacion.belongsTo(Proyecto, { foreignKey: "proyectoId", as: "proyecto" });
+
 Proyecto.hasMany(Asignacion, { foreignKey: "proyectoId", as: "asignaciones" });
 Asignacion.belongsTo(Proyecto, { foreignKey: "proyectoId", as: "proyecto" });
 Maquina.hasMany(Asignacion, { foreignKey: "maquinaId", as: "asignaciones" });
@@ -190,6 +198,7 @@ module.exports = {
   Proveedor,
   Trabajador,
   Proyecto,
+  ProyectoEstimacion,
   Asignacion,
   Nomenclatura,
   OrdenTrabajo,

@@ -13,10 +13,13 @@ export type ProyectoFormData = {
   ubicacion: string;
   fechaInicio: string;
   fechaFin: string;
+  fechaModificatoria: string;
   estado: "planeado" | "en_progreso" | "pausado" | "completado";
   presupuesto: string;
   progreso: string;
   precioEstimado: string;
+  cantidadContrato: string;
+  modificacionContrato: string;
   responsable: string;
 };
 
@@ -27,10 +30,13 @@ const defaultForm: ProyectoFormData = {
   ubicacion: "",
   fechaInicio: "",
   fechaFin: "",
+  fechaModificatoria: "",
   estado: "planeado",
   presupuesto: "0",
   progreso: "0",
   precioEstimado: "0",
+  cantidadContrato: "0",
+  modificacionContrato: "0",
   responsable: "",
 };
 
@@ -55,6 +61,20 @@ export default function ProyectoModal({
 }: ProyectoModalProps) {
   const [form, setForm] = useState<ProyectoFormData>(defaultForm);
   const isEdit = useMemo(() => Boolean(initialData), [initialData]);
+
+  const totalContrato = useMemo(() => {
+    const cantidad = Number(form.cantidadContrato || 0);
+    const modificacion = Number(form.modificacionContrato || 0);
+    return cantidad + modificacion;
+  }, [form.cantidadContrato, form.modificacionContrato]);
+
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: "COP",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
 
   useEffect(() => {
     if (open) {
@@ -125,12 +145,50 @@ export default function ProyectoModal({
               />
             </div>
             <div className="space-y-2">
-              <Label>Fecha fin</Label>
+              <Label>Fecha fin (término)</Label>
               <Input
                 type="date"
                 value={form.fechaFin}
                 onChange={(event) => setForm((prev) => ({ ...prev, fechaFin: event.target.value }))}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Fecha modificatoria</Label>
+              <Input
+                type="date"
+                value={form.fechaModificatoria}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, fechaModificatoria: event.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Cantidad contrato</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.cantidadContrato}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, cantidadContrato: event.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Modificación contrato</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.modificacionContrato}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, modificacionContrato: event.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Total contrato</Label>
+              <Input value={formatCurrency(totalContrato)} readOnly disabled />
             </div>
             <div className="space-y-2">
               <Label>Estado</Label>
