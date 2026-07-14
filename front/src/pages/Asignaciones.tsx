@@ -21,6 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { apiRequest } from "@/lib/api";
+import { filterByLinkedProyectoScope, filterByProyectoScope, useAuth } from "@/lib/auth-context";
 import { getMaquinaClaseTipoLabel, getMaquinaTipoNombre } from "@/lib/maquina";
 
 type MaquinaBackend = {
@@ -110,6 +111,7 @@ const formatTiempoAsignada = (fechaInicio: string | null): string => {
 };
 
 export default function Asignaciones() {
+  const { proyectoIds } = useAuth();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTipos, setSelectedTipos] = useState<string[]>([]);
@@ -162,12 +164,12 @@ export default function Asignaciones() {
     [maquinasData?.maquinas]
   );
   const proyectos = useMemo(
-    () => proyectosData?.proyectos || [],
-    [proyectosData?.proyectos]
+    () => filterByProyectoScope(proyectosData?.proyectos || [], proyectoIds),
+    [proyectosData?.proyectos, proyectoIds]
   );
   const asignaciones = useMemo(
-    () => asignacionesData?.asignaciones || [],
-    [asignacionesData?.asignaciones]
+    () => filterByLinkedProyectoScope(asignacionesData?.asignaciones || [], proyectoIds),
+    [asignacionesData?.asignaciones, proyectoIds]
   );
 
   const activasMap = useMemo(() => {

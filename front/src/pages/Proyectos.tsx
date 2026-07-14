@@ -18,10 +18,12 @@ import {
   Users,
 } from "lucide-react"
 import { apiRequest } from "@/lib/api"
+import { filterByProyectoScope, useAuth } from "@/lib/auth-context"
 import ProyectoModal, { ProyectoFormData } from "@/components/modals/ProyectoModal"
 
 const Proyectos = () => {
   const navigate = useNavigate()
+  const { proyectoIds } = useAuth()
   const [searchTerm, setSearchTerm] = useState("")
   const [modalOpen, setModalOpen] = useState(false)
   const queryClient = useQueryClient()
@@ -41,21 +43,24 @@ const Proyectos = () => {
     [clientes]
   )
 
-  const proyectos = (projectsResponse?.proyectos || []).map((proyecto) => ({
-    id: String(proyecto.id || ""),
-    nombre: String(proyecto.nombre || ""),
-    descripcion: String(proyecto.descripcion || ""),
-    clienteId: String(proyecto.clienteId || ""),
-    cliente: clientById[String(proyecto.clienteId || "")] || "Sin cliente",
-    ubicacion: String(proyecto.ubicacion || ""),
-    fechaInicio: String(proyecto.fechaInicio || ""),
-    fechaFin: String(proyecto.fechaFin || ""),
-    estado: String(proyecto.estado || "planeado"),
-    presupuesto: Number(proyecto.presupuesto || 0),
-    progreso: Number(proyecto.progreso || 0),
-    maquinasAsignadas: Number(proyecto.maquinasAsignadas || 0),
-    responsable: String(proyecto.responsable || ""),
-  }))
+  const proyectos = useMemo(() => {
+    const mapped = (projectsResponse?.proyectos || []).map((proyecto) => ({
+      id: String(proyecto.id || ""),
+      nombre: String(proyecto.nombre || ""),
+      descripcion: String(proyecto.descripcion || ""),
+      clienteId: String(proyecto.clienteId || ""),
+      cliente: clientById[String(proyecto.clienteId || "")] || "Sin cliente",
+      ubicacion: String(proyecto.ubicacion || ""),
+      fechaInicio: String(proyecto.fechaInicio || ""),
+      fechaFin: String(proyecto.fechaFin || ""),
+      estado: String(proyecto.estado || "planeado"),
+      presupuesto: Number(proyecto.presupuesto || 0),
+      progreso: Number(proyecto.progreso || 0),
+      maquinasAsignadas: Number(proyecto.maquinasAsignadas || 0),
+      responsable: String(proyecto.responsable || ""),
+    }))
+    return filterByProyectoScope(mapped, proyectoIds)
+  }, [projectsResponse?.proyectos, clientById, proyectoIds])
 
   const createProject = useMutation({
     mutationFn: (payload: Record<string, unknown>) =>

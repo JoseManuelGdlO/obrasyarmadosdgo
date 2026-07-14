@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import NuevaOrdenModal from "@/components/modals/NuevaOrdenModal"
 import ConfirmDeleteButton from "@/components/common/ConfirmDeleteButton"
 import { apiRequest } from "@/lib/api"
+import { filterByLinkedProyectoScope, useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
 import {
   Plus,
@@ -148,6 +149,7 @@ const calculateDaysOpen = (fechaCreacion: string) => {
 }
 
 const OrdenesTrabajo = () => {
+  const { proyectoIds } = useAuth()
   const queryClient = useQueryClient()
   const [modalOpen, setModalOpen] = useState(false)
   const [editingOrdenId, setEditingOrdenId] = useState<string | null>(null)
@@ -195,7 +197,10 @@ const OrdenesTrabajo = () => {
     onError: (err: Error) => toast.error(err.message || "Error al eliminar la orden"),
   })
 
-  const ordenes = data ?? []
+  const ordenes = useMemo(
+    () => filterByLinkedProyectoScope(data ?? [], proyectoIds),
+    [data, proyectoIds]
+  )
 
   const handleNueva = () => {
     setEditingOrdenId(null)

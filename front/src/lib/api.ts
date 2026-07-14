@@ -18,7 +18,7 @@ export const tokenStorage = {
   clear: () => localStorage.removeItem(TOKEN_KEY),
 };
 
-type Method = "GET" | "POST" | "PATCH" | "DELETE";
+type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 const isFormData = (value: unknown): value is FormData =>
   typeof FormData !== "undefined" && value instanceof FormData;

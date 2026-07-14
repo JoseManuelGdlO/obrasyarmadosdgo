@@ -67,7 +67,15 @@ const createEstimacion = async (req, res) => {
       return res.status(404).json({ message: "Proyecto no encontrado." });
     }
 
-    const { numero, fechaEstimacion, montoEstimacion, fechaPago, montoPagado } = req.body;
+    const {
+      numero,
+      fechaEstimacion,
+      montoEstimacion,
+      fechaPago,
+      montoPagado,
+      factura,
+      retencionAmortizacion,
+    } = req.body;
 
     let numeroFinal = numero !== undefined ? Number(numero) : null;
     if (!numeroFinal || numeroFinal < 1) {
@@ -82,6 +90,8 @@ const createEstimacion = async (req, res) => {
       montoEstimacion: toDecimal(montoEstimacion),
       fechaPago: fechaPago || null,
       montoPagado: toDecimal(montoPagado),
+      factura: factura ? String(factura).trim() || null : null,
+      retencionAmortizacion: toDecimal(retencionAmortizacion),
     });
     return res.status(201).json({
       message: "Estimación agregada correctamente.",
@@ -110,13 +120,27 @@ const updateEstimacion = async (req, res) => {
       return res.status(404).json({ message: "Estimación no encontrada." });
     }
 
-    const { numero, fechaEstimacion, montoEstimacion, fechaPago, montoPagado } = req.body;
+    const {
+      numero,
+      fechaEstimacion,
+      montoEstimacion,
+      fechaPago,
+      montoPagado,
+      factura,
+      retencionAmortizacion,
+    } = req.body;
     const updates = {};
     if (numero !== undefined) updates.numero = Number(numero) || estimacion.numero;
     if (fechaEstimacion !== undefined) updates.fechaEstimacion = fechaEstimacion || null;
     if (montoEstimacion !== undefined) updates.montoEstimacion = toDecimal(montoEstimacion);
     if (fechaPago !== undefined) updates.fechaPago = fechaPago || null;
     if (montoPagado !== undefined) updates.montoPagado = toDecimal(montoPagado);
+    if (factura !== undefined) {
+      updates.factura = factura ? String(factura).trim() || null : null;
+    }
+    if (retencionAmortizacion !== undefined) {
+      updates.retencionAmortizacion = toDecimal(retencionAmortizacion);
+    }
 
     await estimacion.update(updates);
     return res.status(200).json({

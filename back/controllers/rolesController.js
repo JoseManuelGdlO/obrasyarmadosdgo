@@ -1,6 +1,12 @@
 const { Op } = require("sequelize");
 const Role = require("../models/Role");
+const User = require("../models/User");
+const RolePermission = require("../models/RolePermission");
+const RoleProyecto = require("../models/RoleProyecto");
+const sequelize = require("../config/database");
 const { logError } = require("../utils/logger");
+
+const PROTECTED_ROLES = new Set(["admin"]);
 
 const listRoles = async (_req, res) => {
   try {
@@ -82,7 +88,35 @@ const deleteRole = async (req, res) => {
     if (!role) {
       return res.status(404).json({ message: "Rol no encontrado." });
     }
-    await role.destroy();
+
+    if (PROTECTED_ROLES.has(role.nombre)) {
+      return res.status(403).json({
+        message: `No se puede eliminar el rol "${role.nombre}" porque es un rol del sistema.`,
+      });
+    }
+
+    const usersCount = await User.count({ where: { rol: role.nombre } });
+    if (usersCount > 0) {
+      return res.status(409).json({
+        message: `No se puede eliminar el rol "${role.nombre}" porque hay ${usersCount} usuario${
+          usersCount === 1 ? "" : "s"
+        } con ese rol. Reasigna esos usuarios a otro rol e inténtalo de nuevo.`,
+        usersCount,
+        rol: role.nombre,
+      });
+    }
+
+    const tx = await sequelize.transaction();
+    try {
+      await RolePermission.destroy({ where: { rol: role.nombre }, transaction: tx });
+      await RoleProyecto.destroy({ where: { rol: role.nombre }, transaction: tx });
+      await role.destroy({ transaction: tx });
+      await tx.commit();
+    } catch (err) {
+      await tx.rollback();
+      throw err;
+    }
+
     return res.status(200).json({ message: "Rol eliminado correctamente." });
   } catch (error) {
     logError("Error al eliminar rol.", error);

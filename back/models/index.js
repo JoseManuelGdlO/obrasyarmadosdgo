@@ -2,6 +2,7 @@ const sequelize = require("../config/database");
 const User = require("./User");
 const Role = require("./Role");
 const RolePermission = require("./RolePermission");
+const RoleProyecto = require("./RoleProyecto");
 const UsuarioMaquina = require("./UsuarioMaquina");
 const Cliente = require("./Cliente");
 const Articulo = require("./Articulo");
@@ -105,6 +106,9 @@ Maquina.hasMany(UsuarioMaquina, { foreignKey: "maquinaId", as: "asignacionesOper
 Cliente.hasMany(Proyecto, { foreignKey: "clienteId", as: "proyectos" });
 Proyecto.belongsTo(Cliente, { foreignKey: "clienteId", as: "cliente" });
 
+RoleProyecto.belongsTo(Proyecto, { foreignKey: "proyectoId", as: "proyecto" });
+Proyecto.hasMany(RoleProyecto, { foreignKey: "proyectoId", as: "roleProyectos", onDelete: "CASCADE" });
+
 Proyecto.hasMany(ProyectoEstimacion, {
   foreignKey: "proyectoId",
   as: "estimaciones",
@@ -186,6 +190,7 @@ module.exports = {
   User,
   Role,
   RolePermission,
+  RoleProyecto,
   UsuarioMaquina,
   Cliente,
   Articulo,

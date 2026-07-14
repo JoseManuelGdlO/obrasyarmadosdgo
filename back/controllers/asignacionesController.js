@@ -6,6 +6,11 @@ const Proyecto = require("../models/Proyecto");
 const Cliente = require("../models/Cliente");
 const Trabajador = require("../models/Trabajador");
 const { logError } = require("../utils/logger");
+const {
+  hasProyectoAccess,
+  denyProyectoAccess,
+  mergeProyectoIdFilter,
+} = require("../utils/proyectoScope");
 
 const ESTADOS_ASIGNACION = ["activa", "cerrada"];
 const ESTADOS_MAQUINA_SIN_OPERATIVA = new Set(["Fuera de Servicio"]);
@@ -100,7 +105,10 @@ const list = async (req, res) => {
       where.estado = estado;
     }
     if (maquinaId) where.maquinaId = maquinaId;
-    if (proyectoId) where.proyectoId = proyectoId;
+    const scopeFilter = mergeProyectoIdFilter(req, where, proyectoId);
+    if (!scopeFilter.ok) {
+      return res.status(403).json({ message: scopeFilter.message });
+    }
 
     const asignaciones = await Asignacion.findAll({
       where,
@@ -127,6 +135,9 @@ const getById = async (req, res) => {
     });
     if (!asignacion) {
       return res.status(404).json({ message: "Asignación no encontrada." });
+    }
+    if (!hasProyectoAccess(req, asignacion.proyectoId)) {
+      return denyProyectoAccess(res);
     }
     return res.status(200).json({ asignacion });
   } catch (error) {
@@ -160,6 +171,9 @@ const create = async (req, res) => {
     const proyecto = await Proyecto.findByPk(proyectoId);
     if (!proyecto) {
       return res.status(404).json({ message: "Proyecto no encontrado." });
+    }
+    if (!hasProyectoAccess(req, proyectoId)) {
+      return denyProyectoAccess(res);
     }
 
     const trabajadorId = trimOrNull(req.body.trabajadorId);
@@ -237,6 +251,9 @@ const update = async (req, res) => {
     if (!asignacion) {
       return res.status(404).json({ message: "Asignación no encontrada." });
     }
+    if (!hasProyectoAccess(req, asignacion.proyectoId)) {
+      return denyProyectoAccess(res);
+    }
 
     const updates = {};
 
@@ -246,6 +263,9 @@ const update = async (req, res) => {
         const proyecto = await Proyecto.findByPk(proyectoId);
         if (!proyecto) {
           return res.status(404).json({ message: "Proyecto no encontrado." });
+        }
+        if (!hasProyectoAccess(req, proyectoId)) {
+          return denyProyectoAccess(res);
         }
         updates.proyectoId = proyectoId;
       }
@@ -351,6 +371,9 @@ const remove = async (req, res) => {
     const asignacion = await Asignacion.findByPk(id);
     if (!asignacion) {
       return res.status(404).json({ message: "Asignación no encontrada." });
+    }
+    if (!hasProyectoAccess(req, asignacion.proyectoId)) {
+      return denyProyectoAccess(res);
     }
 
     const { maquinaId, estado } = asignacion;

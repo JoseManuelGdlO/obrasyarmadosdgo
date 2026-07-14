@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Plus, Save, Trash2, X, Package, Users } from "lucide-react"
 import ConfirmDeleteButton from "@/components/common/ConfirmDeleteButton"
 import { apiRequest } from "@/lib/api"
+import { filterByProyectoScope, useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
 import type { OrdenBackend } from "@/pages/OrdenesTrabajo"
 
@@ -96,6 +97,7 @@ const newId = () =>
     : `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
 const NuevaOrdenModal = ({ open, onOpenChange, ordenId }: NuevaOrdenModalProps) => {
+  const { proyectoIds } = useAuth()
   const queryClient = useQueryClient()
   const isEdit = Boolean(ordenId)
 
@@ -171,7 +173,10 @@ const NuevaOrdenModal = ({ open, onOpenChange, ordenId }: NuevaOrdenModalProps) 
   const trabajadores = trabajadoresQuery.data?.trabajadores ?? []
   const proveedores = proveedoresQuery.data?.proveedores ?? []
   const nomenclaturas = nomenclaturasQuery.data?.nomenclaturas ?? []
-  const proyectos = proyectosQuery.data?.proyectos ?? []
+  const proyectos = useMemo(
+    () => filterByProyectoScope(proyectosQuery.data?.proyectos ?? [], proyectoIds),
+    [proyectosQuery.data?.proyectos, proyectoIds]
+  )
   const articulos = articulosQuery.data?.articulos ?? []
 
   const maquinaSeleccionada = useMemo(

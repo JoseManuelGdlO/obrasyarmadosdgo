@@ -11,6 +11,12 @@ const ProyectoEstimacion = sequelize.define(
     montoEstimacion: { type: DataTypes.DECIMAL(15, 2), allowNull: false, defaultValue: 0 },
     fechaPago: { type: DataTypes.DATEONLY, allowNull: true },
     montoPagado: { type: DataTypes.DECIMAL(15, 2), allowNull: false, defaultValue: 0 },
+    factura: { type: DataTypes.STRING(120), allowNull: true },
+    retencionAmortizacion: {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: false,
+      defaultValue: 0,
+    },
   },
   { tableName: "proyecto_estimaciones", timestamps: true }
 );

@@ -12,6 +12,11 @@ const Trabajador = require("../models/Trabajador");
 const Articulo = require("../models/Articulo");
 const MovimientoInventario = require("../models/MovimientoInventario");
 const { logError } = require("../utils/logger");
+const {
+  hasProyectoAccess,
+  denyProyectoAccess,
+  mergeProyectoIdFilter,
+} = require("../utils/proyectoScope");
 
 const PRIORIDADES = ["baja", "media", "alta", "critica"];
 const ESTADOS = ["abierta", "en_progreso", "pausada", "cerrada"];
@@ -307,7 +312,10 @@ const list = async (req, res) => {
       where.prioridad = prioridad;
     }
     if (maquinaId) where.maquinaId = maquinaId;
-    if (proyectoId) where.proyectoId = proyectoId;
+    const scopeFilter = mergeProyectoIdFilter(req, where, proyectoId);
+    if (!scopeFilter.ok) {
+      return res.status(403).json({ message: scopeFilter.message });
+    }
 
     if (q && String(q).trim()) {
       const term = `%${String(q).trim()}%`;
@@ -342,6 +350,9 @@ const getById = async (req, res) => {
     });
     if (!orden) {
       return res.status(404).json({ message: "Orden de trabajo no encontrada." });
+    }
+    if (!hasProyectoAccess(req, orden.proyectoId)) {
+      return denyProyectoAccess(res);
     }
     return res.status(200).json({ orden: await ordenConInventarioFlag(orden) });
   } catch (error) {
@@ -474,6 +485,10 @@ const create = async (req, res) => {
       await tx.rollback();
       return res.status(refsError.code).json({ message: refsError.error });
     }
+    if (!hasProyectoAccess(req, proyectoId)) {
+      await tx.rollback();
+      return denyProyectoAccess(res);
+    }
 
     const prioridad = trimOrNull(req.body.prioridad) || "media";
     if (!PRIORIDADES.includes(prioridad)) {
@@ -603,6 +618,10 @@ const update = async (req, res) => {
       await tx.rollback();
       return res.status(404).json({ message: "Orden de trabajo no encontrada." });
     }
+    if (!hasProyectoAccess(req, orden.proyectoId)) {
+      await tx.rollback();
+      return denyProyectoAccess(res);
+    }
 
     const estabaCerrada = orden.estado === "cerrada";
 
@@ -667,6 +686,10 @@ const update = async (req, res) => {
     if (refsError) {
       await tx.rollback();
       return res.status(refsError.code).json({ message: refsError.error });
+    }
+    if (updates.proyectoId !== undefined && !hasProyectoAccess(req, updates.proyectoId)) {
+      await tx.rollback();
+      return denyProyectoAccess(res);
     }
 
     if (req.body.folio !== undefined) {
@@ -819,6 +842,10 @@ const close = async (req, res) => {
       await tx.rollback();
       return res.status(404).json({ message: "Orden de trabajo no encontrada." });
     }
+    if (!hasProyectoAccess(req, orden.proyectoId)) {
+      await tx.rollback();
+      return denyProyectoAccess(res);
+    }
     const yaDescontado = await yaDescontoInventarioOT(orden, tx);
 
     if (orden.estado === "cerrada") {
@@ -911,6 +938,9 @@ const remove = async (req, res) => {
     const orden = await OrdenTrabajo.findByPk(req.params.id);
     if (!orden) {
       return res.status(404).json({ message: "Orden de trabajo no encontrada." });
+    }
+    if (!hasProyectoAccess(req, orden.proyectoId)) {
+      return denyProyectoAccess(res);
     }
     await orden.destroy();
     return res

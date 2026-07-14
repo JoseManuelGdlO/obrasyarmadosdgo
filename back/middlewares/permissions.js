@@ -3,6 +3,11 @@ const RolePermission = require("../models/RolePermission");
 const UsuarioMaquina = require("../models/UsuarioMaquina");
 const P = require("../constants/permissions");
 const { logError } = require("../utils/logger");
+const {
+  resolveProyectoScopeForRol,
+  hasProyectoAccess,
+  denyProyectoAccess,
+} = require("../utils/proyectoScope");
 
 const loadRolePermissions = async (req, res, next) => {
   try {
@@ -11,11 +16,31 @@ const loadRolePermissions = async (req, res, next) => {
       attributes: ["permission"],
     });
     req.permissions = new Set(rows.map((r) => r.permission));
+    req.proyectoIds = await resolveProyectoScopeForRol(req.user.rol);
     return next();
   } catch (error) {
     logError("Error al cargar permisos.", error);
     return res.status(500).json({
       message: "Error al cargar permisos.",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+/**
+ * Exige acceso al proyecto en params.id, params.proyectoId o body.proyectoId.
+ */
+const requireProyectoScope = async (req, res, next) => {
+  try {
+    const proyectoId = req.params.proyectoId || req.params.id || req.body?.proyectoId;
+    if (!hasProyectoAccess(req, proyectoId)) {
+      return denyProyectoAccess(res);
+    }
+    return next();
+  } catch (error) {
+    logError("Error al verificar alcance de proyecto.", error);
+    return res.status(500).json({
+      message: "Error al verificar alcance de proyecto.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
@@ -118,6 +143,7 @@ module.exports = {
   loadRolePermissions,
   requirePermission,
   requireAnyPermission,
+  requireProyectoScope,
   requireMaquinaAssignment,
   resolveMaquinaIdFromRequest,
   hasMaquinasViewGlobal,

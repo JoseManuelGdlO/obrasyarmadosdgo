@@ -1,19 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { apiRequest } from "@/lib/api";
 
 export type PermisosFormData = {
   rol: string;
   permissions: string[];
+  proyectoIds: string[];
 };
 
 const defaultForm: PermisosFormData = {
   rol: "usuario",
   permissions: [],
+  proyectoIds: [],
 };
 
 interface PermisosModalProps {
@@ -38,6 +42,15 @@ export default function PermisosModal({
   const [form, setForm] = useState<PermisosFormData>(defaultForm);
   const [searchTerm, setSearchTerm] = useState("");
   const isEdit = useMemo(() => Boolean(initialData), [initialData]);
+  const hasProyectosPerms = form.permissions.some((p) => p.startsWith("proyectos."));
+
+  const { data: proyectosData } = useQuery({
+    queryKey: ["proyectos"],
+    queryFn: () => apiRequest<{ proyectos: Array<{ id: string; nombre: string }> }>("/proyectos"),
+    enabled: open && hasProyectosPerms,
+  });
+  const proyectos = proyectosData?.proyectos || [];
+
   const groupedPermissions = useMemo(() => {
     const groups: Record<string, string[]> = {};
     for (const permission of availablePermissions) {
@@ -66,17 +79,32 @@ export default function PermisosModal({
         ...defaultForm,
         ...(initialData || {}),
         permissions: initialData?.permissions || [],
+        proyectoIds: initialData?.proyectoIds || [],
       });
       setSearchTerm("");
     }
   }, [open, initialData]);
 
   const togglePermission = (permission: string, checked: boolean) => {
+    setForm((prev) => {
+      const permissions = checked
+        ? [...prev.permissions, permission]
+        : prev.permissions.filter((p) => p !== permission);
+      const stillHasProyectos = permissions.some((p) => p.startsWith("proyectos."));
+      return {
+        ...prev,
+        permissions,
+        proyectoIds: stillHasProyectos ? prev.proyectoIds : [],
+      };
+    });
+  };
+
+  const toggleProyecto = (proyectoId: string, checked: boolean) => {
     setForm((prev) => ({
       ...prev,
-      permissions: checked
-        ? [...prev.permissions, permission]
-        : prev.permissions.filter((p) => p !== permission),
+      proyectoIds: checked
+        ? [...prev.proyectoIds, proyectoId]
+        : prev.proyectoIds.filter((id) => id !== proyectoId),
     }));
   };
 
@@ -133,6 +161,31 @@ export default function PermisosModal({
               )}
             </div>
           </div>
+
+          {hasProyectosPerms && (
+            <div className="space-y-2">
+              <Label>Proyectos permitidos</Label>
+              <p className="text-xs text-muted-foreground">
+                Si no eliges ninguno, el rol podrá ver/trabajar todos los proyectos.
+              </p>
+              <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
+                {proyectos.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No hay proyectos creados todavía.</p>
+                ) : (
+                  proyectos.map((proyecto) => (
+                    <label key={proyecto.id} className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={form.proyectoIds.includes(proyecto.id)}
+                        onCheckedChange={(checked) => toggleProyecto(proyecto.id, Boolean(checked))}
+                      />
+                      <span>{proyecto.nombre}</span>
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-2">
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Guardando..." : "Guardar permisos"}

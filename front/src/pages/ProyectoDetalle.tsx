@@ -52,6 +52,8 @@ type EstimacionData = {
   montoEstimacion: number
   fechaPago: string
   montoPagado: number
+  factura: string
+  retencionAmortizacion: number
 }
 
 type EstimacionForm = {
@@ -59,6 +61,8 @@ type EstimacionForm = {
   montoEstimacion: string
   fechaPago: string
   montoPagado: string
+  factura: string
+  retencionAmortizacion: string
 }
 
 const defaultForm: ProyectoForm = {
@@ -83,6 +87,8 @@ const emptyEstimacion: EstimacionForm = {
   montoEstimacion: "0",
   fechaPago: "",
   montoPagado: "0",
+  factura: "",
+  retencionAmortizacion: "0",
 }
 
 const formatCurrency = (amount: number) =>
@@ -151,6 +157,8 @@ const ProyectoDetalle = () => {
       montoEstimacion: Number(estimacion.montoEstimacion || 0),
       fechaPago: String(estimacion.fechaPago || ""),
       montoPagado: Number(estimacion.montoPagado || 0),
+      factura: String(estimacion.factura || ""),
+      retencionAmortizacion: Number(estimacion.retencionAmortizacion || 0),
     })
   )
 
@@ -162,7 +170,8 @@ const ProyectoDetalle = () => {
   const totales = useMemo(() => {
     const estimado = estimaciones.reduce((sum, e) => sum + e.montoEstimacion, 0)
     const pagado = estimaciones.reduce((sum, e) => sum + e.montoPagado, 0)
-    return { estimado, pagado, pendiente: estimado - pagado }
+    const retencion = estimaciones.reduce((sum, e) => sum + e.retencionAmortizacion, 0)
+    return { estimado, pagado, retencion, pendiente: estimado - pagado }
   }, [estimaciones])
 
   const pendienteContrato = totalContrato - totales.pagado
@@ -235,6 +244,8 @@ const ProyectoDetalle = () => {
       montoEstimacion: Number(estimForm.montoEstimacion || 0),
       fechaPago: estimForm.fechaPago || null,
       montoPagado: Number(estimForm.montoPagado || 0),
+      factura: estimForm.factura.trim() || null,
+      retencionAmortizacion: Number(estimForm.retencionAmortizacion || 0),
     }
     if (editingEstimId) {
       updateEstim.mutate({ estimId: editingEstimId, payload })
@@ -250,6 +261,8 @@ const ProyectoDetalle = () => {
       montoEstimacion: String(estimacion.montoEstimacion),
       fechaPago: estimacion.fechaPago,
       montoPagado: String(estimacion.montoPagado),
+      factura: estimacion.factura,
+      retencionAmortizacion: String(estimacion.retencionAmortizacion),
     })
   }
 
@@ -278,7 +291,7 @@ const ProyectoDetalle = () => {
       </div>
 
       {/* Resumen rápido */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <Card className="border-none shadow-md">
           <CardContent className="p-6 flex items-center justify-between">
             <div>
@@ -300,12 +313,21 @@ const ProyectoDetalle = () => {
         <Card className="border-none shadow-md">
           <CardContent className="p-6 flex items-center justify-between">
             <div>
+              <p className="text-sm text-muted-foreground">Retención / amortización</p>
+              <p className="text-2xl font-bold">{formatCurrency(totales.retencion)}</p>
+            </div>
+            <ListChecks className="w-8 h-8 text-primary" />
+          </CardContent>
+        </Card>
+        <Card className="border-none shadow-md">
+          <CardContent className="p-6 flex items-center justify-between">
+            <div>
               <p className="text-sm text-muted-foreground">Pendiente de pago</p>
               <p className="text-2xl font-bold text-primary">
                 {formatCurrency(pendienteContrato)}
               </p>
             </div>
-            <ListChecks className="w-8 h-8 text-primary" />
+            <DollarSign className="w-8 h-8 text-muted-foreground" />
           </CardContent>
         </Card>
       </div>
@@ -463,7 +485,7 @@ const ProyectoDetalle = () => {
           <CardTitle>{editingEstimId ? "Editar estimación" : "Agregar estimación"}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <div className="space-y-2">
               <Label>Fecha estimación</Label>
               <Input
@@ -508,6 +530,31 @@ const ProyectoDetalle = () => {
                 }
               />
             </div>
+            <div className="space-y-2">
+              <Label>Factura</Label>
+              <Input
+                value={estimForm.factura}
+                placeholder="Nº factura"
+                onChange={(event) =>
+                  setEstimForm((prev) => ({ ...prev, factura: event.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Retención / amortización</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={estimForm.retencionAmortizacion}
+                onChange={(event) =>
+                  setEstimForm((prev) => ({
+                    ...prev,
+                    retencionAmortizacion: event.target.value,
+                  }))
+                }
+              />
+            </div>
           </div>
           <div className="flex gap-2">
             <Button onClick={submitEstim} disabled={isSavingEstim}>
@@ -530,13 +577,15 @@ const ProyectoDetalle = () => {
                 <TableHead>Monto estimación</TableHead>
                 <TableHead>Fecha pago</TableHead>
                 <TableHead>Monto pagado</TableHead>
+                <TableHead>Factura</TableHead>
+                <TableHead>Retención / amortización</TableHead>
                 <TableHead>Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {estimaciones.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
                     Sin estimaciones registradas.
                   </TableCell>
                 </TableRow>
@@ -548,6 +597,8 @@ const ProyectoDetalle = () => {
                     <TableCell>{formatCurrency(estimacion.montoEstimacion)}</TableCell>
                     <TableCell>{estimacion.fechaPago || "-"}</TableCell>
                     <TableCell>{formatCurrency(estimacion.montoPagado)}</TableCell>
+                    <TableCell>{estimacion.factura || "-"}</TableCell>
+                    <TableCell>{formatCurrency(estimacion.retencionAmortizacion)}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Button
@@ -571,6 +622,21 @@ const ProyectoDetalle = () => {
                 ))
               )}
             </TableBody>
+            {estimaciones.length > 0 && (
+              <TableFooter>
+                <TableRow>
+                  <TableCell colSpan={2} className="font-semibold">
+                    Totales
+                  </TableCell>
+                  <TableCell className="font-semibold">{formatCurrency(totales.estimado)}</TableCell>
+                  <TableCell />
+                  <TableCell className="font-semibold">{formatCurrency(totales.pagado)}</TableCell>
+                  <TableCell />
+                  <TableCell className="font-semibold">{formatCurrency(totales.retencion)}</TableCell>
+                  <TableCell />
+                </TableRow>
+              </TableFooter>
+            )}
           </Table>
         </CardContent>
       </Card>
@@ -590,6 +656,10 @@ const ProyectoDetalle = () => {
               <span className="text-muted-foreground">Suma estimaciones pagadas</span>
               <span className="font-medium">{formatCurrency(totales.pagado)}</span>
             </div>
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-muted-foreground">Suma retención / amortización</span>
+              <span className="font-medium">{formatCurrency(totales.retencion)}</span>
+            </div>
             <div className="flex justify-between pt-1">
               <span className="font-semibold">Pendiente de pago</span>
               <span className="font-semibold text-primary">{formatCurrency(pendienteContrato)}</span>
@@ -608,13 +678,14 @@ const ProyectoDetalle = () => {
                   <TableHead>Estimación</TableHead>
                   <TableHead>Estimado</TableHead>
                   <TableHead>Pagado</TableHead>
+                  <TableHead>Retención</TableHead>
                   <TableHead>Pendiente</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {estimaciones.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                    <TableCell colSpan={5} className="text-center text-muted-foreground">
                       Sin estimaciones registradas.
                     </TableCell>
                   </TableRow>
@@ -624,6 +695,7 @@ const ProyectoDetalle = () => {
                       <TableCell>Estimación {estimacion.numero}</TableCell>
                       <TableCell>{formatCurrency(estimacion.montoEstimacion)}</TableCell>
                       <TableCell>{formatCurrency(estimacion.montoPagado)}</TableCell>
+                      <TableCell>{formatCurrency(estimacion.retencionAmortizacion)}</TableCell>
                       <TableCell>
                         {formatCurrency(estimacion.montoEstimacion - estimacion.montoPagado)}
                       </TableCell>
@@ -637,6 +709,7 @@ const ProyectoDetalle = () => {
                     <TableCell className="font-semibold">Totales</TableCell>
                     <TableCell className="font-semibold">{formatCurrency(totales.estimado)}</TableCell>
                     <TableCell className="font-semibold">{formatCurrency(totales.pagado)}</TableCell>
+                    <TableCell className="font-semibold">{formatCurrency(totales.retencion)}</TableCell>
                     <TableCell className="font-semibold">{formatCurrency(totales.pendiente)}</TableCell>
                   </TableRow>
                 </TableFooter>

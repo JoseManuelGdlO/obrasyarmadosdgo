@@ -2,6 +2,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const RolePermission = require("../models/RolePermission");
+const { resolveProyectoScopeForRol } = require("../utils/proyectoScope");
 const { logError } = require("../utils/logger");
 
 const buildAuthPayload = async (user, token) => {
@@ -9,6 +10,7 @@ const buildAuthPayload = async (user, token) => {
     where: { rol: user.rol },
     attributes: ["permission"],
   });
+  const scope = await resolveProyectoScopeForRol(user.rol);
 
   return {
     token,
@@ -20,6 +22,7 @@ const buildAuthPayload = async (user, token) => {
       lastAccess: user.lastAccess,
     },
     permissions: permissionsRows.map((row) => row.permission),
+    proyectoIds: scope === null ? null : [...scope],
   };
 };
 
