@@ -38,6 +38,10 @@ const Proveedor = sequelize.define(
       allowNull: false,
       defaultValue: "activo",
     },
+    cuentaContableId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
   },
   { tableName: "proveedores", timestamps: true }
 );

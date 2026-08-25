@@ -13,6 +13,7 @@ const MaquinaChecklistItem = require("./MaquinaChecklistItem");
 const MaquinaPlanServicio = require("./MaquinaPlanServicio");
 const PlanServicioPieza = require("./PlanServicioPieza");
 const Proveedor = require("./Proveedor");
+const CuentaContable = require("./CuentaContable");
 const Trabajador = require("./Trabajador");
 const Proyecto = require("./Proyecto");
 const ProyectoEstimacion = require("./ProyectoEstimacion");
@@ -138,6 +139,9 @@ Proyecto.hasMany(OrdenTrabajo, { foreignKey: "proyectoId", as: "ordenes" });
 OrdenTrabajo.belongsTo(Proyecto, { foreignKey: "proyectoId", as: "proyecto" });
 Maquina.hasMany(OrdenTrabajo, { foreignKey: "maquinaId", as: "ordenes" });
 OrdenTrabajo.belongsTo(Maquina, { foreignKey: "maquinaId", as: "maquina" });
+CuentaContable.hasOne(Proveedor, { foreignKey: "cuentaContableId", as: "proveedor" });
+Proveedor.belongsTo(CuentaContable, { foreignKey: "cuentaContableId", as: "cuentaContable" });
+
 Proveedor.hasMany(OrdenTrabajo, { foreignKey: "proveedorId", as: "ordenes" });
 OrdenTrabajo.belongsTo(Proveedor, { foreignKey: "proveedorId", as: "proveedor" });
 Nomenclatura.hasMany(OrdenTrabajo, { foreignKey: "nomenclaturaId", as: "ordenes" });
@@ -212,6 +216,7 @@ module.exports = {
   MaquinaPlanServicio,
   PlanServicioPieza,
   Proveedor,
+  CuentaContable,
   Trabajador,
   Proyecto,
   ProyectoEstimacion,
