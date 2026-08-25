@@ -24,6 +24,13 @@ import { apiRequest } from "@/lib/api";
 
 type EstadoBackend = "activo" | "inactivo" | "en_evaluacion";
 
+type CuentaContableLite = {
+  id: string;
+  numero: string;
+  nombre?: string | null;
+  activa?: boolean;
+};
+
 type ProveedorBackend = {
   id: string;
   nombre: string;
@@ -41,6 +48,8 @@ type ProveedorBackend = {
   ordenesCompletadas: number;
   costoPromedio: number | string;
   estado: EstadoBackend;
+  cuentaContableId?: string | null;
+  cuentaContable?: CuentaContableLite | null;
 };
 
 type ProveedorVM = {
@@ -59,6 +68,9 @@ type ProveedorVM = {
   ordenesCompletadas: number;
   costoPromedio: number;
   estado: "Activo" | "Inactivo" | "En Evaluación";
+  cuentaContableId: string;
+  cuentaNumero: string;
+  cuentaNombre: string;
 };
 
 const categorias = [
@@ -133,6 +145,9 @@ const mapProveedor = (p: ProveedorBackend): ProveedorVM => ({
   ordenesCompletadas: toNumber(p.ordenesCompletadas, 0),
   costoPromedio: toNumber(p.costoPromedio, 0),
   estado: estadoToUi(p.estado),
+  cuentaContableId: p.cuentaContableId || p.cuentaContable?.id || "",
+  cuentaNumero: p.cuentaContable?.numero || "",
+  cuentaNombre: p.cuentaContable?.nombre || "",
 });
 
 const defaultForm = {
@@ -150,6 +165,7 @@ const defaultForm = {
   ordenesCompletadas: "0",
   costoPromedio: "0",
   estado: "Activo" as "Activo" | "Inactivo" | "En Evaluación",
+  cuentaContableId: "",
 };
 
 export default function Proveedores() {
@@ -169,10 +185,24 @@ export default function Proveedores() {
       ),
   });
 
+  const cuentasQuery = useQuery({
+    queryKey: ["cuentas-contables-disponibles", editingId],
+    queryFn: () => {
+      const params = new URLSearchParams({ disponibles: "1" });
+      if (editingId) params.set("excludeProveedorId", editingId);
+      return apiRequest<{ cuentasContables: CuentaContableLite[] }>(
+        `/cuentas-contables?${params.toString()}`
+      );
+    },
+    enabled: isDialogOpen,
+  });
+
   const proveedores: ProveedorVM[] = useMemo(
     () => (proveedoresData?.proveedores || []).map(mapProveedor),
     [proveedoresData?.proveedores]
   );
+
+  const cuentasDisponibles = cuentasQuery.data?.cuentasContables ?? [];
 
   const buildPayload = () => ({
     nombre: formData.nombre.trim(),
@@ -190,6 +220,7 @@ export default function Proveedores() {
     ordenesCompletadas: Math.max(0, Math.floor(toNumber(formData.ordenesCompletadas, 0))),
     costoPromedio: toNumber(formData.costoPromedio, 0),
     estado: estadoToBackend(formData.estado),
+    cuentaContableId: formData.cuentaContableId.trim() || null,
   });
 
   const createProveedorMutation = useMutation({
@@ -199,6 +230,8 @@ export default function Proveedores() {
       toast.success("Proveedor creado");
       closeDialog();
       queryClient.invalidateQueries({ queryKey: ["proveedores"] });
+      queryClient.invalidateQueries({ queryKey: ["cuentas-contables-disponibles"] });
+      queryClient.invalidateQueries({ queryKey: ["cuentas-contables"] });
     },
     onError: (err: Error) => toast.error(err.message || "Error creando proveedor"),
   });
@@ -210,6 +243,8 @@ export default function Proveedores() {
       toast.success("Proveedor actualizado");
       closeDialog();
       queryClient.invalidateQueries({ queryKey: ["proveedores"] });
+      queryClient.invalidateQueries({ queryKey: ["cuentas-contables-disponibles"] });
+      queryClient.invalidateQueries({ queryKey: ["cuentas-contables"] });
     },
     onError: (err: Error) => toast.error(err.message || "Error actualizando proveedor"),
   });
@@ -219,6 +254,8 @@ export default function Proveedores() {
     onSuccess: () => {
       toast.success("Proveedor eliminado");
       queryClient.invalidateQueries({ queryKey: ["proveedores"] });
+      queryClient.invalidateQueries({ queryKey: ["cuentas-contables-disponibles"] });
+      queryClient.invalidateQueries({ queryKey: ["cuentas-contables"] });
     },
     onError: (err: Error) => toast.error(err.message || "Error eliminando proveedor"),
   });
@@ -256,6 +293,7 @@ export default function Proveedores() {
       ordenesCompletadas: String(p.ordenesCompletadas ?? 0),
       costoPromedio: String(p.costoPromedio ?? 0),
       estado: p.estado,
+      cuentaContableId: p.cuentaContableId,
     });
     setIsDialogOpen(true);
   };
@@ -264,6 +302,10 @@ export default function Proveedores() {
     e.preventDefault();
     if (!formData.nombre.trim()) {
       toast.error("El nombre es obligatorio");
+      return;
+    }
+    if (!formData.cuentaContableId.trim()) {
+      toast.error("La cuenta contable es obligatoria");
       return;
     }
     const payload = buildPayload();
@@ -355,6 +397,38 @@ export default function Proveedores() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="cuentaContableId">Número de cuenta</Label>
+                  <Select
+                    value={formData.cuentaContableId || undefined}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, cuentaContableId: value })
+                    }
+                  >
+                    <SelectTrigger id="cuentaContableId">
+                      <SelectValue
+                        placeholder={
+                          cuentasQuery.isLoading
+                            ? "Cargando cuentas..."
+                            : "Seleccionar cuenta contable"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cuentasDisponibles.map((cuenta) => (
+                        <SelectItem key={cuenta.id} value={cuenta.id}>
+                          {cuenta.numero}
+                          {cuenta.nombre ? ` — ${cuenta.nombre}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {cuentasDisponibles.length === 0 && !cuentasQuery.isLoading && (
+                    <p className="text-xs text-amber-700">
+                      No hay cuentas disponibles. Crea una en Cuentas contables.
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="contactoPrincipal">Dueño o Encargado de la empresa</Label>
@@ -590,6 +664,7 @@ export default function Proveedores() {
             <TableHeader>
               <TableRow>
                 <TableHead>Proveedor</TableHead>
+                <TableHead>Cuenta</TableHead>
                 <TableHead>Especialidades</TableHead>
                 <TableHead>Contacto</TableHead>
                 <TableHead>Ubicación</TableHead>
@@ -612,6 +687,20 @@ export default function Proveedores() {
                         </span>
                       </div>
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {proveedor.cuentaNumero ? (
+                      <div className="space-y-0.5">
+                        <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">
+                          {proveedor.cuentaNumero}
+                        </code>
+                        {proveedor.cuentaNombre && (
+                          <div className="text-xs text-gray-500">{proveedor.cuentaNombre}</div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">
