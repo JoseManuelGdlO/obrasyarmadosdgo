@@ -10,7 +10,7 @@ En **Proyectos → Gestionar → formulario de estimación**, permitir:
 1. **Agregar carátula**: una fotografía principal guardada en un campo propio de la estimación.
 2. **Agregar fotos** adicionales después, en el mismo formulario (solo con la estimación ya guardada).
 
-No se muestran miniaturas en la tabla de estimaciones; toda la gestión de imágenes vive en el formulario de agregar/editar.
+La gestión de imágenes vive en el formulario de agregar/editar. Las miniaturas abren una **vista previa** ampliada. La tabla de estimaciones no lista todas las fotos; puede mostrar un indicador/miniatura de carátula opcional solo como atajo visual (sin gestión ahí).
 
 ## Decisiones de producto
 
@@ -21,7 +21,8 @@ No se muestran miniaturas en la tabla de estimaciones; toda la gestión de imág
 | Al crear | Solo carátula (opcional) |
 | Tras crear | El formulario pasa a modo edición de esa estimación para poder agregar fotos extra |
 | Al editar | Reemplazar/quitar carátula; agregar/quitar fotos extra |
-| Tabla | Sin cambios visuales por fotos |
+| Vista previa | Clic en miniatura (carátula o extra) abre lightbox/modal con la imagen ampliada; cerrar con X, clic fuera o Escape |
+| Tabla | Sin gestión de fotos; sin galería en la fila |
 
 ## Arquitectura de datos
 
@@ -75,6 +76,7 @@ Respuestas de list/get deben incluir URLs utilizables por el front (rutas relati
 
 - Botón **Agregar carátula** en el bloque del formulario.
 - Selector de archivo → miniatura + acción quitar (antes de guardar).
+- Clic en la miniatura abre **vista previa** (también con `blob:` local antes de guardar).
 - Submit vía `FormData` (campos + archivo).
 - Tras crear con éxito: formulario queda en **edición** de esa estimación (no se resetea a “nueva”).
 
@@ -83,13 +85,21 @@ Respuestas de list/get deben incluir URLs utilizables por el front (rutas relati
 - Misma UI de carátula (cambiar / quitar).
 - Sección **Agregar fotos** visible solo en edición.
 - Miniaturas de extras con quitar (DELETE por foto).
+- Clic en cualquier miniatura (carátula o extra) abre la misma vista previa ampliada.
 - Guardar cambios de campos + carátula con PATCH.
 - Fotos extra: upload/borrado **inmediato** vía endpoints dedicados al elegir archivo o al quitar (con feedback de error); no esperan al “Guardar” del formulario.
 
+### Vista previa (lightbox)
+
+- Overlay centrado con la imagen a tamaño cómodo (máx. viewport).
+- Acciones: cerrar (botón, clic en fondo, Escape).
+- No requiere navegación anterior/siguiente entre fotos en la primera versión (cada clic abre esa imagen).
+- Reutilizar patrones de modal existentes del front si hay uno simple; si no, componente mínimo inline en `ProyectoDetalle` o modal compartido liviano.
+
 ### Fuera de alcance
 
-- Miniaturas o preview en la tabla de estimaciones.
-- Galería modal separada.
+- Galería completa con carrusel / zoom avanzado.
+- Gestión de fotos desde la tabla de estimaciones.
 - PDF u otros tipos de archivo.
 - Cloud storage (S3, etc.).
 
@@ -121,3 +131,4 @@ Respuestas de list/get deben incluir URLs utilizables por el front (rutas relati
 3. Reemplazar o quitar carátula sin perder fotos extra.
 4. Borrar estimación elimina archivos y registros asociados.
 5. Sin carátula/fotos, el CRUD de estimaciones sigue igual que hoy.
+6. Clic en miniatura (local o ya guardada) abre vista previa ampliada y se puede cerrar fácilmente.
