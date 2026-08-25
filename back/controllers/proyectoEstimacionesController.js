@@ -1,16 +1,14 @@
-const path = require("path");
-const fs = require("fs/promises");
 const sequelize = require("../config/database");
 const Proyecto = require("../models/Proyecto");
 const ProyectoEstimacion = require("../models/ProyectoEstimacion");
 const ProyectoEstimacionFoto = require("../models/ProyectoEstimacionFoto");
-const {
-  ESTIMACION_UPLOADS_DIR,
-  ESTIMACION_UPLOADS_ROUTE,
-} = require("../config/uploads");
+const { ESTIMACION_UPLOADS_ROUTE } = require("../config/uploads");
 const {
   cleanupUploadedEstimacionFilesIfPresent,
 } = require("../middlewares/uploadEstimacionFiles");
+const {
+  deleteStoredEstimacionUploadsBestEffort,
+} = require("../utils/estimacionUploads");
 const { logger, logError } = require("../utils/logger");
 
 const MAX_FOTOS_EXTRA = 20;
@@ -23,41 +21,6 @@ const fotosInclude = {
 
 const buildPublicEstimacionUploadPath = (filename) =>
   `${ESTIMACION_UPLOADS_ROUTE}/${encodeURIComponent(filename)}`;
-
-const resolveStoredUploadToAbsolute = (storedPath) => {
-  if (!storedPath || typeof storedPath !== "string") return null;
-  const normalizedRoute = `${ESTIMACION_UPLOADS_ROUTE}/`;
-  if (!storedPath.startsWith(normalizedRoute)) return null;
-  const filename = decodeURIComponent(storedPath.slice(normalizedRoute.length));
-  const absolutePath = path.resolve(ESTIMACION_UPLOADS_DIR, filename);
-  const uploadsRoot = path.resolve(ESTIMACION_UPLOADS_DIR);
-  if (!absolutePath.startsWith(`${uploadsRoot}${path.sep}`) && absolutePath !== uploadsRoot) {
-    return null;
-  }
-  return absolutePath;
-};
-
-const safeDeleteStoredUpload = async (storedPath) => {
-  const absolutePath = resolveStoredUploadToAbsolute(storedPath);
-  if (!absolutePath) return;
-  try {
-    await fs.unlink(absolutePath);
-  } catch (error) {
-    if (error.code !== "ENOENT") throw error;
-  }
-};
-
-const deleteStoredUploadsBestEffort = async (storedPaths) => {
-  const paths = storedPaths.filter(Boolean);
-  const results = await Promise.allSettled(paths.map(safeDeleteStoredUpload));
-  results.forEach((result, index) => {
-    if (result.status === "rejected") {
-      logger.warn(
-        `No se pudo eliminar archivo de estimación ${paths[index]}: ${result.reason?.message || result.reason}`
-      );
-    }
-  });
-};
 
 const getUploadedFile = (req, fieldname) => req.files?.[fieldname]?.[0] || null;
 const getUploadedFiles = (req, fieldname) => req.files?.[fieldname] || [];
@@ -248,7 +211,7 @@ const updateEstimacion = async (req, res) => {
       updates.caratula !== undefined &&
       previousCaratula !== updates.caratula
     ) {
-      await deleteStoredUploadsBestEffort([previousCaratula]);
+      await deleteStoredEstimacionUploadsBestEffort([previousCaratula]);
     }
     let refreshed = estimacion;
     try {
@@ -297,7 +260,7 @@ const deleteEstimacion = async (req, res) => {
       ...(estimacion.fotos || []).map((foto) => foto.ruta),
     ];
     await estimacion.destroy();
-    await deleteStoredUploadsBestEffort(pathsToDelete);
+    await deleteStoredEstimacionUploadsBestEffort(pathsToDelete);
     return res.status(200).json({ message: "Estimación eliminada correctamente." });
   } catch (error) {
     logError("Error al eliminar estimación.", error);
@@ -409,7 +372,7 @@ const deleteFotoEstimacion = async (req, res) => {
     }
     const ruta = foto.ruta;
     await foto.destroy();
-    await deleteStoredUploadsBestEffort([ruta]);
+    await deleteStoredEstimacionUploadsBestEffort([ruta]);
     return res.status(200).json({ message: "Foto eliminada correctamente." });
   } catch (error) {
     logError("Error al eliminar foto de la estimación.", error);

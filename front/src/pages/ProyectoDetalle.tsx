@@ -102,11 +102,29 @@ const emptyEstimacion: EstimacionForm = {
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png"])
 
-const validateImageFile = (file: File) => {
+const validateImageFile = (file: File): string | null => {
   if (!ALLOWED_IMAGE_TYPES.has(file.type)) return "Las imágenes deben ser JPG o PNG."
   if (file.size > MAX_IMAGE_SIZE) return "Cada imagen debe pesar 2MB o menos."
   return null
 }
+
+const toEstimacionData = (estimacion: Record<string, unknown>): EstimacionData => ({
+  id: String(estimacion.id || ""),
+  numero: Number(estimacion.numero || 0),
+  fechaEstimacion: String(estimacion.fechaEstimacion || ""),
+  montoEstimacion: Number(estimacion.montoEstimacion || 0),
+  fechaPago: String(estimacion.fechaPago || ""),
+  montoPagado: Number(estimacion.montoPagado || 0),
+  factura: String(estimacion.factura || ""),
+  retencionAmortizacion: Number(estimacion.retencionAmortizacion || 0),
+  caratula: estimacion.caratula ? String(estimacion.caratula) : null,
+  fotos: Array.isArray(estimacion.fotos)
+    ? estimacion.fotos.map((foto) => {
+        const value = foto as Record<string, unknown>
+        return { id: String(value.id || ""), ruta: String(value.ruta || "") }
+      })
+    : [],
+})
 
 const toEstimacionForm = (estimacion: Record<string, unknown>): EstimacionForm => ({
   fechaEstimacion: String(estimacion.fechaEstimacion || ""),
@@ -158,8 +176,12 @@ const ProyectoDetalle = () => {
 
   const { data: estimacionesResponse } = useQuery({
     queryKey: ["proyecto-estimaciones", id],
-    queryFn: () =>
-      apiRequest<{ estimaciones: Array<Record<string, unknown>> }>(`/proyectos/${id}/estimaciones`),
+    queryFn: async () => {
+      const response = await apiRequest<{ estimaciones: Array<Record<string, unknown>> }>(
+        `/proyectos/${id}/estimaciones`
+      )
+      return { estimaciones: response.estimaciones.map(toEstimacionData) }
+    },
     enabled: Boolean(id),
   })
 
@@ -186,24 +208,9 @@ const ProyectoDetalle = () => {
     })
   }, [proyecto])
 
-  const estimaciones: EstimacionData[] = (estimacionesResponse?.estimaciones || []).map(
-    (estimacion) => ({
-      id: String(estimacion.id || ""),
-      numero: Number(estimacion.numero || 0),
-      fechaEstimacion: String(estimacion.fechaEstimacion || ""),
-      montoEstimacion: Number(estimacion.montoEstimacion || 0),
-      fechaPago: String(estimacion.fechaPago || ""),
-      montoPagado: Number(estimacion.montoPagado || 0),
-      factura: String(estimacion.factura || ""),
-      retencionAmortizacion: Number(estimacion.retencionAmortizacion || 0),
-      caratula: estimacion.caratula ? String(estimacion.caratula) : null,
-      fotos: Array.isArray(estimacion.fotos)
-        ? estimacion.fotos.map((foto) => {
-            const value = foto as Record<string, unknown>
-            return { id: String(value.id || ""), ruta: String(value.ruta || "") }
-          })
-        : [],
-    })
+  const estimaciones = useMemo(
+    () => estimacionesResponse?.estimaciones || [],
+    [estimacionesResponse?.estimaciones]
   )
 
   const totalContrato = useMemo(
@@ -253,6 +260,24 @@ const ProyectoDetalle = () => {
   const invalidateEstim = () =>
     queryClient.invalidateQueries({ queryKey: ["proyecto-estimaciones", id] })
 
+  const upsertEstimacionCache = (estimacion: Record<string, unknown>) => {
+    const nextEstimacion = toEstimacionData(estimacion)
+    queryClient.setQueryData<{ estimaciones: EstimacionData[] }>(
+      ["proyecto-estimaciones", id],
+      (current) => {
+        const currentEstimaciones = current?.estimaciones || []
+        const exists = currentEstimaciones.some((item) => item.id === nextEstimacion.id)
+        return {
+          estimaciones: exists
+            ? currentEstimaciones.map((item) =>
+                item.id === nextEstimacion.id ? nextEstimacion : item
+              )
+            : [...currentEstimaciones, nextEstimacion],
+        }
+      }
+    )
+  }
+
   const clearPhotoLocalState = () => {
     setCaratulaFile(null)
     setCaratulaPreviewLocal(null)
@@ -285,6 +310,7 @@ const ProyectoDetalle = () => {
       setEditingEstimId(String(response.estimacion.id))
       setEstimForm(toEstimacionForm(response.estimacion))
       clearPhotoLocalState()
+      upsertEstimacionCache(response.estimacion)
       invalidateEstim()
       toast.success("Estimación agregada correctamente.")
     },
@@ -301,6 +327,7 @@ const ProyectoDetalle = () => {
       setEditingEstimId(String(response.estimacion.id))
       setEstimForm(toEstimacionForm(response.estimacion))
       clearPhotoLocalState()
+      upsertEstimacionCache(response.estimacion)
       invalidateEstim()
       toast.success("Estimación actualizada correctamente.")
     },

@@ -54,6 +54,11 @@ const handleFotosUpload = (req, res, next) => {
     if (error.name === "MulterError" && error.code === "LIMIT_FILE_SIZE") {
       return res.status(400).json({ message: "La imagen no puede superar 2MB." });
     }
+    if (error.name === "MulterError" && error.code === "LIMIT_UNEXPECTED_FILE") {
+      return res.status(400).json({
+        message: "Máximo 20 fotos extra por estimación.",
+      });
+    }
     return res.status(400).json({
       message: error.message || "No se pudieron procesar las fotos.",
     });

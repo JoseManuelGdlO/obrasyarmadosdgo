@@ -1,6 +1,11 @@
 const { Op } = require("sequelize");
 const Proyecto = require("../models/Proyecto");
+const ProyectoEstimacion = require("../models/ProyectoEstimacion");
+const ProyectoEstimacionFoto = require("../models/ProyectoEstimacionFoto");
 const { logError } = require("../utils/logger");
+const {
+  deleteStoredEstimacionUploadsBestEffort,
+} = require("../utils/estimacionUploads");
 const {
   hasProyectoAccess,
   denyProyectoAccess,
@@ -87,7 +92,23 @@ const remove = async (req, res) => {
     if (!hasProyectoAccess(req, row.id)) {
       return denyProyectoAccess(res);
     }
+    const estimaciones = await ProyectoEstimacion.findAll({
+      where: { proyectoId: row.id },
+      attributes: ["caratula"],
+      include: [
+        {
+          model: ProyectoEstimacionFoto,
+          as: "fotos",
+          attributes: ["ruta"],
+        },
+      ],
+    });
+    const estimacionUploadPaths = estimaciones.flatMap((estimacion) => [
+      estimacion.caratula,
+      ...(estimacion.fotos || []).map((foto) => foto.ruta),
+    ]);
     await row.destroy();
+    await deleteStoredEstimacionUploadsBestEffort(estimacionUploadPaths);
     return res.status(200).json({ message: "proyecto eliminado correctamente." });
   } catch (error) {
     logError("Error al eliminar proyecto.", error);
