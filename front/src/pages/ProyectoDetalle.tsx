@@ -741,8 +741,10 @@ const ProyectoDetalle = () => {
                       type="file"
                       accept="image/jpeg,image/png"
                       multiple
+                      disabled={addFotos.isPending}
                       className="hidden"
                       onChange={(event) => {
+                        if (addFotos.isPending) return
                         const files = Array.from(event.target.files || [])
                         event.target.value = ""
                         if (!files.length || !editingEstimId) return
