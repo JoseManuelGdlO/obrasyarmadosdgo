@@ -73,6 +73,12 @@ const configItems = [
   { title: "Nomenclaturas", url: "/nomenclaturas", icon: Settings, requiredPermissions: [PERMISSIONS.NOMENCLATURAS_VIEW] },
   { title: "Trabajadores", url: "/trabajadores", icon: UserCheck, requiredPermissions: [PERMISSIONS.TRABAJADORES_VIEW] },
   { title: "Proveedores", url: "/proveedores", icon: Building, requiredPermissions: [PERMISSIONS.PROVEEDORES_VIEW] },
+  {
+    title: "Cuentas contables",
+    url: "/cuentas-contables",
+    icon: Settings,
+    requiredPermissions: [PERMISSIONS.CUENTAS_CONTABLES_VIEW],
+  },
 ]
 
 type SectionProps = {

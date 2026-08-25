@@ -12,6 +12,7 @@ import Trabajadores from "./pages/Trabajadores";
 import Maquinas from "./pages/Maquinas";
 import MaquinaCatalogo from "./pages/MaquinaCatalogo";
 import Proveedores from "./pages/Proveedores";
+import CuentasContables from "./pages/CuentasContables";
 import Inventario from "./pages/Inventario";
 import Proyectos from "./pages/Proyectos";
 import ProyectoDetalle from "./pages/ProyectoDetalle";
@@ -99,6 +100,14 @@ const App = () => (
                         element={
                           <ProtectedRoute requiredPermissions={[PERMISSIONS.PROVEEDORES_VIEW]}>
                             <Proveedores />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/cuentas-contables"
+                        element={
+                          <ProtectedRoute requiredPermissions={[PERMISSIONS.CUENTAS_CONTABLES_VIEW]}>
+                            <CuentasContables />
                           </ProtectedRoute>
                         }
                       />
