@@ -1,6 +1,54 @@
+const path = require("path");
+const fs = require("fs/promises");
 const Proyecto = require("../models/Proyecto");
 const ProyectoEstimacion = require("../models/ProyectoEstimacion");
+const ProyectoEstimacionFoto = require("../models/ProyectoEstimacionFoto");
+const {
+  ESTIMACION_UPLOADS_DIR,
+  ESTIMACION_UPLOADS_ROUTE,
+} = require("../config/uploads");
+const {
+  cleanupUploadedEstimacionFilesIfPresent,
+} = require("../middlewares/uploadEstimacionFiles");
 const { logError } = require("../utils/logger");
+
+const MAX_FOTOS_EXTRA = 20;
+
+const fotosInclude = {
+  model: ProyectoEstimacionFoto,
+  as: "fotos",
+  attributes: ["id", "ruta", "createdAt", "updatedAt"],
+};
+
+const buildPublicEstimacionUploadPath = (filename) =>
+  `${ESTIMACION_UPLOADS_ROUTE}/${encodeURIComponent(filename)}`;
+
+const resolveStoredUploadToAbsolute = (storedPath) => {
+  if (!storedPath || typeof storedPath !== "string") return null;
+  const normalizedRoute = `${ESTIMACION_UPLOADS_ROUTE}/`;
+  if (!storedPath.startsWith(normalizedRoute)) return null;
+  const filename = decodeURIComponent(storedPath.slice(normalizedRoute.length));
+  const absolutePath = path.resolve(ESTIMACION_UPLOADS_DIR, filename);
+  const uploadsRoot = path.resolve(ESTIMACION_UPLOADS_DIR);
+  if (!absolutePath.startsWith(`${uploadsRoot}${path.sep}`) && absolutePath !== uploadsRoot) {
+    return null;
+  }
+  return absolutePath;
+};
+
+const safeDeleteStoredUpload = async (storedPath) => {
+  const absolutePath = resolveStoredUploadToAbsolute(storedPath);
+  if (!absolutePath) return;
+  try {
+    await fs.unlink(absolutePath);
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+};
+
+const getUploadedFile = (req, fieldname) => req.files?.[fieldname]?.[0] || null;
+const getUploadedFiles = (req, fieldname) => req.files?.[fieldname] || [];
+const parseTruthyFlag = (value) => value === true || value === "true" || value === "1";
 
 const ensureProyecto = async (proyectoId) => {
   return Proyecto.findByPk(proyectoId);
@@ -21,6 +69,7 @@ const listEstimaciones = async (req, res) => {
     }
     const estimaciones = await ProyectoEstimacion.findAll({
       where: { proyectoId },
+      include: [fotosInclude],
       order: [
         ["numero", "ASC"],
         ["createdAt", "ASC"],
@@ -45,6 +94,7 @@ const getEstimacionById = async (req, res) => {
     }
     const estimacion = await ProyectoEstimacion.findOne({
       where: { id, proyectoId },
+      include: [fotosInclude],
     });
     if (!estimacion) {
       return res.status(404).json({ message: "Estimación no encontrada." });
@@ -64,6 +114,7 @@ const createEstimacion = async (req, res) => {
     const { proyectoId } = req.params;
     const proyecto = await ensureProyecto(proyectoId);
     if (!proyecto) {
+      await cleanupUploadedEstimacionFilesIfPresent(req);
       return res.status(404).json({ message: "Proyecto no encontrado." });
     }
 
@@ -83,7 +134,8 @@ const createEstimacion = async (req, res) => {
       numeroFinal = count + 1;
     }
 
-    const estimacion = await ProyectoEstimacion.create({
+    const uploadedCaratula = getUploadedFile(req, "caratula");
+    const created = await ProyectoEstimacion.create({
       proyectoId,
       numero: numeroFinal,
       fechaEstimacion: fechaEstimacion || null,
@@ -92,12 +144,20 @@ const createEstimacion = async (req, res) => {
       montoPagado: toDecimal(montoPagado),
       factura: factura ? String(factura).trim() || null : null,
       retencionAmortizacion: toDecimal(retencionAmortizacion),
+      caratula: uploadedCaratula
+        ? buildPublicEstimacionUploadPath(uploadedCaratula.filename)
+        : null,
+    });
+    const estimacion = await ProyectoEstimacion.findOne({
+      where: { id: created.id },
+      include: [fotosInclude],
     });
     return res.status(201).json({
       message: "Estimación agregada correctamente.",
       estimacion,
     });
   } catch (error) {
+    await cleanupUploadedEstimacionFilesIfPresent(req);
     logError("Error al agregar estimación.", error);
     return res.status(500).json({
       message: "Error al agregar estimación.",
@@ -111,12 +171,14 @@ const updateEstimacion = async (req, res) => {
     const { proyectoId, id } = req.params;
     const proyecto = await ensureProyecto(proyectoId);
     if (!proyecto) {
+      await cleanupUploadedEstimacionFilesIfPresent(req);
       return res.status(404).json({ message: "Proyecto no encontrado." });
     }
     const estimacion = await ProyectoEstimacion.findOne({
       where: { id, proyectoId },
     });
     if (!estimacion) {
+      await cleanupUploadedEstimacionFilesIfPresent(req);
       return res.status(404).json({ message: "Estimación no encontrada." });
     }
 
@@ -142,12 +204,32 @@ const updateEstimacion = async (req, res) => {
       updates.retencionAmortizacion = toDecimal(retencionAmortizacion);
     }
 
+    const uploadedCaratula = getUploadedFile(req, "caratula");
+    const previousCaratula = estimacion.caratula;
+    if (uploadedCaratula) {
+      updates.caratula = buildPublicEstimacionUploadPath(uploadedCaratula.filename);
+    } else if (parseTruthyFlag(req.body.quitarCaratula)) {
+      updates.caratula = null;
+    }
+
     await estimacion.update(updates);
+    if (
+      previousCaratula &&
+      updates.caratula !== undefined &&
+      previousCaratula !== updates.caratula
+    ) {
+      await safeDeleteStoredUpload(previousCaratula);
+    }
+    const refreshed = await ProyectoEstimacion.findOne({
+      where: { id: estimacion.id },
+      include: [fotosInclude],
+    });
     return res.status(200).json({
       message: "Estimación actualizada correctamente.",
-      estimacion,
+      estimacion: refreshed,
     });
   } catch (error) {
+    await cleanupUploadedEstimacionFilesIfPresent(req);
     logError("Error al actualizar estimación.", error);
     return res.status(500).json({
       message: "Error al actualizar estimación.",
@@ -165,16 +247,108 @@ const deleteEstimacion = async (req, res) => {
     }
     const estimacion = await ProyectoEstimacion.findOne({
       where: { id, proyectoId },
+      include: [fotosInclude],
     });
     if (!estimacion) {
       return res.status(404).json({ message: "Estimación no encontrada." });
     }
+    const pathsToDelete = [
+      estimacion.caratula,
+      ...(estimacion.fotos || []).map((foto) => foto.ruta),
+    ];
     await estimacion.destroy();
+    for (const storedPath of pathsToDelete) {
+      await safeDeleteStoredUpload(storedPath);
+    }
     return res.status(200).json({ message: "Estimación eliminada correctamente." });
   } catch (error) {
     logError("Error al eliminar estimación.", error);
     return res.status(500).json({
       message: "Error al eliminar estimación.",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+const addFotosEstimacion = async (req, res) => {
+  try {
+    const { proyectoId, id } = req.params;
+    const proyecto = await ensureProyecto(proyectoId);
+    if (!proyecto) {
+      await cleanupUploadedEstimacionFilesIfPresent(req);
+      return res.status(404).json({ message: "Proyecto no encontrado." });
+    }
+    const estimacion = await ProyectoEstimacion.findOne({
+      where: { id, proyectoId },
+      include: [fotosInclude],
+    });
+    if (!estimacion) {
+      await cleanupUploadedEstimacionFilesIfPresent(req);
+      return res.status(404).json({ message: "Estimación no encontrada." });
+    }
+    const files = getUploadedFiles(req, "fotos");
+    if (!files.length) {
+      return res.status(400).json({ message: "Debes enviar al menos una foto." });
+    }
+    const currentCount = estimacion.fotos?.length || 0;
+    if (currentCount + files.length > MAX_FOTOS_EXTRA) {
+      await cleanupUploadedEstimacionFilesIfPresent(req);
+      return res.status(400).json({
+        message: `Máximo ${MAX_FOTOS_EXTRA} fotos extra por estimación.`,
+      });
+    }
+    const created = [];
+    for (const file of files) {
+      const foto = await ProyectoEstimacionFoto.create({
+        estimacionId: estimacion.id,
+        ruta: buildPublicEstimacionUploadPath(file.filename),
+      });
+      created.push(foto);
+    }
+    const refreshed = await ProyectoEstimacion.findOne({
+      where: { id: estimacion.id },
+      include: [fotosInclude],
+    });
+    return res.status(201).json({
+      message: "Fotos agregadas correctamente.",
+      estimacion: refreshed,
+      fotos: created,
+    });
+  } catch (error) {
+    await cleanupUploadedEstimacionFilesIfPresent(req);
+    logError("Error al agregar fotos a la estimación.", error);
+    return res.status(500).json({
+      message: "Error al agregar fotos a la estimación.",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+const deleteFotoEstimacion = async (req, res) => {
+  try {
+    const { proyectoId, id, fotoId } = req.params;
+    const proyecto = await ensureProyecto(proyectoId);
+    if (!proyecto) {
+      return res.status(404).json({ message: "Proyecto no encontrado." });
+    }
+    const estimacion = await ProyectoEstimacion.findOne({ where: { id, proyectoId } });
+    if (!estimacion) {
+      return res.status(404).json({ message: "Estimación no encontrada." });
+    }
+    const foto = await ProyectoEstimacionFoto.findOne({
+      where: { id: fotoId, estimacionId: estimacion.id },
+    });
+    if (!foto) {
+      return res.status(404).json({ message: "Foto no encontrada." });
+    }
+    const ruta = foto.ruta;
+    await foto.destroy();
+    await safeDeleteStoredUpload(ruta);
+    return res.status(200).json({ message: "Foto eliminada correctamente." });
+  } catch (error) {
+    logError("Error al eliminar foto de la estimación.", error);
+    return res.status(500).json({
+      message: "Error al eliminar foto de la estimación.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
@@ -186,4 +360,6 @@ module.exports = {
   createEstimacion,
   updateEstimacion,
   deleteEstimacion,
+  addFotosEstimacion,
+  deleteFotoEstimacion,
 };
