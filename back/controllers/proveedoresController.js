@@ -1,8 +1,15 @@
 const { Op } = require("sequelize");
 const Proveedor = require("../models/Proveedor");
+const CuentaContable = require("../models/CuentaContable");
 const { logError } = require("../utils/logger");
 
 const ESTADOS_PROVEEDOR = ["activo", "inactivo", "en_evaluacion"];
+
+const cuentaInclude = {
+  model: CuentaContable,
+  as: "cuentaContable",
+  attributes: ["id", "numero", "nombre", "activa"],
+};
 
 const trimOrNull = (value) => {
   if (value === undefined || value === null) return null;
@@ -50,6 +57,22 @@ const normalizeInt = (value, { min = 0 } = {}) => {
   const num = parseInt(value, 10);
   if (Number.isNaN(num)) return null;
   return num < min ? min : num;
+};
+
+const assertCuentaDisponible = async (cuentaContableId, { excludeProveedorId } = {}) => {
+  const cuenta = await CuentaContable.findByPk(cuentaContableId);
+  if (!cuenta) return { error: "Cuenta contable no encontrada.", code: 404 };
+  if (!cuenta.activa) return { error: "La cuenta contable no está activa.", code: 400 };
+  const occupied = await Proveedor.findOne({
+    where: {
+      cuentaContableId,
+      ...(excludeProveedorId ? { id: { [Op.ne]: excludeProveedorId } } : {}),
+    },
+  });
+  if (occupied) {
+    return { error: "La cuenta contable ya está asignada a otro proveedor.", code: 400 };
+  }
+  return { cuenta };
 };
 
 const buildPayload = (body, { partial = false } = {}) => {
@@ -122,6 +145,15 @@ const buildPayload = (body, { partial = false } = {}) => {
     }
   }
 
+  if (!partial || body.cuentaContableId !== undefined) {
+    const cuentaContableId = trimOrNull(body.cuentaContableId);
+    if (!cuentaContableId) {
+      errors.push("La cuenta contable es obligatoria.");
+    } else {
+      payload.cuentaContableId = cuentaContableId;
+    }
+  }
+
   return { payload, errors };
 };
 
@@ -142,6 +174,7 @@ const list = async (req, res) => {
     }
     const proveedores = await Proveedor.findAll({
       where,
+      include: [cuentaInclude],
       order: [["nombre", "ASC"]],
     });
     return res.status(200).json({ proveedores });
@@ -156,7 +189,9 @@ const list = async (req, res) => {
 
 const getById = async (req, res) => {
   try {
-    const proveedor = await Proveedor.findByPk(req.params.id);
+    const proveedor = await Proveedor.findByPk(req.params.id, {
+      include: [cuentaInclude],
+    });
     if (!proveedor) {
       return res.status(404).json({ message: "Proveedor no encontrado." });
     }
@@ -176,12 +211,24 @@ const create = async (req, res) => {
     if (errors.length > 0) {
       return res.status(400).json({ message: errors.join(" ") });
     }
-    const proveedor = await Proveedor.create(payload);
+    const check = await assertCuentaDisponible(payload.cuentaContableId);
+    if (check.error) {
+      return res.status(check.code).json({ message: check.error });
+    }
+    const created = await Proveedor.create(payload);
+    const proveedor = await Proveedor.findByPk(created.id, {
+      include: [cuentaInclude],
+    });
     return res.status(201).json({
       message: "Proveedor creado correctamente.",
       proveedor,
     });
   } catch (error) {
+    if (error?.name === "SequelizeUniqueConstraintError") {
+      return res.status(400).json({
+        message: "La cuenta contable ya está asignada a otro proveedor.",
+      });
+    }
     logError("Error al crear proveedor.", error);
     return res.status(500).json({
       message: "Error al crear proveedor.",
@@ -204,13 +251,35 @@ const update = async (req, res) => {
     if (Object.keys(payload).length === 0) {
       return res.status(400).json({ message: "No hay campos para actualizar." });
     }
+
+    const nextCuentaId =
+      payload.cuentaContableId !== undefined
+        ? payload.cuentaContableId
+        : proveedor.cuentaContableId;
+    if (!nextCuentaId) {
+      return res.status(400).json({ message: "La cuenta contable es obligatoria." });
+    }
+    if (payload.cuentaContableId !== undefined) {
+      const check = await assertCuentaDisponible(payload.cuentaContableId, {
+        excludeProveedorId: id,
+      });
+      if (check.error) {
+        return res.status(check.code).json({ message: check.error });
+      }
+    }
+
     await proveedor.update(payload);
-    const updated = await Proveedor.findByPk(id);
+    const updated = await Proveedor.findByPk(id, { include: [cuentaInclude] });
     return res.status(200).json({
       message: "Proveedor actualizado correctamente.",
       proveedor: updated,
     });
   } catch (error) {
+    if (error?.name === "SequelizeUniqueConstraintError") {
+      return res.status(400).json({
+        message: "La cuenta contable ya está asignada a otro proveedor.",
+      });
+    }
     logError("Error al actualizar proveedor.", error);
     return res.status(500).json({
       message: "Error al actualizar proveedor.",
