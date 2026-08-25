@@ -1,5 +1,6 @@
 const path = require("path");
 const fs = require("fs/promises");
+const sequelize = require("../config/database");
 const Proyecto = require("../models/Proyecto");
 const ProyectoEstimacion = require("../models/ProyectoEstimacion");
 const ProyectoEstimacionFoto = require("../models/ProyectoEstimacionFoto");
@@ -10,7 +11,7 @@ const {
 const {
   cleanupUploadedEstimacionFilesIfPresent,
 } = require("../middlewares/uploadEstimacionFiles");
-const { logError } = require("../utils/logger");
+const { logger, logError } = require("../utils/logger");
 
 const MAX_FOTOS_EXTRA = 20;
 
@@ -44,6 +45,18 @@ const safeDeleteStoredUpload = async (storedPath) => {
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
+};
+
+const deleteStoredUploadsBestEffort = async (storedPaths) => {
+  const paths = storedPaths.filter(Boolean);
+  const results = await Promise.allSettled(paths.map(safeDeleteStoredUpload));
+  results.forEach((result, index) => {
+    if (result.status === "rejected") {
+      logger.warn(
+        `No se pudo eliminar archivo de estimación ${paths[index]}: ${result.reason?.message || result.reason}`
+      );
+    }
+  });
 };
 
 const getUploadedFile = (req, fieldname) => req.files?.[fieldname]?.[0] || null;
@@ -110,6 +123,7 @@ const getEstimacionById = async (req, res) => {
 };
 
 const createEstimacion = async (req, res) => {
+  let persisted = false;
   try {
     const { proyectoId } = req.params;
     const proyecto = await ensureProyecto(proyectoId);
@@ -148,16 +162,30 @@ const createEstimacion = async (req, res) => {
         ? buildPublicEstimacionUploadPath(uploadedCaratula.filename)
         : null,
     });
-    const estimacion = await ProyectoEstimacion.findOne({
-      where: { id: created.id },
-      include: [fotosInclude],
-    });
+    persisted = true;
+    let estimacion = created;
+    try {
+      const reloaded = await ProyectoEstimacion.findOne({
+        where: { id: created.id },
+        include: [fotosInclude],
+      });
+      if (reloaded) {
+        estimacion = reloaded;
+      } else {
+        created.setDataValue("fotos", []);
+      }
+    } catch (reloadError) {
+      logger.warn(`No se pudo recargar la estimación creada: ${reloadError.message}`);
+      created.setDataValue("fotos", []);
+    }
     return res.status(201).json({
       message: "Estimación agregada correctamente.",
       estimacion,
     });
   } catch (error) {
-    await cleanupUploadedEstimacionFilesIfPresent(req);
+    if (!persisted) {
+      await cleanupUploadedEstimacionFilesIfPresent(req);
+    }
     logError("Error al agregar estimación.", error);
     return res.status(500).json({
       message: "Error al agregar estimación.",
@@ -167,6 +195,7 @@ const createEstimacion = async (req, res) => {
 };
 
 const updateEstimacion = async (req, res) => {
+  let uploadedPathPersisted = false;
   try {
     const { proyectoId, id } = req.params;
     const proyecto = await ensureProyecto(proyectoId);
@@ -213,23 +242,34 @@ const updateEstimacion = async (req, res) => {
     }
 
     await estimacion.update(updates);
+    uploadedPathPersisted = Boolean(uploadedCaratula);
     if (
       previousCaratula &&
       updates.caratula !== undefined &&
       previousCaratula !== updates.caratula
     ) {
-      await safeDeleteStoredUpload(previousCaratula);
+      await deleteStoredUploadsBestEffort([previousCaratula]);
     }
-    const refreshed = await ProyectoEstimacion.findOne({
-      where: { id: estimacion.id },
-      include: [fotosInclude],
-    });
+    let refreshed = estimacion;
+    try {
+      const reloaded = await ProyectoEstimacion.findOne({
+        where: { id: estimacion.id },
+        include: [fotosInclude],
+      });
+      if (reloaded) {
+        refreshed = reloaded;
+      }
+    } catch (reloadError) {
+      logger.warn(`No se pudo recargar la estimación actualizada: ${reloadError.message}`);
+    }
     return res.status(200).json({
       message: "Estimación actualizada correctamente.",
       estimacion: refreshed,
     });
   } catch (error) {
-    await cleanupUploadedEstimacionFilesIfPresent(req);
+    if (!uploadedPathPersisted) {
+      await cleanupUploadedEstimacionFilesIfPresent(req);
+    }
     logError("Error al actualizar estimación.", error);
     return res.status(500).json({
       message: "Error al actualizar estimación.",
@@ -257,9 +297,7 @@ const deleteEstimacion = async (req, res) => {
       ...(estimacion.fotos || []).map((foto) => foto.ruta),
     ];
     await estimacion.destroy();
-    for (const storedPath of pathsToDelete) {
-      await safeDeleteStoredUpload(storedPath);
-    }
+    await deleteStoredUploadsBestEffort(pathsToDelete);
     return res.status(200).json({ message: "Estimación eliminada correctamente." });
   } catch (error) {
     logError("Error al eliminar estimación.", error);
@@ -271,6 +309,8 @@ const deleteEstimacion = async (req, res) => {
 };
 
 const addFotosEstimacion = async (req, res) => {
+  let transaction;
+  let persisted = false;
   try {
     const { proyectoId, id } = req.params;
     const proyecto = await ensureProyecto(proyectoId);
@@ -278,44 +318,70 @@ const addFotosEstimacion = async (req, res) => {
       await cleanupUploadedEstimacionFilesIfPresent(req);
       return res.status(404).json({ message: "Proyecto no encontrado." });
     }
-    const estimacion = await ProyectoEstimacion.findOne({
-      where: { id, proyectoId },
-      include: [fotosInclude],
-    });
-    if (!estimacion) {
-      await cleanupUploadedEstimacionFilesIfPresent(req);
-      return res.status(404).json({ message: "Estimación no encontrada." });
-    }
     const files = getUploadedFiles(req, "fotos");
     if (!files.length) {
       return res.status(400).json({ message: "Debes enviar al menos una foto." });
     }
-    const currentCount = estimacion.fotos?.length || 0;
+
+    transaction = await sequelize.transaction();
+    const estimacion = await ProyectoEstimacion.findOne({
+      where: { id, proyectoId },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    if (!estimacion) {
+      await transaction.rollback();
+      await cleanupUploadedEstimacionFilesIfPresent(req);
+      return res.status(404).json({ message: "Estimación no encontrada." });
+    }
+    const currentCount = await ProyectoEstimacionFoto.count({
+      where: { estimacionId: estimacion.id },
+      transaction,
+    });
     if (currentCount + files.length > MAX_FOTOS_EXTRA) {
+      await transaction.rollback();
       await cleanupUploadedEstimacionFilesIfPresent(req);
       return res.status(400).json({
         message: `Máximo ${MAX_FOTOS_EXTRA} fotos extra por estimación.`,
       });
     }
-    const created = [];
-    for (const file of files) {
-      const foto = await ProyectoEstimacionFoto.create({
+    const created = await ProyectoEstimacionFoto.bulkCreate(
+      files.map((file) => ({
         estimacionId: estimacion.id,
         ruta: buildPublicEstimacionUploadPath(file.filename),
+      })),
+      { transaction }
+    );
+    await transaction.commit();
+    persisted = true;
+
+    let refreshed = {
+      ...estimacion.toJSON(),
+      fotos: created,
+    };
+    try {
+      const reloaded = await ProyectoEstimacion.findOne({
+        where: { id: estimacion.id },
+        include: [fotosInclude],
       });
-      created.push(foto);
+      if (reloaded) {
+        refreshed = reloaded;
+      }
+    } catch (reloadError) {
+      logger.warn(`No se pudo recargar la estimación con fotos: ${reloadError.message}`);
     }
-    const refreshed = await ProyectoEstimacion.findOne({
-      where: { id: estimacion.id },
-      include: [fotosInclude],
-    });
     return res.status(201).json({
       message: "Fotos agregadas correctamente.",
       estimacion: refreshed,
       fotos: created,
     });
   } catch (error) {
-    await cleanupUploadedEstimacionFilesIfPresent(req);
+    if (transaction && !transaction.finished) {
+      await transaction.rollback();
+    }
+    if (!persisted) {
+      await cleanupUploadedEstimacionFilesIfPresent(req);
+    }
     logError("Error al agregar fotos a la estimación.", error);
     return res.status(500).json({
       message: "Error al agregar fotos a la estimación.",
@@ -343,7 +409,7 @@ const deleteFotoEstimacion = async (req, res) => {
     }
     const ruta = foto.ruta;
     await foto.destroy();
-    await safeDeleteStoredUpload(ruta);
+    await deleteStoredUploadsBestEffort([ruta]);
     return res.status(200).json({ message: "Foto eliminada correctamente." });
   } catch (error) {
     logError("Error al eliminar foto de la estimación.", error);
