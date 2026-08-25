@@ -10,7 +10,7 @@ En **Proyectos → Gestionar → formulario de estimación**, permitir:
 1. **Agregar carátula**: una fotografía principal guardada en un campo propio de la estimación.
 2. **Agregar fotos** adicionales después, en el mismo formulario (solo con la estimación ya guardada).
 
-La gestión de imágenes vive en el formulario de agregar/editar. Las miniaturas abren una **vista previa** ampliada. La tabla de estimaciones no lista todas las fotos; puede mostrar un indicador/miniatura de carátula opcional solo como atajo visual (sin gestión ahí).
+La gestión de imágenes vive en el formulario de agregar/editar. Las miniaturas abren una **vista previa** ampliada (lightbox). La tabla de estimaciones no muestra ni gestiona fotos.
 
 ## Decisiones de producto
 
