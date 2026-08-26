@@ -156,7 +156,7 @@ const MODULOS_MONTOS: Array<{ title: string; fields: MontoFieldDef[] }> = [
   },
   {
     title:
-      "Estado de Cuenta del Anticipo (Sin IVA) — NOTA: SE AMORTIZA EL 5% MAS QYE EK AUTORIZADO",
+      "Estado de Cuenta del Anticipo (Sin IVA) NOTA: SE AMORTIZA 5% MAS QUE EL AUTORIZADO",
     fields: [
       { key: "anticipoTotalSinIva", label: "Total del Anticipo N.-1 sin IVA" },
       { key: "anticipoAcumuladoAnterior", label: "Acumulado a Estimacion anterior" },

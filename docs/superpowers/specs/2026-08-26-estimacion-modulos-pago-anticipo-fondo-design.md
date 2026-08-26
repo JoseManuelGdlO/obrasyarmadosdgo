@@ -16,7 +16,7 @@ En **Proyectos → Gestionar → formulario de estimación**, agregar tres módu
 | UI | Collapsibles cerrados por defecto, debajo del módulo de contrato |
 | Prefijo | `$` fijo a la izquierda |
 | Sub Total (pago) | Ambos labels en UI = “Sub Total”; columnas distintas en BD |
-| Nota anticipo | Texto tal cual: `NOTA: SE AMORTIZA EL 5% MAS QYE EK AUTORIZADO` |
+| Nota anticipo | Texto: `NOTA: SE AMORTIZA 5% MAS QUE EL AUTORIZADO` |
 | Fondo campo 5 | Label tal cual: `Saldo Anticipo por Retener` |
 | Tabla estimaciones | Sin columnas nuevas |
 
@@ -39,7 +39,7 @@ En **Proyectos → Gestionar → formulario de estimación**, agregar tres módu
 ### 2. Estado de Cuenta del Anticipo (Sin IVA)
 
 Título del trigger incluye la nota:  
-`Estado de Cuenta del Anticipo (Sin IVA) — NOTA: SE AMORTIZA EL 5% MAS QYE EK AUTORIZADO`
+`Estado de Cuenta del Anticipo (Sin IVA) NOTA: SE AMORTIZA 5% MAS QUE EL AUTORIZADO`
 
 | Label UI | Columna |
 |----------|---------|
