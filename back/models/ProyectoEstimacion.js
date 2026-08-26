@@ -18,6 +18,19 @@ const ProyectoEstimacion = sequelize.define(
       defaultValue: 0,
     },
     caratula: { type: DataTypes.STRING(512), allowNull: true },
+    contratoPrincipalSinIva: {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: false,
+      defaultValue: 0,
+    },
+    acumuladoEstimacionAnterior: {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: false,
+      defaultValue: 0,
+    },
+    estaEstimacion: { type: DataTypes.DECIMAL(15, 2), allowNull: false, defaultValue: 0 },
+    estimadoALaFecha: { type: DataTypes.DECIMAL(15, 2), allowNull: false, defaultValue: 0 },
+    saldoPorEstimar: { type: DataTypes.DECIMAL(15, 2), allowNull: false, defaultValue: 0 },
   },
   { tableName: "proyecto_estimaciones", timestamps: true }
 );

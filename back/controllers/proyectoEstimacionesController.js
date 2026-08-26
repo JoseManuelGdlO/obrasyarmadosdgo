@@ -36,6 +36,36 @@ const toDecimal = (value, fallback = 0) => {
   return Number.isNaN(num) ? fallback : num;
 };
 
+const ESTADO_CUENTA_FIELDS = [
+  "contratoPrincipalSinIva",
+  "acumuladoEstimacionAnterior",
+  "estaEstimacion",
+  "estimadoALaFecha",
+  "saldoPorEstimar",
+];
+
+const parseNonNegativeDecimal = (value, fieldName) => {
+  const num = toDecimal(value, 0);
+  if (num < 0) {
+    const err = new Error(`${fieldName} debe ser mayor o igual a 0.`);
+    err.status = 400;
+    throw err;
+  }
+  return num;
+};
+
+const pickEstadoCuentaFromBody = (body, { partial = false } = {}) => {
+  const out = {};
+  for (const field of ESTADO_CUENTA_FIELDS) {
+    if (body[field] === undefined) {
+      if (!partial) out[field] = 0;
+      continue;
+    }
+    out[field] = parseNonNegativeDecimal(body[field], field);
+  }
+  return out;
+};
+
 const listEstimaciones = async (req, res) => {
   try {
     const { proyectoId } = req.params;
@@ -112,6 +142,7 @@ const createEstimacion = async (req, res) => {
     }
 
     const uploadedCaratula = getUploadedFile(req, "caratula");
+    const estadoCuenta = pickEstadoCuentaFromBody(req.body);
     const created = await ProyectoEstimacion.create({
       proyectoId,
       numero: numeroFinal,
@@ -124,6 +155,7 @@ const createEstimacion = async (req, res) => {
       caratula: uploadedCaratula
         ? buildPublicEstimacionUploadPath(uploadedCaratula.filename)
         : null,
+      ...estadoCuenta,
     });
     persisted = true;
     let estimacion = created;
@@ -148,6 +180,9 @@ const createEstimacion = async (req, res) => {
   } catch (error) {
     if (!persisted) {
       await cleanupUploadedEstimacionFilesIfPresent(req);
+    }
+    if (error.status === 400) {
+      return res.status(400).json({ message: error.message });
     }
     logError("Error al agregar estimación.", error);
     return res.status(500).json({
@@ -195,6 +230,7 @@ const updateEstimacion = async (req, res) => {
     if (retencionAmortizacion !== undefined) {
       updates.retencionAmortizacion = toDecimal(retencionAmortizacion);
     }
+    Object.assign(updates, pickEstadoCuentaFromBody(req.body, { partial: true }));
 
     const uploadedCaratula = getUploadedFile(req, "caratula");
     const previousCaratula = estimacion.caratula;
@@ -232,6 +268,9 @@ const updateEstimacion = async (req, res) => {
   } catch (error) {
     if (!uploadedPathPersisted) {
       await cleanupUploadedEstimacionFilesIfPresent(req);
+    }
+    if (error.status === 400) {
+      return res.status(400).json({ message: error.message });
     }
     logError("Error al actualizar estimación.", error);
     return res.status(500).json({
