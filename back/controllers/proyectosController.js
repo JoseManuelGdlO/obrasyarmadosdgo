@@ -1,5 +1,7 @@
 const { Op } = require("sequelize");
+const sequelize = require("../config/database");
 const Proyecto = require("../models/Proyecto");
+const Cliente = require("../models/Cliente");
 const ProyectoEstimacion = require("../models/ProyectoEstimacion");
 const ProyectoEstimacionFoto = require("../models/ProyectoEstimacionFoto");
 const { logError } = require("../utils/logger");
@@ -32,8 +34,56 @@ const list = async (req, res) => {
         Object.assign(where, search);
       }
     }
-    const rows = await Proyecto.findAll({ where, order: [["createdAt", "DESC"]] });
-    return res.status(200).json({ proyectos: rows });
+    const rows = await Proyecto.findAll({
+      where,
+      order: [["createdAt", "DESC"]],
+      include: [{ model: Cliente, as: "cliente", attributes: ["id", "nombre"] }],
+    });
+
+    const proyectoIds = rows.map((row) => row.id);
+    const aggregatesByProyectoId = {};
+
+    if (proyectoIds.length > 0) {
+      const aggregates = await ProyectoEstimacion.findAll({
+        where: { proyectoId: { [Op.in]: proyectoIds } },
+        attributes: [
+          "proyectoId",
+          [sequelize.fn("SUM", sequelize.col("montoEstimacion")), "totalEstimacion"],
+          [sequelize.fn("SUM", sequelize.col("montoPagado")), "totalPagado"],
+        ],
+        group: ["proyectoId"],
+        raw: true,
+      });
+
+      aggregates.forEach((item) => {
+        aggregatesByProyectoId[item.proyectoId] = {
+          totalEstimacion: Number(item.totalEstimacion || 0),
+          totalPagado: Number(item.totalPagado || 0),
+        };
+      });
+    }
+
+    const proyectos = rows.map((row) => {
+      const plain = row.toJSON();
+      const cantidadContrato = Number(plain.cantidadContrato || 0);
+      const modificacionContrato = Number(plain.modificacionContrato || 0);
+      const totalContrato = cantidadContrato + modificacionContrato;
+      const totals = aggregatesByProyectoId[plain.id] || {
+        totalEstimacion: 0,
+        totalPagado: 0,
+      };
+
+      return {
+        ...plain,
+        empresa: plain.cliente?.nombre || null,
+        totalContrato,
+        totalEstimacion: totals.totalEstimacion,
+        totalPagado: totals.totalPagado,
+        deudaContrato: totalContrato - totals.totalPagado,
+      };
+    });
+
+    return res.status(200).json({ proyectos });
   } catch (error) {
     logError("Error al listar proyecto.", error);
     return res.status(500).json({ message: "Error al listar proyecto." });

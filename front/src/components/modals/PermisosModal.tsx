@@ -110,83 +110,85 @@ export default function PermisosModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[calc(100vh-2rem)] flex-col gap-4 overflow-hidden sm:max-w-lg">
+        <DialogHeader className="shrink-0">
           <DialogTitle>{isEdit ? "Configurar Permisos" : "Asignar Permisos"}</DialogTitle>
         </DialogHeader>
         <form
-          className="space-y-4"
+          className="flex min-h-0 flex-1 flex-col gap-4"
           onSubmit={(event) => {
             event.preventDefault();
             onSubmit(form);
           }}
         >
-          <div className="space-y-2">
-            <Label>Rol</Label>
-            <Select value={form.rol} onValueChange={(value: PermisosFormData["rol"]) => setForm((prev) => ({ ...prev, rol: value }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {roles.map((role) => (
-                  <SelectItem key={role} value={role}>
-                    {role}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Permisos</Label>
-            <Input
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Buscar permiso o módulo..."
-            />
-            <div className="space-y-2 max-h-64 overflow-y-auto border rounded-md p-3">
-              {filteredGroups.map(([moduleName, permissions]) => (
-                <div key={moduleName} className="space-y-2 border rounded-md p-2">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">{moduleName}</p>
-                  {permissions.map((permission) => (
-                    <label key={permission} className="flex items-center gap-2 text-sm">
-                      <Checkbox
-                        checked={form.permissions.includes(permission)}
-                        onCheckedChange={(checked) => togglePermission(permission, Boolean(checked))}
-                      />
-                      <span>{permission}</span>
-                    </label>
-                  ))}
-                </div>
-              ))}
-              {filteredGroups.length === 0 && (
-                <p className="text-sm text-muted-foreground">No hay permisos que coincidan con la búsqueda.</p>
-              )}
-            </div>
-          </div>
-
-          {hasProyectosPerms && (
+          <div className="-mr-6 min-h-0 flex-1 space-y-4 overflow-y-auto pr-6">
             <div className="space-y-2">
-              <Label>Proyectos permitidos</Label>
-              <p className="text-xs text-muted-foreground">
-                Si no eliges ninguno, el rol podrá ver/trabajar todos los proyectos.
-              </p>
-              <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
-                {proyectos.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No hay proyectos creados todavía.</p>
-                ) : (
-                  proyectos.map((proyecto) => (
-                    <label key={proyecto.id} className="flex items-center gap-2 text-sm">
-                      <Checkbox
-                        checked={form.proyectoIds.includes(proyecto.id)}
-                        onCheckedChange={(checked) => toggleProyecto(proyecto.id, Boolean(checked))}
-                      />
-                      <span>{proyecto.nombre}</span>
-                    </label>
-                  ))
+              <Label>Rol</Label>
+              <Select value={form.rol} onValueChange={(value: PermisosFormData["rol"]) => setForm((prev) => ({ ...prev, rol: value }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {roles.map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {role}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Permisos</Label>
+              <Input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Buscar permiso o módulo..."
+              />
+              <div className="max-h-64 space-y-2 overflow-y-auto rounded-md border p-3">
+                {filteredGroups.map(([moduleName, permissions]) => (
+                  <div key={moduleName} className="space-y-2 rounded-md border p-2">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">{moduleName}</p>
+                    {permissions.map((permission) => (
+                      <label key={permission} className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={form.permissions.includes(permission)}
+                          onCheckedChange={(checked) => togglePermission(permission, Boolean(checked))}
+                        />
+                        <span>{permission}</span>
+                      </label>
+                    ))}
+                  </div>
+                ))}
+                {filteredGroups.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No hay permisos que coincidan con la búsqueda.</p>
                 )}
               </div>
             </div>
-          )}
 
-          <div className="flex gap-2">
+            {hasProyectosPerms && (
+              <div className="space-y-2">
+                <Label>Proyectos permitidos</Label>
+                <p className="text-xs text-muted-foreground">
+                  Si no eliges ninguno, el rol podrá ver/trabajar todos los proyectos.
+                </p>
+                <div className="max-h-40 space-y-2 overflow-y-auto rounded-md border p-3">
+                  {proyectos.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No hay proyectos creados todavía.</p>
+                  ) : (
+                    proyectos.map((proyecto) => (
+                      <label key={proyecto.id} className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={form.proyectoIds.includes(proyecto.id)}
+                          onCheckedChange={(checked) => toggleProyecto(proyecto.id, Boolean(checked))}
+                        />
+                        <span>{proyecto.nombre}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex shrink-0 gap-2 border-t pt-4">
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Guardando..." : "Guardar permisos"}
             </Button>

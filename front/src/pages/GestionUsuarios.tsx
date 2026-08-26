@@ -23,6 +23,7 @@ type ApiUser = {
   createdAt?: string;
 };
 type ApiRole = { id: string; nombre: string; descripcion?: string | null; activo: boolean };
+type RoleProyectoRow = { id: string; rol: string; proyectoId: string };
 
 const prettyRole = (rol: ApiUser["rol"]) =>
   rol === "admin" ? "Admin" : rol === "maquinista" ? "Maquinista" : rol === "usuario" ? "Usuario" : rol;
@@ -59,6 +60,10 @@ const GestionUsuarios = () => {
     queryKey: ["role-permissions"],
     queryFn: () => apiRequest<{ rolePermissions: Array<{ id: string; rol: PermisosFormData["rol"]; permission: string }> }>("/role-permissions"),
   });
+  const { data: roleProyectosData } = useQuery({
+    queryKey: ["role-proyectos"],
+    queryFn: () => apiRequest<{ roleProyectos: RoleProyectoRow[] }>("/role-proyectos"),
+  });
 
   const createUserMutation = useMutation({
     mutationFn: (payload: Record<string, unknown>) => apiRequest("/users", { method: "POST", body: payload }),
@@ -88,6 +93,7 @@ const GestionUsuarios = () => {
       const existing = (rolePermsData?.rolePermissions || []).filter((row) => row.rol === form.rol);
       const existingSet = new Set(existing.map((row) => row.permission));
       const desiredSet = new Set(form.permissions);
+      const hasProyectosPerms = form.permissions.some((perm) => perm.startsWith("proyectos."));
 
       const toCreate = form.permissions.filter((perm) => !existingSet.has(perm));
       const toDelete = existing.filter((row) => !desiredSet.has(row.permission));
@@ -96,16 +102,23 @@ const GestionUsuarios = () => {
         ...toCreate.map((permission) => apiRequest("/role-permissions", { method: "POST", body: { rol: form.rol, permission } })),
         ...toDelete.map((row) => apiRequest(`/role-permissions/${row.id}`, { method: "DELETE" })),
       ]);
+
+      await apiRequest(`/role-proyectos/${encodeURIComponent(form.rol)}`, {
+        method: "PUT",
+        body: { proyectoIds: hasProyectosPerms ? form.proyectoIds : [] },
+      });
     },
     onSuccess: () => {
       setIsPermisosModalOpen(false);
       queryClient.invalidateQueries({ queryKey: ["role-permissions"] });
+      queryClient.invalidateQueries({ queryKey: ["role-proyectos"] });
     },
   });
 
   const users = usersData?.users || [];
   const roles = (rolesData?.roles || []).filter((r) => r.activo).map((r) => r.nombre);
   const rolePermissions = rolePermsData?.rolePermissions || [];
+  const roleProyectos = roleProyectosData?.roleProyectos || [];
 
   const filteredUsers = users.filter((u) => {
     const search = searchTerm.toLowerCase();
@@ -120,6 +133,9 @@ const GestionUsuarios = () => {
   const currentRolePermissions = rolePermissions
     .filter((row) => row.rol === permissionsTargetRole)
     .map((row) => row.permission);
+  const currentRoleProyectoIds = roleProyectos
+    .filter((row) => row.rol === permissionsTargetRole)
+    .map((row) => row.proyectoId);
   const canCreateUsers = can(PERMISSIONS.USERS_CREATE);
   const canEditUsers = can(PERMISSIONS.USERS_EDIT);
   const canDeleteUsers = can(PERMISSIONS.USERS_DELETE);
@@ -322,7 +338,11 @@ const GestionUsuarios = () => {
         onOpenChange={setIsPermisosModalOpen}
         onSubmit={(form) => upsertRolePermissionsMutation.mutate(form)}
         isSubmitting={upsertRolePermissionsMutation.isPending}
-        initialData={{ rol: permissionsTargetRole, permissions: currentRolePermissions }}
+        initialData={{
+          rol: permissionsTargetRole,
+          permissions: currentRolePermissions,
+          proyectoIds: currentRoleProyectoIds,
+        }}
         availablePermissions={ALL_PERMISSIONS}
         roles={roles.length ? roles : ["usuario"]}
       />

@@ -40,7 +40,7 @@
 - Produces: columns and model fields `contratoPrincipalSinIva`, `acumuladoEstimacionAnterior`, `estaEstimacion`, `estimadoALaFecha`, `saldoPorEstimar` (number ≥ 0, default 0)
 - Produces: create/update accept those keys from `req.body`; list/get return them via Sequelize
 
-- [ ] **Step 1: Create migration**
+- [x] **Step 1: Create migration**
 
 ```js
 "use strict";
@@ -78,7 +78,7 @@ module.exports = {
 };
 ```
 
-- [ ] **Step 2: Update model**
+- [x] **Step 2: Update model**
 
 Add to `ProyectoEstimacion` attributes (after `caratula`):
 
@@ -90,7 +90,7 @@ estimadoALaFecha: { type: DataTypes.DECIMAL(15, 2), allowNull: false, defaultVal
 saldoPorEstimar: { type: DataTypes.DECIMAL(15, 2), allowNull: false, defaultValue: 0 },
 ```
 
-- [ ] **Step 3: Wire controller create/update**
+- [x] **Step 3: Wire controller create/update**
 
 Add helper after `toDecimal`:
 
@@ -136,12 +136,12 @@ Object.assign(updates, pickEstadoCuentaFromBody(req.body, { partial: true }));
 
 In create/update `catch`, if `error.status === 400`, return `res.status(400).json({ message: error.message })` before the 500 path (and still cleanup uploads on create when not persisted).
 
-- [ ] **Step 4: Run migration**
+- [x] **Step 4: Run migration**
 
 Run: `cd back && npx sequelize-cli db:migrate` (or project’s usual migrate command)  
 Expected: migration applied without error.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add back/migrations/20260826150000-add-estado-cuenta-to-proyecto-estimaciones.js \
@@ -161,7 +161,7 @@ git commit -m "feat: persist estado de cuenta sin IVA on estimaciones"
 - Consumes: API fields from Task 1
 - Produces: form keys matching column names; FormData appends the five values on create/update
 
-- [ ] **Step 1: Extend types and defaults**
+- [x] **Step 1: Extend types and defaults**
 
 Add to `EstimacionData` and `EstimacionForm` (form values as strings):
 
@@ -175,7 +175,7 @@ saldoPorEstimar: number
 
 Update `emptyEstimacion`, `toEstimacionData`, `toEstimacionForm`, `startEditEstim` to include all five (default `"0"` / `0`).
 
-- [ ] **Step 2: Append to FormData in `buildEstimFormData`**
+- [x] **Step 2: Append to FormData in `buildEstimFormData`**
 
 ```ts
 body.append("contratoPrincipalSinIva", String(Number(estimForm.contratoPrincipalSinIva || 0)))
@@ -185,7 +185,7 @@ body.append("estimadoALaFecha", String(Number(estimForm.estimadoALaFecha || 0)))
 body.append("saldoPorEstimar", String(Number(estimForm.saldoPorEstimar || 0)))
 ```
 
-- [ ] **Step 3: Add Collapsible UI**
+- [x] **Step 3: Add Collapsible UI**
 
 Imports: `Collapsible`, `CollapsibleTrigger`, `CollapsibleContent` from `@/components/ui/collapsible`; `ChevronDown` from `lucide-react`.
 
@@ -230,11 +230,11 @@ Each money input pattern:
 
 Repeat for the other four labels/keys. Collapsible default closed (`defaultOpen` omitted / `false`).
 
-- [ ] **Step 4: Smoke-check in UI**
+- [x] **Step 4: Smoke-check in UI**
 
 With front/back running: open a project → Gestionar → expand module → set values → save → edit same estimation → values restored. Table layout unchanged.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add front/src/pages/ProyectoDetalle.tsx

@@ -1,15 +1,8 @@
 const { Op } = require("sequelize");
 const Proveedor = require("../models/Proveedor");
-const CuentaContable = require("../models/CuentaContable");
 const { logError } = require("../utils/logger");
 
 const ESTADOS_PROVEEDOR = ["activo", "inactivo", "en_evaluacion"];
-
-const cuentaInclude = {
-  model: CuentaContable,
-  as: "cuentaContable",
-  attributes: ["id", "numero", "nombre", "activa"],
-};
 
 const trimOrNull = (value) => {
   if (value === undefined || value === null) return null;
@@ -59,20 +52,41 @@ const normalizeInt = (value, { min = 0 } = {}) => {
   return num < min ? min : num;
 };
 
-const assertCuentaDisponible = async (cuentaContableId, { excludeProveedorId } = {}) => {
-  const cuenta = await CuentaContable.findByPk(cuentaContableId);
-  if (!cuenta) return { error: "Cuenta contable no encontrada.", code: 404 };
-  if (!cuenta.activa) return { error: "La cuenta contable no está activa.", code: 400 };
-  const occupied = await Proveedor.findOne({
-    where: {
-      cuentaContableId,
-      ...(excludeProveedorId ? { id: { [Op.ne]: excludeProveedorId } } : {}),
-    },
-  });
-  if (occupied) {
-    return { error: "La cuenta contable ya está asignada a otro proveedor.", code: 400 };
+const CLABE_RE = /^\d{18}$/;
+
+const normalizeCuentasBancarias = (value) => {
+  if (value === undefined) return { skipped: true };
+  if (!Array.isArray(value)) {
+    return { error: "cuentasBancarias debe ser un arreglo." };
   }
-  return { cuenta };
+
+  const cuentas = [];
+  for (let i = 0; i < value.length; i += 1) {
+    const raw = value[i] || {};
+    const banco = String(raw.banco || "").trim();
+    const numeroCuenta = String(raw.numeroCuenta || "").trim();
+    const clabe = String(raw.clabe || "").trim();
+
+    if (!banco && !numeroCuenta && !clabe) continue;
+
+    if (!banco || !numeroCuenta || !clabe) {
+      return {
+        error: `La cuenta bancaria #${cuentas.length + 1} requiere banco, número de cuenta y CLABE.`,
+      };
+    }
+    if (!CLABE_RE.test(clabe)) {
+      return {
+        error: `La CLABE de la cuenta #${cuentas.length + 1} debe tener exactamente 18 dígitos.`,
+      };
+    }
+    cuentas.push({ banco, numeroCuenta, clabe });
+  }
+
+  if (cuentas.length === 0) {
+    return { error: "Debes registrar al menos una cuenta bancaria." };
+  }
+
+  return { cuentas };
 };
 
 const buildPayload = (body, { partial = false } = {}) => {
@@ -145,12 +159,14 @@ const buildPayload = (body, { partial = false } = {}) => {
     }
   }
 
-  if (!partial || body.cuentaContableId !== undefined) {
-    const cuentaContableId = trimOrNull(body.cuentaContableId);
-    if (!cuentaContableId) {
-      errors.push("La cuenta contable es obligatoria.");
-    } else {
-      payload.cuentaContableId = cuentaContableId;
+  if (!partial || body.cuentasBancarias !== undefined) {
+    const result = normalizeCuentasBancarias(
+      body.cuentasBancarias !== undefined ? body.cuentasBancarias : []
+    );
+    if (result.error) {
+      errors.push(result.error);
+    } else if (!result.skipped) {
+      payload.cuentasBancarias = result.cuentas;
     }
   }
 
@@ -174,7 +190,6 @@ const list = async (req, res) => {
     }
     const proveedores = await Proveedor.findAll({
       where,
-      include: [cuentaInclude],
       order: [["nombre", "ASC"]],
     });
     return res.status(200).json({ proveedores });
@@ -189,9 +204,7 @@ const list = async (req, res) => {
 
 const getById = async (req, res) => {
   try {
-    const proveedor = await Proveedor.findByPk(req.params.id, {
-      include: [cuentaInclude],
-    });
+    const proveedor = await Proveedor.findByPk(req.params.id);
     if (!proveedor) {
       return res.status(404).json({ message: "Proveedor no encontrado." });
     }
@@ -211,24 +224,12 @@ const create = async (req, res) => {
     if (errors.length > 0) {
       return res.status(400).json({ message: errors.join(" ") });
     }
-    const check = await assertCuentaDisponible(payload.cuentaContableId);
-    if (check.error) {
-      return res.status(check.code).json({ message: check.error });
-    }
-    const created = await Proveedor.create(payload);
-    const proveedor = await Proveedor.findByPk(created.id, {
-      include: [cuentaInclude],
-    });
+    const proveedor = await Proveedor.create(payload);
     return res.status(201).json({
       message: "Proveedor creado correctamente.",
       proveedor,
     });
   } catch (error) {
-    if (error?.name === "SequelizeUniqueConstraintError") {
-      return res.status(400).json({
-        message: "La cuenta contable ya está asignada a otro proveedor.",
-      });
-    }
     logError("Error al crear proveedor.", error);
     return res.status(500).json({
       message: "Error al crear proveedor.",
@@ -251,35 +252,12 @@ const update = async (req, res) => {
     if (Object.keys(payload).length === 0) {
       return res.status(400).json({ message: "No hay campos para actualizar." });
     }
-
-    const nextCuentaId =
-      payload.cuentaContableId !== undefined
-        ? payload.cuentaContableId
-        : proveedor.cuentaContableId;
-    if (!nextCuentaId) {
-      return res.status(400).json({ message: "La cuenta contable es obligatoria." });
-    }
-    if (payload.cuentaContableId !== undefined) {
-      const check = await assertCuentaDisponible(payload.cuentaContableId, {
-        excludeProveedorId: id,
-      });
-      if (check.error) {
-        return res.status(check.code).json({ message: check.error });
-      }
-    }
-
     await proveedor.update(payload);
-    const updated = await Proveedor.findByPk(id, { include: [cuentaInclude] });
     return res.status(200).json({
       message: "Proveedor actualizado correctamente.",
-      proveedor: updated,
+      proveedor,
     });
   } catch (error) {
-    if (error?.name === "SequelizeUniqueConstraintError") {
-      return res.status(400).json({
-        message: "La cuenta contable ya está asignada a otro proveedor.",
-      });
-    }
     logError("Error al actualizar proveedor.", error);
     return res.status(500).json({
       message: "Error al actualizar proveedor.",
