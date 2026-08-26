@@ -1174,6 +1174,24 @@ const ProyectoDetalle = () => {
                 </CollapsibleTrigger>
                 <CollapsibleContent className="border-t border-border px-4 py-3">
                   <div className="space-y-3">
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Carátula: </span>
+                      {estimacion.caratula ? (
+                        <button
+                          type="button"
+                          className="max-w-full truncate text-left text-primary underline-offset-4 hover:underline"
+                          title={getUploadDisplayName(estimacion.caratula)}
+                          onClick={() => {
+                            const src = toAbsoluteAssetUrl(estimacion.caratula)
+                            if (src) setLightboxSrc(src)
+                          }}
+                        >
+                          {getUploadDisplayName(estimacion.caratula)}
+                        </button>
+                      ) : (
+                        <span className="text-muted-foreground">Sin carátula</span>
+                      )}
+                    </div>
                     {MODULOS_MONTOS.map((modulo) => (
                       <Collapsible
                         key={`${estimacion.id}-${modulo.title}`}
