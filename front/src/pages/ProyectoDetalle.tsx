@@ -1164,29 +1164,36 @@ const ProyectoDetalle = () => {
               Selecciona una estimación para ver sus estados de cuenta.
             </p>
           ) : (
-            MODULOS_MONTOS.map((modulo) => (
-              <div key={modulo.title} className="space-y-2">
-                <h3 className="text-sm font-semibold text-foreground">{modulo.title}</h3>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Concepto</TableHead>
-                      <TableHead className="text-right">Monto</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {modulo.fields.map((field) => (
-                      <TableRow key={field.key}>
-                        <TableCell>{field.label}</TableCell>
-                        <TableCell className="text-right font-medium">
-                          {formatCurrency(editingEstimacion[field.key] || 0)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ))
+            <div className="space-y-3">
+              {MODULOS_MONTOS.map((modulo) => (
+                <Collapsible key={modulo.title} className="rounded-md border border-border">
+                  <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold hover:bg-muted/50 [&[data-state=open]>svg]:rotate-180">
+                    <span>{modulo.title}</span>
+                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="border-t border-border px-4 py-3">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Concepto</TableHead>
+                          <TableHead className="text-right">Monto</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {modulo.fields.map((field) => (
+                          <TableRow key={field.key}>
+                            <TableCell>{field.label}</TableCell>
+                            <TableCell className="text-right font-medium">
+                              {formatCurrency(editingEstimacion[field.key] || 0)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CollapsibleContent>
+                </Collapsible>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>
