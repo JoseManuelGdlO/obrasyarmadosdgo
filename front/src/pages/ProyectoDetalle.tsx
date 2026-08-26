@@ -1152,48 +1152,63 @@ const ProyectoDetalle = () => {
 
       <Card className="border-none shadow-md">
         <CardHeader>
-          <CardTitle>
-            {editingEstimacion
-              ? `Estados de cuenta — Estimación #${editingEstimacion.numero}`
-              : "Estados de cuenta"}
-          </CardTitle>
+          <CardTitle>Estados de cuenta</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {!editingEstimacion ? (
+        <CardContent className="space-y-3">
+          {estimaciones.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Selecciona una estimación para ver sus estados de cuenta.
+              Sin estimaciones registradas.
             </p>
           ) : (
-            <div className="space-y-3">
-              {MODULOS_MONTOS.map((modulo) => (
-                <Collapsible key={modulo.title} className="rounded-md border border-border">
-                  <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold hover:bg-muted/50 [&[data-state=open]>svg]:rotate-180">
-                    <span>{modulo.title}</span>
-                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="border-t border-border px-4 py-3">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Concepto</TableHead>
-                          <TableHead className="text-right">Monto</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {modulo.fields.map((field) => (
-                          <TableRow key={field.key}>
-                            <TableCell>{field.label}</TableCell>
-                            <TableCell className="text-right font-medium">
-                              {formatCurrency(editingEstimacion[field.key] || 0)}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CollapsibleContent>
-                </Collapsible>
-              ))}
-            </div>
+            estimaciones.map((estimacion) => (
+              <Collapsible key={estimacion.id} className="rounded-md border border-border">
+                <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left font-medium hover:bg-muted/50 [&[data-state=open]>svg]:rotate-180">
+                  <span className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
+                    <span>Estimación #{estimacion.numero}</span>
+                    <span className="text-sm font-normal text-muted-foreground">
+                      {estimacion.fechaEstimacion || "Sin fecha"} ·{" "}
+                      {formatCurrency(estimacion.montoEstimacion)}
+                    </span>
+                  </span>
+                  <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="border-t border-border px-4 py-3">
+                  <div className="space-y-3">
+                    {MODULOS_MONTOS.map((modulo) => (
+                      <Collapsible
+                        key={`${estimacion.id}-${modulo.title}`}
+                        className="rounded-md border border-border"
+                      >
+                        <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold hover:bg-muted/50 [&[data-state=open]>svg]:rotate-180">
+                          <span>{modulo.title}</span>
+                          <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="border-t border-border px-4 py-3">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Concepto</TableHead>
+                                <TableHead className="text-right">Monto</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {modulo.fields.map((field) => (
+                                <TableRow key={field.key}>
+                                  <TableCell>{field.label}</TableCell>
+                                  <TableCell className="text-right font-medium">
+                                    {formatCurrency(estimacion[field.key] || 0)}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            ))
           )}
         </CardContent>
       </Card>
