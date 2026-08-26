@@ -55,6 +55,38 @@ type EstimacionFoto = {
   ruta: string
 }
 
+const MONTOS_MANUALES_KEYS = [
+  "contratoPrincipalSinIva",
+  "acumuladoEstimacionAnterior",
+  "estaEstimacion",
+  "estimadoALaFecha",
+  "saldoPorEstimar",
+  "pagoDeduccion",
+  "pagoOtrasDeducciones",
+  "pagoEstaEstimacion",
+  "pagoAmortizacionAnticipo",
+  "pagoSubTotal1",
+  "pagoRetencionFondoGarantia",
+  "pagoSubTotal2",
+  "pagoIva16",
+  "pagoTotalAPagar",
+  "anticipoTotalSinIva",
+  "anticipoAcumuladoAnterior",
+  "anticipoEstaEstimacion",
+  "anticipoAcumuladoEsta",
+  "anticipoSaldoPorAmortizar",
+  "fondoTotalRetencionSinIva",
+  "fondoAcumuladoAnterior",
+  "fondoEstaEstimacion",
+  "fondoAcumuladoEsta",
+  "fondoSaldoPorRetener",
+] as const
+
+type MontoManualKey = (typeof MONTOS_MANUALES_KEYS)[number]
+
+type MontosManualesNumeros = Record<MontoManualKey, number>
+type MontosManualesForm = Record<MontoManualKey, string>
+
 type EstimacionData = {
   id: string
   numero: number
@@ -66,12 +98,7 @@ type EstimacionData = {
   retencionAmortizacion: number
   caratula: string | null
   fotos: EstimacionFoto[]
-  contratoPrincipalSinIva: number
-  acumuladoEstimacionAnterior: number
-  estaEstimacion: number
-  estimadoALaFecha: number
-  saldoPorEstimar: number
-}
+} & MontosManualesNumeros
 
 type EstimacionForm = {
   fechaEstimacion: string
@@ -80,12 +107,75 @@ type EstimacionForm = {
   montoPagado: string
   factura: string
   retencionAmortizacion: string
-  contratoPrincipalSinIva: string
-  acumuladoEstimacionAnterior: string
-  estaEstimacion: string
-  estimadoALaFecha: string
-  saldoPorEstimar: string
-}
+} & MontosManualesForm
+
+const emptyMontosForm = (): MontosManualesForm =>
+  Object.fromEntries(MONTOS_MANUALES_KEYS.map((key) => [key, "0"])) as MontosManualesForm
+
+const montosFromRecord = (estimacion: Record<string, unknown>): MontosManualesNumeros =>
+  Object.fromEntries(
+    MONTOS_MANUALES_KEYS.map((key) => [key, Number(estimacion[key] || 0)])
+  ) as MontosManualesNumeros
+
+const montosFormFromRecord = (estimacion: Record<string, unknown>): MontosManualesForm =>
+  Object.fromEntries(
+    MONTOS_MANUALES_KEYS.map((key) => [key, String(Number(estimacion[key] || 0))])
+  ) as MontosManualesForm
+
+const montosFormFromData = (estimacion: EstimacionData): MontosManualesForm =>
+  Object.fromEntries(
+    MONTOS_MANUALES_KEYS.map((key) => [key, String(estimacion[key])])
+  ) as MontosManualesForm
+
+type MontoFieldDef = { key: MontoManualKey; label: string }
+
+const MODULOS_MONTOS: Array<{ title: string; fields: MontoFieldDef[] }> = [
+  {
+    title: "Estado de Cuenta del Contrato (Sin IVA)",
+    fields: [
+      { key: "contratoPrincipalSinIva", label: "Contrato Principal sin IVA" },
+      { key: "acumuladoEstimacionAnterior", label: "Acumulado Estimación Anterior" },
+      { key: "estaEstimacion", label: "Esta Estimación" },
+      { key: "estimadoALaFecha", label: "Estimado a la Fecha" },
+      { key: "saldoPorEstimar", label: "Saldo por Estimar" },
+    ],
+  },
+  {
+    title: "Generación del pago",
+    fields: [
+      { key: "pagoDeduccion", label: "Deduccion" },
+      { key: "pagoOtrasDeducciones", label: "Otras deducciones" },
+      { key: "pagoEstaEstimacion", label: "Esta Estimacion" },
+      { key: "pagoAmortizacionAnticipo", label: "Amortizacion del anticipo" },
+      { key: "pagoSubTotal1", label: "Sub Total" },
+      { key: "pagoRetencionFondoGarantia", label: "Retencion del Fondo Garantia" },
+      { key: "pagoSubTotal2", label: "Sub Total" },
+      { key: "pagoIva16", label: "I. V. A. 16%" },
+      { key: "pagoTotalAPagar", label: "Total a pagar" },
+    ],
+  },
+  {
+    title:
+      "Estado de Cuenta del Anticipo (Sin IVA) — NOTA: SE AMORTIZA EL 5% MAS QYE EK AUTORIZADO",
+    fields: [
+      { key: "anticipoTotalSinIva", label: "Total del Anticipo N.-1 sin IVA" },
+      { key: "anticipoAcumuladoAnterior", label: "Acumulado a Estimacion anterior" },
+      { key: "anticipoEstaEstimacion", label: "Esta Estimacion" },
+      { key: "anticipoAcumuladoEsta", label: "Acumulado a esta Estimacion" },
+      { key: "anticipoSaldoPorAmortizar", label: "Saldo Anticipo por Amortizar" },
+    ],
+  },
+  {
+    title: "Estado de Cuenta Fondo de Garantia 3% (Sin IVA)",
+    fields: [
+      { key: "fondoTotalRetencionSinIva", label: "Total de Retencion sin IVA" },
+      { key: "fondoAcumuladoAnterior", label: "Acumulado a Estimacion anterior" },
+      { key: "fondoEstaEstimacion", label: "Esta Estimacion" },
+      { key: "fondoAcumuladoEsta", label: "Acumulado a esta Estimacion" },
+      { key: "fondoSaldoPorRetener", label: "Saldo Anticipo por Retener" },
+    ],
+  },
+]
 
 const defaultForm: ProyectoForm = {
   clienteId: "",
@@ -111,11 +201,7 @@ const emptyEstimacion: EstimacionForm = {
   montoPagado: "0",
   factura: "",
   retencionAmortizacion: "0",
-  contratoPrincipalSinIva: "0",
-  acumuladoEstimacionAnterior: "0",
-  estaEstimacion: "0",
-  estimadoALaFecha: "0",
-  saldoPorEstimar: "0",
+  ...emptyMontosForm(),
 }
 
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024
@@ -152,11 +238,7 @@ const toEstimacionData = (estimacion: Record<string, unknown>): EstimacionData =
         return { id: String(value.id || ""), ruta: String(value.ruta || "") }
       })
     : [],
-  contratoPrincipalSinIva: Number(estimacion.contratoPrincipalSinIva || 0),
-  acumuladoEstimacionAnterior: Number(estimacion.acumuladoEstimacionAnterior || 0),
-  estaEstimacion: Number(estimacion.estaEstimacion || 0),
-  estimadoALaFecha: Number(estimacion.estimadoALaFecha || 0),
-  saldoPorEstimar: Number(estimacion.saldoPorEstimar || 0),
+  ...montosFromRecord(estimacion),
 })
 
 const toEstimacionForm = (estimacion: Record<string, unknown>): EstimacionForm => ({
@@ -166,11 +248,7 @@ const toEstimacionForm = (estimacion: Record<string, unknown>): EstimacionForm =
   montoPagado: String(Number(estimacion.montoPagado || 0)),
   factura: String(estimacion.factura || ""),
   retencionAmortizacion: String(Number(estimacion.retencionAmortizacion || 0)),
-  contratoPrincipalSinIva: String(Number(estimacion.contratoPrincipalSinIva || 0)),
-  acumuladoEstimacionAnterior: String(Number(estimacion.acumuladoEstimacionAnterior || 0)),
-  estaEstimacion: String(Number(estimacion.estaEstimacion || 0)),
-  estimadoALaFecha: String(Number(estimacion.estimadoALaFecha || 0)),
-  saldoPorEstimar: String(Number(estimacion.saldoPorEstimar || 0)),
+  ...montosFormFromRecord(estimacion),
 })
 
 const formatCurrency = (amount: number) =>
@@ -377,17 +455,9 @@ const ProyectoDetalle = () => {
       "retencionAmortizacion",
       String(Number(estimForm.retencionAmortizacion || 0))
     )
-    body.append(
-      "contratoPrincipalSinIva",
-      String(Number(estimForm.contratoPrincipalSinIva || 0))
-    )
-    body.append(
-      "acumuladoEstimacionAnterior",
-      String(Number(estimForm.acumuladoEstimacionAnterior || 0))
-    )
-    body.append("estaEstimacion", String(Number(estimForm.estaEstimacion || 0)))
-    body.append("estimadoALaFecha", String(Number(estimForm.estimadoALaFecha || 0)))
-    body.append("saldoPorEstimar", String(Number(estimForm.saldoPorEstimar || 0)))
+    for (const key of MONTOS_MANUALES_KEYS) {
+      body.append(key, String(Number(estimForm[key] || 0)))
+    }
     if (caratulaFile) body.append("caratula", caratulaFile)
     if (quitarCaratula) body.append("quitarCaratula", "true")
     return body
@@ -507,11 +577,7 @@ const ProyectoDetalle = () => {
       montoPagado: String(estimacion.montoPagado),
       factura: estimacion.factura,
       retencionAmortizacion: String(estimacion.retencionAmortizacion),
-      contratoPrincipalSinIva: String(estimacion.contratoPrincipalSinIva),
-      acumuladoEstimacionAnterior: String(estimacion.acumuladoEstimacionAnterior),
-      estaEstimacion: String(estimacion.estaEstimacion),
-      estimadoALaFecha: String(estimacion.estimadoALaFecha),
-      saldoPorEstimar: String(estimacion.saldoPorEstimar),
+      ...montosFormFromData(estimacion),
     })
   }
 
@@ -964,121 +1030,41 @@ const ProyectoDetalle = () => {
               ))}
             </ul>
           </div>
-          <Collapsible className="rounded-md border border-border">
-            <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-left font-medium hover:bg-muted/50 [&[data-state=open]>svg]:rotate-180">
-              Estado de Cuenta del Contrato (Sin IVA)
-              <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="border-t border-border px-4 py-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Contrato Principal sin IVA</Label>
-                  <div className="relative">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      $
-                    </span>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      className="pl-7"
-                      value={estimForm.contratoPrincipalSinIva}
-                      onChange={(event) =>
-                        setEstimForm((prev) => ({
-                          ...prev,
-                          contratoPrincipalSinIva: event.target.value,
-                        }))
-                      }
-                    />
-                  </div>
+          {MODULOS_MONTOS.map((modulo) => (
+            <Collapsible key={modulo.title} className="rounded-md border border-border">
+              <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left font-medium hover:bg-muted/50 [&[data-state=open]>svg]:rotate-180">
+                <span>{modulo.title}</span>
+                <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="border-t border-border px-4 py-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {modulo.fields.map((field) => (
+                    <div key={field.key} className="space-y-2">
+                      <Label>{field.label}</Label>
+                      <div className="relative">
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                          $
+                        </span>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          className="pl-7"
+                          value={estimForm[field.key]}
+                          onChange={(event) =>
+                            setEstimForm((prev) => ({
+                              ...prev,
+                              [field.key]: event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="space-y-2">
-                  <Label>Acumulado Estimación Anterior</Label>
-                  <div className="relative">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      $
-                    </span>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      className="pl-7"
-                      value={estimForm.acumuladoEstimacionAnterior}
-                      onChange={(event) =>
-                        setEstimForm((prev) => ({
-                          ...prev,
-                          acumuladoEstimacionAnterior: event.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Esta Estimación</Label>
-                  <div className="relative">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      $
-                    </span>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      className="pl-7"
-                      value={estimForm.estaEstimacion}
-                      onChange={(event) =>
-                        setEstimForm((prev) => ({
-                          ...prev,
-                          estaEstimacion: event.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Estimado a la Fecha</Label>
-                  <div className="relative">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      $
-                    </span>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      className="pl-7"
-                      value={estimForm.estimadoALaFecha}
-                      onChange={(event) =>
-                        setEstimForm((prev) => ({
-                          ...prev,
-                          estimadoALaFecha: event.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Saldo por Estimar</Label>
-                  <div className="relative">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      $
-                    </span>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      className="pl-7"
-                      value={estimForm.saldoPorEstimar}
-                      onChange={(event) =>
-                        setEstimForm((prev) => ({
-                          ...prev,
-                          saldoPorEstimar: event.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
+              </CollapsibleContent>
+            </Collapsible>
+          ))}
           <div className="flex gap-2">
             <Button onClick={submitEstim} disabled={isSavingEstim}>
               <Plus className="w-4 h-4 mr-2" />
