@@ -1150,6 +1150,47 @@ const ProyectoDetalle = () => {
         </CardContent>
       </Card>
 
+      <Card className="border-none shadow-md">
+        <CardHeader>
+          <CardTitle>
+            {editingEstimacion
+              ? `Estados de cuenta — Estimación #${editingEstimacion.numero}`
+              : "Estados de cuenta"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {!editingEstimacion ? (
+            <p className="text-sm text-muted-foreground">
+              Selecciona una estimación para ver sus estados de cuenta.
+            </p>
+          ) : (
+            MODULOS_MONTOS.map((modulo) => (
+              <div key={modulo.title} className="space-y-2">
+                <h3 className="text-sm font-semibold text-foreground">{modulo.title}</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Concepto</TableHead>
+                      <TableHead className="text-right">Monto</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {modulo.fields.map((field) => (
+                      <TableRow key={field.key}>
+                        <TableCell>{field.label}</TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatCurrency(editingEstimacion[field.key] || 0)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
       {/* Resúmenes */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="border-none shadow-md">
