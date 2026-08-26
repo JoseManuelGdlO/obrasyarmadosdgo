@@ -13,11 +13,11 @@ const MaquinaChecklistItem = require("./MaquinaChecklistItem");
 const MaquinaPlanServicio = require("./MaquinaPlanServicio");
 const PlanServicioPieza = require("./PlanServicioPieza");
 const Proveedor = require("./Proveedor");
-const CuentaContable = require("./CuentaContable");
 const Trabajador = require("./Trabajador");
 const Proyecto = require("./Proyecto");
 const ProyectoEstimacion = require("./ProyectoEstimacion");
 const ProyectoEstimacionFoto = require("./ProyectoEstimacionFoto");
+const ProyectoEstimacionEstadoCuenta = require("./ProyectoEstimacionEstadoCuenta");
 const Asignacion = require("./Asignacion");
 const Nomenclatura = require("./Nomenclatura");
 const OrdenTrabajo = require("./OrdenTrabajo");
@@ -128,6 +128,16 @@ ProyectoEstimacionFoto.belongsTo(ProyectoEstimacion, {
   as: "estimacion",
 });
 
+ProyectoEstimacion.hasOne(ProyectoEstimacionEstadoCuenta, {
+  foreignKey: "estimacionId",
+  as: "estadoCuenta",
+  onDelete: "CASCADE",
+});
+ProyectoEstimacionEstadoCuenta.belongsTo(ProyectoEstimacion, {
+  foreignKey: "estimacionId",
+  as: "estimacion",
+});
+
 Proyecto.hasMany(Asignacion, { foreignKey: "proyectoId", as: "asignaciones" });
 Asignacion.belongsTo(Proyecto, { foreignKey: "proyectoId", as: "proyecto" });
 Maquina.hasMany(Asignacion, { foreignKey: "maquinaId", as: "asignaciones" });
@@ -139,9 +149,6 @@ Proyecto.hasMany(OrdenTrabajo, { foreignKey: "proyectoId", as: "ordenes" });
 OrdenTrabajo.belongsTo(Proyecto, { foreignKey: "proyectoId", as: "proyecto" });
 Maquina.hasMany(OrdenTrabajo, { foreignKey: "maquinaId", as: "ordenes" });
 OrdenTrabajo.belongsTo(Maquina, { foreignKey: "maquinaId", as: "maquina" });
-CuentaContable.hasOne(Proveedor, { foreignKey: "cuentaContableId", as: "proveedor" });
-Proveedor.belongsTo(CuentaContable, { foreignKey: "cuentaContableId", as: "cuentaContable" });
-
 Proveedor.hasMany(OrdenTrabajo, { foreignKey: "proveedorId", as: "ordenes" });
 OrdenTrabajo.belongsTo(Proveedor, { foreignKey: "proveedorId", as: "proveedor" });
 Nomenclatura.hasMany(OrdenTrabajo, { foreignKey: "nomenclaturaId", as: "ordenes" });
@@ -216,11 +223,11 @@ module.exports = {
   MaquinaPlanServicio,
   PlanServicioPieza,
   Proveedor,
-  CuentaContable,
   Trabajador,
   Proyecto,
   ProyectoEstimacion,
   ProyectoEstimacionFoto,
+  ProyectoEstimacionEstadoCuenta,
   Asignacion,
   Nomenclatura,
   OrdenTrabajo,

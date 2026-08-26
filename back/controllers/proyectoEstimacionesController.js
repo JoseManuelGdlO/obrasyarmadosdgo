@@ -2,6 +2,8 @@ const sequelize = require("../config/database");
 const Proyecto = require("../models/Proyecto");
 const ProyectoEstimacion = require("../models/ProyectoEstimacion");
 const ProyectoEstimacionFoto = require("../models/ProyectoEstimacionFoto");
+const ProyectoEstimacionEstadoCuenta = require("../models/ProyectoEstimacionEstadoCuenta");
+const { ESTADO_CUENTA_FIELDS } = require("../constants/estadoCuentaFields");
 const { ESTIMACION_UPLOADS_ROUTE } = require("../config/uploads");
 const {
   cleanupUploadedEstimacionFilesIfPresent,
@@ -19,6 +21,13 @@ const fotosInclude = {
   attributes: ["id", "ruta", "createdAt", "updatedAt"],
 };
 
+const estadoCuentaInclude = {
+  model: ProyectoEstimacionEstadoCuenta,
+  as: "estadoCuenta",
+};
+
+const estimacionIncludes = [fotosInclude, estadoCuentaInclude];
+
 const buildPublicEstimacionUploadPath = (filename) =>
   `${ESTIMACION_UPLOADS_ROUTE}/${encodeURIComponent(filename)}`;
 
@@ -35,33 +44,6 @@ const toDecimal = (value, fallback = 0) => {
   const num = Number(value);
   return Number.isNaN(num) ? fallback : num;
 };
-
-const ESTADO_CUENTA_FIELDS = [
-  "contratoPrincipalSinIva",
-  "acumuladoEstimacionAnterior",
-  "estaEstimacion",
-  "estimadoALaFecha",
-  "saldoPorEstimar",
-  "pagoDeduccion",
-  "pagoOtrasDeducciones",
-  "pagoEstaEstimacion",
-  "pagoAmortizacionAnticipo",
-  "pagoSubTotal1",
-  "pagoRetencionFondoGarantia",
-  "pagoSubTotal2",
-  "pagoIva16",
-  "pagoTotalAPagar",
-  "anticipoTotalSinIva",
-  "anticipoAcumuladoAnterior",
-  "anticipoEstaEstimacion",
-  "anticipoAcumuladoEsta",
-  "anticipoSaldoPorAmortizar",
-  "fondoTotalRetencionSinIva",
-  "fondoAcumuladoAnterior",
-  "fondoEstaEstimacion",
-  "fondoAcumuladoEsta",
-  "fondoSaldoPorRetener",
-];
 
 const parseNonNegativeDecimal = (value, fieldName) => {
   const num = toDecimal(value, 0);
@@ -85,6 +67,19 @@ const pickEstadoCuentaFromBody = (body, { partial = false } = {}) => {
   return out;
 };
 
+const zeroEstadoCuenta = () =>
+  Object.fromEntries(ESTADO_CUENTA_FIELDS.map((field) => [field, 0]));
+
+const serializeEstimacion = (row) => {
+  const json = typeof row.toJSON === "function" ? row.toJSON() : { ...row };
+  const estado = json.estadoCuenta || {};
+  delete json.estadoCuenta;
+  for (const field of ESTADO_CUENTA_FIELDS) {
+    json[field] = estado[field] != null ? Number(estado[field]) : 0;
+  }
+  return json;
+};
+
 const listEstimaciones = async (req, res) => {
   try {
     const { proyectoId } = req.params;
@@ -94,13 +89,15 @@ const listEstimaciones = async (req, res) => {
     }
     const estimaciones = await ProyectoEstimacion.findAll({
       where: { proyectoId },
-      include: [fotosInclude],
+      include: estimacionIncludes,
       order: [
         ["numero", "ASC"],
         ["createdAt", "ASC"],
       ],
     });
-    return res.status(200).json({ estimaciones });
+    return res.status(200).json({
+      estimaciones: estimaciones.map(serializeEstimacion),
+    });
   } catch (error) {
     logError("Error al listar estimaciones del proyecto.", error);
     return res.status(500).json({
@@ -119,12 +116,12 @@ const getEstimacionById = async (req, res) => {
     }
     const estimacion = await ProyectoEstimacion.findOne({
       where: { id, proyectoId },
-      include: [fotosInclude],
+      include: estimacionIncludes,
     });
     if (!estimacion) {
       return res.status(404).json({ message: "Estimación no encontrada." });
     }
-    return res.status(200).json({ estimacion });
+    return res.status(200).json({ estimacion: serializeEstimacion(estimacion) });
   } catch (error) {
     logError("Error al obtener la estimación.", error);
     return res.status(500).json({
@@ -136,6 +133,7 @@ const getEstimacionById = async (req, res) => {
 
 const createEstimacion = async (req, res) => {
   let persisted = false;
+  let transaction;
   try {
     const { proyectoId } = req.params;
     const proyecto = await ensureProyecto(proyectoId);
@@ -162,41 +160,59 @@ const createEstimacion = async (req, res) => {
 
     const uploadedCaratula = getUploadedFile(req, "caratula");
     const estadoCuenta = pickEstadoCuentaFromBody(req.body);
-    const created = await ProyectoEstimacion.create({
-      proyectoId,
-      numero: numeroFinal,
-      fechaEstimacion: fechaEstimacion || null,
-      montoEstimacion: toDecimal(montoEstimacion),
-      fechaPago: fechaPago || null,
-      montoPagado: toDecimal(montoPagado),
-      factura: factura ? String(factura).trim() || null : null,
-      retencionAmortizacion: toDecimal(retencionAmortizacion),
-      caratula: uploadedCaratula
-        ? buildPublicEstimacionUploadPath(uploadedCaratula.filename)
-        : null,
-      ...estadoCuenta,
-    });
+
+    transaction = await sequelize.transaction();
+    const created = await ProyectoEstimacion.create(
+      {
+        proyectoId,
+        numero: numeroFinal,
+        fechaEstimacion: fechaEstimacion || null,
+        montoEstimacion: toDecimal(montoEstimacion),
+        fechaPago: fechaPago || null,
+        montoPagado: toDecimal(montoPagado),
+        factura: factura ? String(factura).trim() || null : null,
+        retencionAmortizacion: toDecimal(retencionAmortizacion),
+        caratula: uploadedCaratula
+          ? buildPublicEstimacionUploadPath(uploadedCaratula.filename)
+          : null,
+      },
+      { transaction }
+    );
+    await ProyectoEstimacionEstadoCuenta.create(
+      {
+        estimacionId: created.id,
+        ...estadoCuenta,
+      },
+      { transaction }
+    );
+    await transaction.commit();
     persisted = true;
+
     let estimacion = created;
     try {
       const reloaded = await ProyectoEstimacion.findOne({
         where: { id: created.id },
-        include: [fotosInclude],
+        include: estimacionIncludes,
       });
       if (reloaded) {
         estimacion = reloaded;
       } else {
         created.setDataValue("fotos", []);
+        created.setDataValue("estadoCuenta", { ...estadoCuenta });
       }
     } catch (reloadError) {
       logger.warn(`No se pudo recargar la estimación creada: ${reloadError.message}`);
       created.setDataValue("fotos", []);
+      created.setDataValue("estadoCuenta", { ...estadoCuenta });
     }
     return res.status(201).json({
       message: "Estimación agregada correctamente.",
-      estimacion,
+      estimacion: serializeEstimacion(estimacion),
     });
   } catch (error) {
+    if (transaction && !transaction.finished) {
+      await transaction.rollback();
+    }
     if (!persisted) {
       await cleanupUploadedEstimacionFilesIfPresent(req);
     }
@@ -211,8 +227,29 @@ const createEstimacion = async (req, res) => {
   }
 };
 
+const upsertEstadoCuenta = async (estimacionId, montos, transaction) => {
+  if (!Object.keys(montos).length) return;
+  const existing = await ProyectoEstimacionEstadoCuenta.findOne({
+    where: { estimacionId },
+    transaction,
+  });
+  if (existing) {
+    await existing.update(montos, { transaction });
+    return;
+  }
+  await ProyectoEstimacionEstadoCuenta.create(
+    {
+      estimacionId,
+      ...zeroEstadoCuenta(),
+      ...montos,
+    },
+    { transaction }
+  );
+};
+
 const updateEstimacion = async (req, res) => {
   let uploadedPathPersisted = false;
+  let transaction;
   try {
     const { proyectoId, id } = req.params;
     const proyecto = await ensureProyecto(proyectoId);
@@ -249,7 +286,7 @@ const updateEstimacion = async (req, res) => {
     if (retencionAmortizacion !== undefined) {
       updates.retencionAmortizacion = toDecimal(retencionAmortizacion);
     }
-    Object.assign(updates, pickEstadoCuentaFromBody(req.body, { partial: true }));
+    const estadoUpdates = pickEstadoCuentaFromBody(req.body, { partial: true });
 
     const uploadedCaratula = getUploadedFile(req, "caratula");
     const previousCaratula = estimacion.caratula;
@@ -259,8 +296,12 @@ const updateEstimacion = async (req, res) => {
       updates.caratula = null;
     }
 
-    await estimacion.update(updates);
+    transaction = await sequelize.transaction();
+    await estimacion.update(updates, { transaction });
+    await upsertEstadoCuenta(estimacion.id, estadoUpdates, transaction);
+    await transaction.commit();
     uploadedPathPersisted = Boolean(uploadedCaratula);
+
     if (
       previousCaratula &&
       updates.caratula !== undefined &&
@@ -272,7 +313,7 @@ const updateEstimacion = async (req, res) => {
     try {
       const reloaded = await ProyectoEstimacion.findOne({
         where: { id: estimacion.id },
-        include: [fotosInclude],
+        include: estimacionIncludes,
       });
       if (reloaded) {
         refreshed = reloaded;
@@ -282,9 +323,12 @@ const updateEstimacion = async (req, res) => {
     }
     return res.status(200).json({
       message: "Estimación actualizada correctamente.",
-      estimacion: refreshed,
+      estimacion: serializeEstimacion(refreshed),
     });
   } catch (error) {
+    if (transaction && !transaction.finished) {
+      await transaction.rollback();
+    }
     if (!uploadedPathPersisted) {
       await cleanupUploadedEstimacionFilesIfPresent(req);
     }
@@ -376,14 +420,11 @@ const addFotosEstimacion = async (req, res) => {
     await transaction.commit();
     persisted = true;
 
-    let refreshed = {
-      ...estimacion.toJSON(),
-      fotos: created,
-    };
+    let refreshed;
     try {
       const reloaded = await ProyectoEstimacion.findOne({
         where: { id: estimacion.id },
-        include: [fotosInclude],
+        include: estimacionIncludes,
       });
       if (reloaded) {
         refreshed = reloaded;
@@ -391,9 +432,19 @@ const addFotosEstimacion = async (req, res) => {
     } catch (reloadError) {
       logger.warn(`No se pudo recargar la estimación con fotos: ${reloadError.message}`);
     }
+    if (!refreshed) {
+      const estadoCuenta = await ProyectoEstimacionEstadoCuenta.findOne({
+        where: { estimacionId: estimacion.id },
+      });
+      refreshed = {
+        ...estimacion.toJSON(),
+        fotos: created,
+        estadoCuenta: estadoCuenta ? estadoCuenta.toJSON() : zeroEstadoCuenta(),
+      };
+    }
     return res.status(201).json({
       message: "Fotos agregadas correctamente.",
-      estimacion: refreshed,
+      estimacion: serializeEstimacion(refreshed),
       fotos: created,
     });
   } catch (error) {
