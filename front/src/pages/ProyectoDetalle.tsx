@@ -1,13 +1,18 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { ArrowLeft, Plus, Pencil, Trash2, X, DollarSign, FileText, ListChecks } from "lucide-react"
+import { ArrowLeft, Plus, Pencil, Trash2, X, DollarSign, FileText, ListChecks, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import {
   Select,
   SelectContent,
@@ -24,7 +29,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { apiRequest, toAbsoluteAssetUrl } from "@/lib/api"
 
 type Estado = "planeado" | "en_progreso" | "pausado" | "completado"
@@ -62,6 +66,11 @@ type EstimacionData = {
   retencionAmortizacion: number
   caratula: string | null
   fotos: EstimacionFoto[]
+  contratoPrincipalSinIva: number
+  acumuladoEstimacionAnterior: number
+  estaEstimacion: number
+  estimadoALaFecha: number
+  saldoPorEstimar: number
 }
 
 type EstimacionForm = {
@@ -71,6 +80,11 @@ type EstimacionForm = {
   montoPagado: string
   factura: string
   retencionAmortizacion: string
+  contratoPrincipalSinIva: string
+  acumuladoEstimacionAnterior: string
+  estaEstimacion: string
+  estimadoALaFecha: string
+  saldoPorEstimar: string
 }
 
 const defaultForm: ProyectoForm = {
@@ -97,6 +111,11 @@ const emptyEstimacion: EstimacionForm = {
   montoPagado: "0",
   factura: "",
   retencionAmortizacion: "0",
+  contratoPrincipalSinIva: "0",
+  acumuladoEstimacionAnterior: "0",
+  estaEstimacion: "0",
+  estimadoALaFecha: "0",
+  saldoPorEstimar: "0",
 }
 
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024
@@ -106,6 +125,15 @@ const validateImageFile = (file: File): string | null => {
   if (!ALLOWED_IMAGE_TYPES.has(file.type)) return "Las imágenes deben ser JPG o PNG."
   if (file.size > MAX_IMAGE_SIZE) return "Cada imagen debe pesar 2MB o menos."
   return null
+}
+
+const getUploadDisplayName = (pathOrName: string) => {
+  const segment = pathOrName.split("/").pop() || pathOrName
+  try {
+    return decodeURIComponent(segment)
+  } catch {
+    return segment
+  }
 }
 
 const toEstimacionData = (estimacion: Record<string, unknown>): EstimacionData => ({
@@ -124,6 +152,11 @@ const toEstimacionData = (estimacion: Record<string, unknown>): EstimacionData =
         return { id: String(value.id || ""), ruta: String(value.ruta || "") }
       })
     : [],
+  contratoPrincipalSinIva: Number(estimacion.contratoPrincipalSinIva || 0),
+  acumuladoEstimacionAnterior: Number(estimacion.acumuladoEstimacionAnterior || 0),
+  estaEstimacion: Number(estimacion.estaEstimacion || 0),
+  estimadoALaFecha: Number(estimacion.estimadoALaFecha || 0),
+  saldoPorEstimar: Number(estimacion.saldoPorEstimar || 0),
 })
 
 const toEstimacionForm = (estimacion: Record<string, unknown>): EstimacionForm => ({
@@ -133,6 +166,11 @@ const toEstimacionForm = (estimacion: Record<string, unknown>): EstimacionForm =
   montoPagado: String(Number(estimacion.montoPagado || 0)),
   factura: String(estimacion.factura || ""),
   retencionAmortizacion: String(Number(estimacion.retencionAmortizacion || 0)),
+  contratoPrincipalSinIva: String(Number(estimacion.contratoPrincipalSinIva || 0)),
+  acumuladoEstimacionAnterior: String(Number(estimacion.acumuladoEstimacionAnterior || 0)),
+  estaEstimacion: String(Number(estimacion.estaEstimacion || 0)),
+  estimadoALaFecha: String(Number(estimacion.estimadoALaFecha || 0)),
+  saldoPorEstimar: String(Number(estimacion.saldoPorEstimar || 0)),
 })
 
 const formatCurrency = (amount: number) =>
@@ -153,15 +191,34 @@ const ProyectoDetalle = () => {
   const [editingEstimId, setEditingEstimId] = useState<string | null>(null)
   const [caratulaFile, setCaratulaFile] = useState<File | null>(null)
   const [caratulaPreviewLocal, setCaratulaPreviewLocal] = useState<string | null>(null)
+  const [pendingExtraFiles, setPendingExtraFiles] = useState<
+    Array<{ id: string; file: File; previewUrl: string }>
+  >([])
   const [quitarCaratula, setQuitarCaratula] = useState(false)
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
+  const caratulaPreviewRef = useRef<string | null>(null)
+  const pendingExtrasRef = useRef(pendingExtraFiles)
+  caratulaPreviewRef.current = caratulaPreviewLocal
+  pendingExtrasRef.current = pendingExtraFiles
 
+  // Solo revocar blobs al desmontar. Revocar en cada cambio de lista
+  // invalidaba las previews del medio al agregar más archivos.
   useEffect(
     () => () => {
-      if (caratulaPreviewLocal) URL.revokeObjectURL(caratulaPreviewLocal)
+      if (caratulaPreviewRef.current) URL.revokeObjectURL(caratulaPreviewRef.current)
+      pendingExtrasRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl))
     },
-    [caratulaPreviewLocal]
+    []
   )
+
+  useEffect(() => {
+    if (!lightboxSrc) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setLightboxSrc(null)
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [lightboxSrc])
 
   const { data: proyectoResponse } = useQuery({
     queryKey: ["proyecto", id],
@@ -279,10 +336,35 @@ const ProyectoDetalle = () => {
   }
 
   const clearPhotoLocalState = () => {
+    if (caratulaPreviewRef.current) {
+      URL.revokeObjectURL(caratulaPreviewRef.current)
+      caratulaPreviewRef.current = null
+    }
     setCaratulaFile(null)
     setCaratulaPreviewLocal(null)
+    setPendingExtraFiles((prev) => {
+      prev.forEach((item) => URL.revokeObjectURL(item.previewUrl))
+      return []
+    })
     setQuitarCaratula(false)
   }
+
+  const replaceCaratulaPreview = (file: File) => {
+    const nextUrl = URL.createObjectURL(file)
+    setCaratulaPreviewLocal((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return nextUrl
+    })
+    setCaratulaFile(file)
+    setQuitarCaratula(false)
+  }
+
+  const toPendingExtras = (files: File[]) =>
+    files.map((file) => ({
+      id: `${file.name}-${file.size}-${file.lastModified}-${crypto.randomUUID()}`,
+      file,
+      previewUrl: URL.createObjectURL(file),
+    }))
 
   const buildEstimFormData = () => {
     const body = new FormData()
@@ -295,58 +377,21 @@ const ProyectoDetalle = () => {
       "retencionAmortizacion",
       String(Number(estimForm.retencionAmortizacion || 0))
     )
+    body.append(
+      "contratoPrincipalSinIva",
+      String(Number(estimForm.contratoPrincipalSinIva || 0))
+    )
+    body.append(
+      "acumuladoEstimacionAnterior",
+      String(Number(estimForm.acumuladoEstimacionAnterior || 0))
+    )
+    body.append("estaEstimacion", String(Number(estimForm.estaEstimacion || 0)))
+    body.append("estimadoALaFecha", String(Number(estimForm.estimadoALaFecha || 0)))
+    body.append("saldoPorEstimar", String(Number(estimForm.saldoPorEstimar || 0)))
     if (caratulaFile) body.append("caratula", caratulaFile)
     if (quitarCaratula) body.append("quitarCaratula", "true")
     return body
   }
-
-  const createEstim = useMutation({
-    mutationFn: (body: FormData) =>
-      apiRequest<{ estimacion: Record<string, unknown>; message?: string }>(
-        `/proyectos/${id}/estimaciones`,
-        { method: "POST", body }
-      ),
-    onSuccess: (response) => {
-      setEditingEstimId(String(response.estimacion.id))
-      setEstimForm(toEstimacionForm(response.estimacion))
-      clearPhotoLocalState()
-      upsertEstimacionCache(response.estimacion)
-      invalidateEstim()
-      toast.success("Estimación agregada correctamente.")
-    },
-    onError: (error: Error) => toast.error(error.message),
-  })
-
-  const updateEstim = useMutation({
-    mutationFn: ({ estimId, body }: { estimId: string; body: FormData }) =>
-      apiRequest<{ estimacion: Record<string, unknown>; message?: string }>(
-        `/proyectos/${id}/estimaciones/${estimId}`,
-        { method: "PATCH", body }
-      ),
-    onSuccess: (response) => {
-      setEditingEstimId(String(response.estimacion.id))
-      setEstimForm(toEstimacionForm(response.estimacion))
-      clearPhotoLocalState()
-      upsertEstimacionCache(response.estimacion)
-      invalidateEstim()
-      toast.success("Estimación actualizada correctamente.")
-    },
-    onError: (error: Error) => toast.error(error.message),
-  })
-
-  const deleteEstim = useMutation({
-    mutationFn: (estimId: string) =>
-      apiRequest(`/proyectos/${id}/estimaciones/${estimId}`, { method: "DELETE" }),
-    onSuccess: (_, estimId) => {
-      if (editingEstimId === estimId) {
-        setEditingEstimId(null)
-        setEstimForm(emptyEstimacion)
-        clearPhotoLocalState()
-      }
-      invalidateEstim()
-    },
-    onError: (error: Error) => toast.error(error.message),
-  })
 
   const addFotos = useMutation({
     mutationFn: async ({ estimId, files }: { estimId: string; files: File[] }) => {
@@ -376,13 +421,80 @@ const ProyectoDetalle = () => {
     onError: (error: Error) => toast.error(error.message),
   })
 
+  const createEstim = useMutation({
+    mutationFn: async ({ body, extras }: { body: FormData; extras: File[] }) => {
+      const response = await apiRequest<{
+        estimacion: Record<string, unknown>
+        message?: string
+      }>(`/proyectos/${id}/estimaciones`, { method: "POST", body })
+      return { response, extras }
+    },
+    onSuccess: ({ response, extras }) => {
+      setEditingEstimId(String(response.estimacion.id))
+      setEstimForm(toEstimacionForm(response.estimacion))
+      clearPhotoLocalState()
+      upsertEstimacionCache(response.estimacion)
+      invalidateEstim()
+      toast.success("Estimación agregada correctamente.")
+      if (extras.length) {
+        addFotos.mutate({ estimId: String(response.estimacion.id), files: extras })
+      }
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const updateEstim = useMutation({
+    mutationFn: async ({
+      estimId,
+      body,
+      extras,
+    }: {
+      estimId: string
+      body: FormData
+      extras: File[]
+    }) => {
+      const response = await apiRequest<{
+        estimacion: Record<string, unknown>
+        message?: string
+      }>(`/proyectos/${id}/estimaciones/${estimId}`, { method: "PATCH", body })
+      return { response, extras }
+    },
+    onSuccess: ({ response, extras }) => {
+      setEditingEstimId(String(response.estimacion.id))
+      setEstimForm(toEstimacionForm(response.estimacion))
+      clearPhotoLocalState()
+      upsertEstimacionCache(response.estimacion)
+      invalidateEstim()
+      toast.success("Estimación actualizada correctamente.")
+      if (extras.length) {
+        addFotos.mutate({ estimId: String(response.estimacion.id), files: extras })
+      }
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const deleteEstim = useMutation({
+    mutationFn: (estimId: string) =>
+      apiRequest(`/proyectos/${id}/estimaciones/${estimId}`, { method: "DELETE" }),
+    onSuccess: (_, estimId) => {
+      if (editingEstimId === estimId) {
+        setEditingEstimId(null)
+        setEstimForm(emptyEstimacion)
+        clearPhotoLocalState()
+      }
+      invalidateEstim()
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
   const submitEstim = () => {
     const body = buildEstimFormData()
+    const extras = pendingExtraFiles.map((item) => item.file)
     if (editingEstimId) {
-      updateEstim.mutate({ estimId: editingEstimId, body })
+      updateEstim.mutate({ estimId: editingEstimId, body, extras })
       return
     }
-    createEstim.mutate(body)
+    createEstim.mutate({ body, extras })
   }
 
   const startEditEstim = (estimacion: EstimacionData) => {
@@ -395,6 +507,11 @@ const ProyectoDetalle = () => {
       montoPagado: String(estimacion.montoPagado),
       factura: estimacion.factura,
       retencionAmortizacion: String(estimacion.retencionAmortizacion),
+      contratoPrincipalSinIva: String(estimacion.contratoPrincipalSinIva),
+      acumuladoEstimacionAnterior: String(estimacion.acumuladoEstimacionAnterior),
+      estaEstimacion: String(estimacion.estaEstimacion),
+      estimadoALaFecha: String(estimacion.estimadoALaFecha),
+      saldoPorEstimar: String(estimacion.saldoPorEstimar),
     })
   }
 
@@ -698,51 +815,80 @@ const ProyectoDetalle = () => {
           </div>
           <div className="space-y-2">
             <Label>Carátula</Label>
-            <div className="flex flex-wrap items-start gap-3">
-              <Button type="button" variant="outline" asChild>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                asChild
+                disabled={addFotos.isPending}
+              >
                 <label className="cursor-pointer">
-                  Agregar carátula
+                  {addFotos.isPending ? "Agregando..." : "Agregar carátula"}
                   <input
                     type="file"
                     accept="image/jpeg,image/png"
+                    multiple
+                    disabled={addFotos.isPending}
                     className="hidden"
                     onChange={(event) => {
-                      const file = event.target.files?.[0]
+                      if (addFotos.isPending) return
+                      const files = Array.from(event.target.files || [])
                       event.target.value = ""
-                      if (!file) return
-                      const validationError = validateImageFile(file)
+                      if (!files.length) return
+                      const validationError = files
+                        .map(validateImageFile)
+                        .find((error): error is string => Boolean(error))
                       if (validationError) {
                         toast.error(validationError)
                         return
                       }
-                      setCaratulaFile(file)
-                      setCaratulaPreviewLocal(URL.createObjectURL(file))
-                      setQuitarCaratula(false)
+
+                      // Estimación ya guardada con carátula: subir todas como extras ya.
+                      if (editingEstimId && caratulaSrc) {
+                        addFotos.mutate({ estimId: editingEstimId, files })
+                        return
+                      }
+
+                      // Sin carátula aún: primera = carátula local, resto = pendientes al guardar.
+                      if (!caratulaSrc) {
+                        const [first, ...rest] = files
+                        replaceCaratulaPreview(first)
+                        if (rest.length) {
+                          setPendingExtraFiles((prev) => [...prev, ...toPendingExtras(rest)])
+                        }
+                        return
+                      }
+
+                      // Ya hay carátula local pendiente: acumular más para el guardado.
+                      setPendingExtraFiles((prev) => [...prev, ...toPendingExtras(files)])
                     }}
                   />
                 </label>
               </Button>
+            </div>
+            <ul className="space-y-1">
               {caratulaSrc && (
-                <div className="relative">
+                <li className="flex items-center gap-2">
                   <button
                     type="button"
-                    className="block overflow-hidden rounded-md border"
+                    className="max-w-md truncate text-left text-sm text-primary underline-offset-4 hover:underline"
                     onClick={() => setLightboxSrc(caratulaSrc)}
-                    aria-label="Ver carátula"
+                    title={
+                      caratulaFile?.name ||
+                      (savedCaratula ? getUploadDisplayName(savedCaratula) : "Carátula")
+                    }
                   >
-                    <img
-                      src={caratulaSrc}
-                      alt="Carátula de la estimación"
-                      className="h-24 w-32 object-cover"
-                    />
+                    {caratulaFile?.name ||
+                      (savedCaratula ? getUploadDisplayName(savedCaratula) : "Carátula")}
                   </button>
                   <Button
                     type="button"
-                    variant="destructive"
+                    variant="ghost"
                     size="icon"
-                    className="absolute -right-2 -top-2 h-7 w-7"
+                    className="h-7 w-7 text-destructive"
                     onClick={() => {
                       if (caratulaPreviewLocal) {
+                        URL.revokeObjectURL(caratulaPreviewLocal)
                         setCaratulaFile(null)
                         setCaratulaPreviewLocal(null)
                         return
@@ -753,83 +899,186 @@ const ProyectoDetalle = () => {
                   >
                     <X className="h-4 w-4" />
                   </Button>
-                </div>
+                </li>
               )}
-            </div>
+              {editingEstimacion?.fotos.map((foto) => {
+                const src = toAbsoluteAssetUrl(foto.ruta)
+                if (!src) return null
+                const name = getUploadDisplayName(foto.ruta)
+                return (
+                  <li key={foto.id} className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="max-w-md truncate text-left text-sm text-primary underline-offset-4 hover:underline"
+                      onClick={() => setLightboxSrc(src)}
+                      title={name}
+                    >
+                      {name}
+                    </button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive"
+                      onClick={() =>
+                        deleteFoto.mutate({
+                          estimId: editingEstimId!,
+                          fotoId: foto.id,
+                        })
+                      }
+                      disabled={deleteFoto.isPending}
+                      aria-label="Eliminar foto"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </li>
+                )
+              })}
+              {pendingExtraFiles.map((item) => (
+                <li key={item.id} className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="max-w-md truncate text-left text-sm text-primary underline-offset-4 hover:underline"
+                    onClick={() => setLightboxSrc(item.previewUrl)}
+                    title={item.file.name}
+                  >
+                    {item.file.name}
+                  </button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive"
+                    onClick={() =>
+                      setPendingExtraFiles((prev) => {
+                        const next = prev.filter((photo) => photo.id !== item.id)
+                        URL.revokeObjectURL(item.previewUrl)
+                        return next
+                      })
+                    }
+                    aria-label="Quitar foto pendiente"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
           </div>
-          {editingEstimId && (
-            <div className="space-y-2">
-              <Label>Fotos adicionales</Label>
-              <div>
-                <Button type="button" variant="outline" asChild disabled={addFotos.isPending}>
-                  <label className="cursor-pointer">
-                    {addFotos.isPending ? "Agregando..." : "Agregar fotos"}
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png"
-                      multiple
-                      disabled={addFotos.isPending}
-                      className="hidden"
-                      onChange={(event) => {
-                        if (addFotos.isPending) return
-                        const files = Array.from(event.target.files || [])
-                        event.target.value = ""
-                        if (!files.length || !editingEstimId) return
-                        const validationError = files
-                          .map(validateImageFile)
-                          .find((error): error is string => Boolean(error))
-                        if (validationError) {
-                          toast.error(validationError)
-                          return
-                        }
-                        addFotos.mutate({ estimId: editingEstimId, files })
-                      }}
+          <Collapsible className="rounded-md border border-border">
+            <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-left font-medium hover:bg-muted/50 [&[data-state=open]>svg]:rotate-180">
+              Estado de Cuenta del Contrato (Sin IVA)
+              <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="border-t border-border px-4 py-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Contrato Principal sin IVA</Label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      $
+                    </span>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="pl-7"
+                      value={estimForm.contratoPrincipalSinIva}
+                      onChange={(event) =>
+                        setEstimForm((prev) => ({
+                          ...prev,
+                          contratoPrincipalSinIva: event.target.value,
+                        }))
+                      }
                     />
-                  </label>
-                </Button>
-              </div>
-              {editingEstimacion?.fotos.length ? (
-                <div className="flex flex-wrap gap-3">
-                  {editingEstimacion.fotos.map((foto) => {
-                    const src = toAbsoluteAssetUrl(foto.ruta)
-                    if (!src) return null
-                    return (
-                      <div key={foto.id} className="relative">
-                        <button
-                          type="button"
-                          className="block overflow-hidden rounded-md border"
-                          onClick={() => setLightboxSrc(src)}
-                          aria-label="Ver foto adicional"
-                        >
-                          <img
-                            src={src}
-                            alt="Foto adicional de la estimación"
-                            className="h-24 w-32 object-cover"
-                          />
-                        </button>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="absolute -right-2 -top-2 h-7 w-7"
-                          onClick={() =>
-                            deleteFoto.mutate({
-                              estimId: editingEstimId,
-                              fotoId: foto.id,
-                            })
-                          }
-                          disabled={deleteFoto.isPending}
-                          aria-label="Eliminar foto adicional"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )
-                  })}
+                  </div>
                 </div>
-              ) : null}
-            </div>
-          )}
+                <div className="space-y-2">
+                  <Label>Acumulado Estimación Anterior</Label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      $
+                    </span>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="pl-7"
+                      value={estimForm.acumuladoEstimacionAnterior}
+                      onChange={(event) =>
+                        setEstimForm((prev) => ({
+                          ...prev,
+                          acumuladoEstimacionAnterior: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Esta Estimación</Label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      $
+                    </span>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="pl-7"
+                      value={estimForm.estaEstimacion}
+                      onChange={(event) =>
+                        setEstimForm((prev) => ({
+                          ...prev,
+                          estaEstimacion: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Estimado a la Fecha</Label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      $
+                    </span>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="pl-7"
+                      value={estimForm.estimadoALaFecha}
+                      onChange={(event) =>
+                        setEstimForm((prev) => ({
+                          ...prev,
+                          estimadoALaFecha: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Saldo por Estimar</Label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      $
+                    </span>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="pl-7"
+                      value={estimForm.saldoPorEstimar}
+                      onChange={(event) =>
+                        setEstimForm((prev) => ({
+                          ...prev,
+                          saldoPorEstimar: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
           <div className="flex gap-2">
             <Button onClick={submitEstim} disabled={isSavingEstim}>
               <Plus className="w-4 h-4 mr-2" />
@@ -992,23 +1241,36 @@ const ProyectoDetalle = () => {
           </CardContent>
         </Card>
       </div>
-      <Dialog
-        open={Boolean(lightboxSrc)}
-        onOpenChange={(open) => {
-          if (!open) setLightboxSrc(null)
-        }}
-      >
-        <DialogContent className="max-w-3xl border-none bg-transparent p-0 shadow-none">
-          <DialogTitle className="sr-only">Vista previa</DialogTitle>
-          {lightboxSrc && (
-            <img
-              src={lightboxSrc}
-              alt="Vista previa"
-              className="max-h-[85vh] w-full object-contain"
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {lightboxSrc && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Vista previa"
+          onClick={() => setLightboxSrc(null)}
+        >
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute right-4 top-4 h-10 w-10 text-white hover:bg-white/10 hover:text-white"
+            onClick={() => setLightboxSrc(null)}
+            aria-label="Cerrar vista previa"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+          <img
+            src={lightboxSrc}
+            alt="Vista previa"
+            className="max-h-[85vh] max-w-[min(90vw,56rem)] rounded-md object-contain shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+            onError={() => {
+              toast.error("No se pudo cargar la imagen de vista previa.")
+              setLightboxSrc(null)
+            }}
+          />
+        </div>
+      )}
     </div>
   )
 }
