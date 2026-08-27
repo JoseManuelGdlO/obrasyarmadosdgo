@@ -4,6 +4,7 @@ const ProyectoEstimacion = require("../models/ProyectoEstimacion");
 const ProyectoEstimacionFoto = require("../models/ProyectoEstimacionFoto");
 const ProyectoEstimacionEstadoCuenta = require("../models/ProyectoEstimacionEstadoCuenta");
 const { ESTADO_CUENTA_FIELDS } = require("../constants/estadoCuentaFields");
+const { DATOS_ESTIMACION_FIELDS } = require("../constants/datosEstimacionFields");
 const { ESTIMACION_UPLOADS_ROUTE } = require("../config/uploads");
 const {
   cleanupUploadedEstimacionFilesIfPresent,
@@ -70,6 +71,60 @@ const pickEstadoCuentaFromBody = (body, { partial = false } = {}) => {
 const zeroEstadoCuenta = () =>
   Object.fromEntries(ESTADO_CUENTA_FIELDS.map((field) => [field, 0]));
 
+const parseDatosString = (value) => {
+  if (value === undefined || value === null) return null;
+  const s = String(value).trim();
+  return s === "" ? null : s;
+};
+
+const hasAnyDatos = (obj) =>
+  DATOS_ESTIMACION_FIELDS.some((field) => {
+    const value = obj?.[field];
+    return value != null && String(value).trim() !== "";
+  });
+
+const pickDatosFromBody = (body) => {
+  const out = {};
+  for (const field of DATOS_ESTIMACION_FIELDS) {
+    if (body[field] === undefined) {
+      out[field] = null;
+      continue;
+    }
+    out[field] = parseDatosString(body[field]);
+  }
+  return out;
+};
+
+const datosFromEstado = (estado) =>
+  Object.fromEntries(
+    DATOS_ESTIMACION_FIELDS.map((field) => {
+      const value = estado?.[field];
+      return [
+        field,
+        value != null && String(value).trim() !== "" ? String(value) : null,
+      ];
+    })
+  );
+
+const findLatestDatosForProyecto = async (proyectoId, transaction) => {
+  const rows = await ProyectoEstimacion.findAll({
+    where: { proyectoId },
+    include: [estadoCuentaInclude],
+    order: [
+      ["numero", "DESC"],
+      ["createdAt", "DESC"],
+    ],
+    transaction,
+  });
+  for (const row of rows) {
+    const estado = row.estadoCuenta || {};
+    if (hasAnyDatos(estado)) {
+      return datosFromEstado(estado);
+    }
+  }
+  return null;
+};
+
 const serializeEstimacion = (row) => {
   const json = typeof row.toJSON === "function" ? row.toJSON() : { ...row };
   const estado = json.estadoCuenta || {};
@@ -77,6 +132,11 @@ const serializeEstimacion = (row) => {
   delete json.caratula;
   for (const field of ESTADO_CUENTA_FIELDS) {
     json[field] = estado[field] != null ? Number(estado[field]) : 0;
+  }
+  for (const field of DATOS_ESTIMACION_FIELDS) {
+    const value = estado[field];
+    json[field] =
+      value != null && String(value).trim() !== "" ? String(value) : null;
   }
   json.evidenciaEstimacion =
     estado.evidenciaEstimacion != null && estado.evidenciaEstimacion !== ""
@@ -165,6 +225,8 @@ const createEstimacion = async (req, res) => {
 
     const uploadedEvidencia = getUploadedFile(req, "evidenciaEstimacion");
     const estadoCuenta = pickEstadoCuentaFromBody(req.body);
+    const existingDatos = await findLatestDatosForProyecto(proyectoId);
+    const datosEstimacion = existingDatos || pickDatosFromBody(req.body);
 
     transaction = await sequelize.transaction();
     const created = await ProyectoEstimacion.create(
@@ -184,6 +246,7 @@ const createEstimacion = async (req, res) => {
       {
         estimacionId: created.id,
         ...estadoCuenta,
+        ...datosEstimacion,
         evidenciaEstimacion: uploadedEvidencia
           ? buildPublicEstimacionUploadPath(uploadedEvidencia.filename)
           : null,
@@ -205,6 +268,7 @@ const createEstimacion = async (req, res) => {
         created.setDataValue("fotos", []);
         created.setDataValue("estadoCuenta", {
           ...estadoCuenta,
+          ...datosEstimacion,
           evidenciaEstimacion: uploadedEvidencia
             ? buildPublicEstimacionUploadPath(uploadedEvidencia.filename)
             : null,
@@ -215,6 +279,7 @@ const createEstimacion = async (req, res) => {
       created.setDataValue("fotos", []);
       created.setDataValue("estadoCuenta", {
         ...estadoCuenta,
+        ...datosEstimacion,
         evidenciaEstimacion: uploadedEvidencia
           ? buildPublicEstimacionUploadPath(uploadedEvidencia.filename)
           : null,
@@ -307,6 +372,16 @@ const updateEstimacion = async (req, res) => {
     const existingEstado = await ProyectoEstimacionEstadoCuenta.findOne({
       where: { estimacionId: estimacion.id },
     });
+    if (hasAnyDatos(existingEstado)) {
+      // Datos Estimación ya capturados: no se modifican.
+    } else {
+      const latestDatos = await findLatestDatosForProyecto(proyectoId);
+      if (latestDatos) {
+        Object.assign(estadoUpdates, latestDatos);
+      } else {
+        Object.assign(estadoUpdates, pickDatosFromBody(req.body));
+      }
+    }
     const previousEvidencia = existingEstado?.evidenciaEstimacion || null;
     if (uploadedEvidencia) {
       estadoUpdates.evidenciaEstimacion = buildPublicEstimacionUploadPath(
