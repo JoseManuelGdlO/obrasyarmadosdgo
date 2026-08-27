@@ -1,4 +1,4 @@
-"use strict";
+   "use strict";
 
 const { randomUUID } = require("crypto");
 const { ESTADO_CUENTA_FIELDS } = require("../constants/estadoCuentaFields");
