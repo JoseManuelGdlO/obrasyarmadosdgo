@@ -52,6 +52,43 @@ const normalizeInt = (value, { min = 0 } = {}) => {
   return num < min ? min : num;
 };
 
+const CLABE_RE = /^\d{18}$/;
+
+const normalizeCuentasBancarias = (value) => {
+  if (value === undefined) return { skipped: true };
+  if (!Array.isArray(value)) {
+    return { error: "cuentasBancarias debe ser un arreglo." };
+  }
+
+  const cuentas = [];
+  for (let i = 0; i < value.length; i += 1) {
+    const raw = value[i] || {};
+    const banco = String(raw.banco || "").trim();
+    const numeroCuenta = String(raw.numeroCuenta || "").trim();
+    const clabe = String(raw.clabe || "").trim();
+
+    if (!banco && !numeroCuenta && !clabe) continue;
+
+    if (!banco || !numeroCuenta || !clabe) {
+      return {
+        error: `La cuenta bancaria #${cuentas.length + 1} requiere banco, número de cuenta y CLABE.`,
+      };
+    }
+    if (!CLABE_RE.test(clabe)) {
+      return {
+        error: `La CLABE de la cuenta #${cuentas.length + 1} debe tener exactamente 18 dígitos.`,
+      };
+    }
+    cuentas.push({ banco, numeroCuenta, clabe });
+  }
+
+  if (cuentas.length === 0) {
+    return { error: "Debes registrar al menos una cuenta bancaria." };
+  }
+
+  return { cuentas };
+};
+
 const buildPayload = (body, { partial = false } = {}) => {
   const payload = {};
   const errors = [];
@@ -119,6 +156,17 @@ const buildPayload = (body, { partial = false } = {}) => {
       errors.push(`El estado debe ser uno de: ${ESTADOS_PROVEEDOR.join(", ")}.`);
     } else if (estado !== undefined) {
       payload.estado = estado;
+    }
+  }
+
+  if (!partial || body.cuentasBancarias !== undefined) {
+    const result = normalizeCuentasBancarias(
+      body.cuentasBancarias !== undefined ? body.cuentasBancarias : []
+    );
+    if (result.error) {
+      errors.push(result.error);
+    } else if (!result.skipped) {
+      payload.cuentasBancarias = result.cuentas;
     }
   }
 
@@ -205,10 +253,9 @@ const update = async (req, res) => {
       return res.status(400).json({ message: "No hay campos para actualizar." });
     }
     await proveedor.update(payload);
-    const updated = await Proveedor.findByPk(id);
     return res.status(200).json({
       message: "Proveedor actualizado correctamente.",
-      proveedor: updated,
+      proveedor,
     });
   } catch (error) {
     logError("Error al actualizar proveedor.", error);

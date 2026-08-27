@@ -49,17 +49,27 @@ const Proyectos = () => {
       nombre: String(proyecto.nombre || ""),
       descripcion: String(proyecto.descripcion || ""),
       clienteId: String(proyecto.clienteId || ""),
-      cliente: clientById[String(proyecto.clienteId || "")] || "Sin cliente",
+      empresa: String(proyecto.empresa || clientById[String(proyecto.clienteId || "")] || "Sin empresa"),
       ubicacion: String(proyecto.ubicacion || ""),
       fechaInicio: String(proyecto.fechaInicio || ""),
       fechaFin: String(proyecto.fechaFin || ""),
       estado: String(proyecto.estado || "planeado"),
-      presupuesto: Number(proyecto.presupuesto || 0),
-      progreso: Number(proyecto.progreso || 0),
+      totalContrato: Number(proyecto.totalContrato || 0),
+      totalEstimacion: Number(proyecto.totalEstimacion || 0),
+      deudaContrato: Number(proyecto.deudaContrato || 0),
       maquinasAsignadas: Number(proyecto.maquinasAsignadas || 0),
       responsable: String(proyecto.responsable || ""),
     }))
-    return filterByProyectoScope(mapped, proyectoIds)
+    const scoped = filterByProyectoScope(mapped, proyectoIds)
+    const deudaPorEmpresa = scoped.reduce<Record<string, number>>((acc, proyecto) => {
+      const key = proyecto.clienteId || proyecto.empresa
+      acc[key] = (acc[key] || 0) + proyecto.deudaContrato
+      return acc
+    }, {})
+    return scoped.map((proyecto) => ({
+      ...proyecto,
+      deudaEmpresa: deudaPorEmpresa[proyecto.clienteId || proyecto.empresa] || 0,
+    }))
   }, [projectsResponse?.proyectos, clientById, proyectoIds])
 
   const createProject = useMutation({
@@ -76,7 +86,7 @@ const Proyectos = () => {
   })
 
   const filteredProjects = proyectos.filter((proyecto) =>
-    [proyecto.nombre, proyecto.cliente, proyecto.ubicacion].join(" ").toLowerCase().includes(searchTerm.toLowerCase())
+    [proyecto.nombre, proyecto.empresa, proyecto.ubicacion].join(" ").toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   const saveProject = (data: ProyectoFormData) => {
@@ -129,7 +139,7 @@ const Proyectos = () => {
   const enProgreso = filteredProjects.filter((p) => p.estado === "en_progreso").length
   const completados = filteredProjects.filter((p) => p.estado === "completado").length
   const pendientes = filteredProjects.filter((p) => p.estado === "planeado").length
-  const valorTotal = proyectos.reduce((total, p) => total + p.presupuesto, 0)
+  const valorTotal = proyectos.reduce((total, p) => total + p.totalContrato, 0)
 
   return (
     <div className="space-y-6">
@@ -173,7 +183,7 @@ const Proyectos = () => {
           title="Valor Total"
           value={formatCurrency(valorTotal).replace("COP", "")}
           icon={DollarSign}
-          description="Portafolio total"
+          description="Total contratos"
           trend={{ value: 12, isPositive: true }}
         />
       </div>
@@ -184,7 +194,7 @@ const Proyectos = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nombre, cliente, ubicación..."
+                placeholder="Buscar por nombre, empresa, ubicación..."
                 className="pl-10"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
@@ -208,11 +218,12 @@ const Proyectos = () => {
               <TableRow>
                 <TableHead>ID</TableHead>
                 <TableHead>Proyecto</TableHead>
-                <TableHead>Cliente</TableHead>
+                <TableHead>Empresa</TableHead>
                 <TableHead>Ubicación</TableHead>
                 <TableHead>Fechas</TableHead>
-                <TableHead>Presupuesto</TableHead>
-                <TableHead>Progreso</TableHead>
+                <TableHead>Total contrato</TableHead>
+                <TableHead>Estimación</TableHead>
+                <TableHead>Deuda empresa</TableHead>
                 <TableHead>Máquinas</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Acciones</TableHead>
@@ -234,7 +245,7 @@ const Proyectos = () => {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Users className="w-4 h-4 text-primary" />
-                      <span className="text-sm">{proyecto.cliente}</span>
+                      <span className="text-sm">{proyecto.empresa}</span>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -258,23 +269,15 @@ const Proyectos = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="w-4 h-4 text-primary" />
-                      <span className="text-sm font-medium">{formatCurrency(proyecto.presupuesto)}</span>
-                    </div>
+                    <span className="text-sm font-medium">{formatCurrency(proyecto.totalContrato)}</span>
                   </TableCell>
                   <TableCell>
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{proyecto.progreso}%</span>
-                      </div>
-                      <div className="w-20 bg-muted rounded-full h-2">
-                        <div
-                          className="h-2 bg-gradient-to-r from-primary to-accent rounded-full transition-all"
-                          style={{ width: `${proyecto.progreso}%` }}
-                        />
-                      </div>
-                    </div>
+                    <span className="text-sm font-medium">{formatCurrency(proyecto.totalEstimacion)}</span>
+                  </TableCell>
+                  <TableCell>
+                    <span className={`text-sm font-medium ${proyecto.deudaEmpresa > 0 ? "text-primary" : ""}`}>
+                      {formatCurrency(proyecto.deudaEmpresa)}
+                    </span>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">

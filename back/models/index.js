@@ -16,6 +16,8 @@ const Proveedor = require("./Proveedor");
 const Trabajador = require("./Trabajador");
 const Proyecto = require("./Proyecto");
 const ProyectoEstimacion = require("./ProyectoEstimacion");
+const ProyectoEstimacionFoto = require("./ProyectoEstimacionFoto");
+const ProyectoEstimacionEstadoCuenta = require("./ProyectoEstimacionEstadoCuenta");
 const Asignacion = require("./Asignacion");
 const Nomenclatura = require("./Nomenclatura");
 const OrdenTrabajo = require("./OrdenTrabajo");
@@ -116,6 +118,26 @@ Proyecto.hasMany(ProyectoEstimacion, {
 });
 ProyectoEstimacion.belongsTo(Proyecto, { foreignKey: "proyectoId", as: "proyecto" });
 
+ProyectoEstimacion.hasMany(ProyectoEstimacionFoto, {
+  foreignKey: "estimacionId",
+  as: "fotos",
+  onDelete: "CASCADE",
+});
+ProyectoEstimacionFoto.belongsTo(ProyectoEstimacion, {
+  foreignKey: "estimacionId",
+  as: "estimacion",
+});
+
+ProyectoEstimacion.hasOne(ProyectoEstimacionEstadoCuenta, {
+  foreignKey: "estimacionId",
+  as: "estadoCuenta",
+  onDelete: "CASCADE",
+});
+ProyectoEstimacionEstadoCuenta.belongsTo(ProyectoEstimacion, {
+  foreignKey: "estimacionId",
+  as: "estimacion",
+});
+
 Proyecto.hasMany(Asignacion, { foreignKey: "proyectoId", as: "asignaciones" });
 Asignacion.belongsTo(Proyecto, { foreignKey: "proyectoId", as: "proyecto" });
 Maquina.hasMany(Asignacion, { foreignKey: "maquinaId", as: "asignaciones" });
@@ -204,6 +226,8 @@ module.exports = {
   Trabajador,
   Proyecto,
   ProyectoEstimacion,
+  ProyectoEstimacionFoto,
+  ProyectoEstimacionEstadoCuenta,
   Asignacion,
   Nomenclatura,
   OrdenTrabajo,

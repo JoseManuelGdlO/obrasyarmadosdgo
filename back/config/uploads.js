@@ -23,6 +23,17 @@ const ensureWorkerUploadsDir = () => {
   }
 };
 
+const ESTIMACION_UPLOADS_DIR =
+  process.env.ESTIMACION_UPLOADS_DIR || path.resolve(__dirname, "../../uploads/estimaciones");
+
+const ESTIMACION_UPLOADS_ROUTE = "/uploads/estimaciones";
+
+const ensureEstimacionUploadsDir = () => {
+  if (!fs.existsSync(ESTIMACION_UPLOADS_DIR)) {
+    fs.mkdirSync(ESTIMACION_UPLOADS_DIR, { recursive: true });
+  }
+};
+
 module.exports = {
   MACHINE_UPLOADS_DIR,
   MACHINE_UPLOADS_ROUTE,
@@ -30,4 +41,7 @@ module.exports = {
   WORKER_UPLOADS_DIR,
   WORKER_UPLOADS_ROUTE,
   ensureWorkerUploadsDir,
+  ESTIMACION_UPLOADS_DIR,
+  ESTIMACION_UPLOADS_ROUTE,
+  ensureEstimacionUploadsDir,
 };

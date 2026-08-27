@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Filter, Edit, Trash2, Building, Phone, Mail, MapPin, Star } from "lucide-react";
+import { Plus, Search, Filter, Edit, Trash2, Building, Phone, Mail, MapPin, Star, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +24,12 @@ import { apiRequest } from "@/lib/api";
 
 type EstadoBackend = "activo" | "inactivo" | "en_evaluacion";
 
+type CuentaBancaria = {
+  banco: string;
+  numeroCuenta: string;
+  clabe: string;
+};
+
 type ProveedorBackend = {
   id: string;
   nombre: string;
@@ -41,6 +47,7 @@ type ProveedorBackend = {
   ordenesCompletadas: number;
   costoPromedio: number | string;
   estado: EstadoBackend;
+  cuentasBancarias?: CuentaBancaria[] | null;
 };
 
 type ProveedorVM = {
@@ -59,9 +66,27 @@ type ProveedorVM = {
   ordenesCompletadas: number;
   costoPromedio: number;
   estado: "Activo" | "Inactivo" | "En Evaluación";
+  cuentasBancarias: CuentaBancaria[];
 };
 
-const categorias = [
+const emptyCuenta = (): CuentaBancaria => ({ banco: "", numeroCuenta: "", clabe: "" });
+const CLABE_RE = /^\d{18}$/;
+
+const normalizeCuentasFromApi = (value: unknown): CuentaBancaria[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      const row = (item || {}) as Record<string, unknown>;
+      return {
+        banco: String(row.banco || "").trim(),
+        numeroCuenta: String(row.numeroCuenta || "").trim(),
+        clabe: String(row.clabe || "").trim(),
+      };
+    })
+    .filter((c) => c.banco || c.numeroCuenta || c.clabe);
+};
+
+const CATEGORIAS_BASE = [
   "Mantenimiento Mecánico",
   "Mantenimiento Eléctrico",
   "Hidráulicos",
@@ -70,7 +95,17 @@ const categorias = [
   "Diagnóstico",
   "Pintura y Acabados",
 ];
+const NUEVA_CATEGORIA_VALUE = "__nueva_categoria__";
 const estados = ["Activo", "Inactivo", "En Evaluación"];
+
+const buildCategoriaOptions = (proveedores: ProveedorVM[]): string[] => {
+  const set = new Set(CATEGORIAS_BASE);
+  for (const proveedor of proveedores) {
+    const cat = proveedor.categoria?.trim();
+    if (cat) set.add(cat);
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b, "es"));
+};
 
 const estadoToBackend = (estado: string): EstadoBackend => {
   switch (estado) {
@@ -133,6 +168,7 @@ const mapProveedor = (p: ProveedorBackend): ProveedorVM => ({
   ordenesCompletadas: toNumber(p.ordenesCompletadas, 0),
   costoPromedio: toNumber(p.costoPromedio, 0),
   estado: estadoToUi(p.estado),
+  cuentasBancarias: normalizeCuentasFromApi(p.cuentasBancarias),
 });
 
 const defaultForm = {
@@ -150,6 +186,7 @@ const defaultForm = {
   ordenesCompletadas: "0",
   costoPromedio: "0",
   estado: "Activo" as "Activo" | "Inactivo" | "En Evaluación",
+  cuentasBancarias: [emptyCuenta()] as CuentaBancaria[],
 };
 
 export default function Proveedores() {
@@ -160,6 +197,7 @@ export default function Proveedores() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState(defaultForm);
+  const [nuevaCategoria, setNuevaCategoria] = useState("");
 
   const { data: proveedoresData } = useQuery({
     queryKey: ["proveedores", searchTerm],
@@ -174,9 +212,18 @@ export default function Proveedores() {
     [proveedoresData?.proveedores]
   );
 
+  const categoriaOpciones = useMemo(() => buildCategoriaOptions(proveedores), [proveedores]);
+
+  const resolveCategoria = () => {
+    if (formData.categoria === NUEVA_CATEGORIA_VALUE) {
+      return nuevaCategoria.trim();
+    }
+    return formData.categoria.trim();
+  };
+
   const buildPayload = () => ({
     nombre: formData.nombre.trim(),
-    categoria: formData.categoria.trim() || "general",
+    categoria: resolveCategoria() || "general",
     contactoPrincipal: formData.contactoPrincipal.trim() || null,
     contacto: formData.contactoPrincipal.trim() || null,
     telefono: formData.telefono.trim() || null,
@@ -190,7 +237,46 @@ export default function Proveedores() {
     ordenesCompletadas: Math.max(0, Math.floor(toNumber(formData.ordenesCompletadas, 0))),
     costoPromedio: toNumber(formData.costoPromedio, 0),
     estado: estadoToBackend(formData.estado),
+    cuentasBancarias: formData.cuentasBancarias
+      .map((c) => ({
+        banco: c.banco.trim(),
+        numeroCuenta: c.numeroCuenta.trim(),
+        clabe: c.clabe.trim(),
+      }))
+      .filter((c) => c.banco || c.numeroCuenta || c.clabe),
   });
+
+  const updateCuentaField = (
+    index: number,
+    field: keyof CuentaBancaria,
+    value: string
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      cuentasBancarias: prev.cuentasBancarias.map((cuenta, i) =>
+        i === index ? { ...cuenta, [field]: value } : cuenta
+      ),
+    }));
+  };
+
+  const addCuenta = () => {
+    setFormData((prev) => ({
+      ...prev,
+      cuentasBancarias: [...prev.cuentasBancarias, emptyCuenta()],
+    }));
+  };
+
+  const removeCuenta = (index: number) => {
+    setFormData((prev) => {
+      if (prev.cuentasBancarias.length <= 1) {
+        return { ...prev, cuentasBancarias: [emptyCuenta()] };
+      }
+      return {
+        ...prev,
+        cuentasBancarias: prev.cuentasBancarias.filter((_, i) => i !== index),
+      };
+    });
+  };
 
   const createProveedorMutation = useMutation({
     mutationFn: (payload: Record<string, unknown>) =>
@@ -226,13 +312,15 @@ export default function Proveedores() {
   const closeDialog = () => {
     setIsDialogOpen(false);
     setEditingId(null);
-    setFormData(defaultForm);
+    setFormData({ ...defaultForm, cuentasBancarias: [emptyCuenta()] });
+    setNuevaCategoria("");
   };
 
   const openCreateDialog = (open: boolean) => {
     if (open) {
       setEditingId(null);
-      setFormData(defaultForm);
+      setFormData({ ...defaultForm, cuentasBancarias: [emptyCuenta()] });
+      setNuevaCategoria("");
       setIsDialogOpen(true);
     } else {
       closeDialog();
@@ -241,6 +329,7 @@ export default function Proveedores() {
 
   const openEditDialog = (p: ProveedorVM) => {
     setEditingId(p.id);
+    setNuevaCategoria("");
     setFormData({
       nombre: p.nombre,
       categoria: p.categoria,
@@ -256,6 +345,10 @@ export default function Proveedores() {
       ordenesCompletadas: String(p.ordenesCompletadas ?? 0),
       costoPromedio: String(p.costoPromedio ?? 0),
       estado: p.estado,
+      cuentasBancarias:
+        p.cuentasBancarias.length > 0
+          ? p.cuentasBancarias.map((c) => ({ ...c }))
+          : [emptyCuenta()],
     });
     setIsDialogOpen(true);
   };
@@ -266,7 +359,27 @@ export default function Proveedores() {
       toast.error("El nombre es obligatorio");
       return;
     }
+    const categoria = resolveCategoria();
+    if (!categoria) {
+      toast.error("La categoría es obligatoria");
+      return;
+    }
     const payload = buildPayload();
+    if (payload.cuentasBancarias.length === 0) {
+      toast.error("Debes registrar al menos una cuenta bancaria");
+      return;
+    }
+    for (let i = 0; i < payload.cuentasBancarias.length; i += 1) {
+      const cuenta = payload.cuentasBancarias[i];
+      if (!cuenta.banco || !cuenta.numeroCuenta || !cuenta.clabe) {
+        toast.error(`La cuenta #${i + 1} requiere banco, número y CLABE`);
+        return;
+      }
+      if (!CLABE_RE.test(cuenta.clabe)) {
+        toast.error(`La CLABE de la cuenta #${i + 1} debe tener 18 dígitos`);
+        return;
+      }
+    }
     if (editingId) {
       updateProveedorMutation.mutate({ id: editingId, payload });
     } else {
@@ -343,18 +456,42 @@ export default function Proveedores() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="categoria">Categoría</Label>
-                  <Select value={formData.categoria} onValueChange={(value) => setFormData({ ...formData, categoria: value })}>
-                    <SelectTrigger>
+                  <Select
+                    value={
+                      formData.categoria === NUEVA_CATEGORIA_VALUE
+                        ? NUEVA_CATEGORIA_VALUE
+                        : formData.categoria || undefined
+                    }
+                    onValueChange={(value) => {
+                      if (value === NUEVA_CATEGORIA_VALUE) {
+                        setFormData({ ...formData, categoria: NUEVA_CATEGORIA_VALUE });
+                        return;
+                      }
+                      setNuevaCategoria("");
+                      setFormData({ ...formData, categoria: value });
+                    }}
+                  >
+                    <SelectTrigger id="categoria">
                       <SelectValue placeholder="Seleccionar categoría" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categorias.map((categoria) => (
+                      {categoriaOpciones.map((categoria) => (
                         <SelectItem key={categoria} value={categoria}>
                           {categoria}
                         </SelectItem>
                       ))}
+                      <SelectItem value={NUEVA_CATEGORIA_VALUE}>Nueva categoría…</SelectItem>
                     </SelectContent>
                   </Select>
+                  {formData.categoria === NUEVA_CATEGORIA_VALUE && (
+                    <Input
+                      id="nuevaCategoria"
+                      placeholder="Escribe la nueva categoría"
+                      value={nuevaCategoria}
+                      onChange={(e) => setNuevaCategoria(e.target.value)}
+                      required
+                    />
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="contactoPrincipal">Dueño o Encargado de la empresa</Label>
@@ -466,6 +603,67 @@ export default function Proveedores() {
                   onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
                 />
               </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <Label>Cuentas bancarias</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addCuenta}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Agregar cuenta
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Al menos una cuenta con banco, número y CLABE (18 dígitos).
+                </p>
+                {formData.cuentasBancarias.map((cuenta, index) => (
+                  <div
+                    key={index}
+                    className="grid grid-cols-1 md:grid-cols-7 gap-2 rounded-md border p-3"
+                  >
+                    <div className="space-y-1 md:col-span-2">
+                      <Label className="text-xs">Banco</Label>
+                      <Input
+                        placeholder="Ej: BBVA"
+                        value={cuenta.banco}
+                        onChange={(e) => updateCuentaField(index, "banco", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1 md:col-span-2">
+                      <Label className="text-xs">Número de cuenta</Label>
+                      <Input
+                        placeholder="Número de cuenta"
+                        value={cuenta.numeroCuenta}
+                        onChange={(e) => updateCuentaField(index, "numeroCuenta", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1 md:col-span-2">
+                      <Label className="text-xs">CLABE</Label>
+                      <Input
+                        placeholder="18 dígitos"
+                        inputMode="numeric"
+                        maxLength={18}
+                        value={cuenta.clabe}
+                        onChange={(e) =>
+                          updateCuentaField(index, "clabe", e.target.value.replace(/\D/g, "").slice(0, 18))
+                        }
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Quitar cuenta ${index + 1}`}
+                        onClick={() => removeCuenta(index)}
+                        disabled={formData.cuentasBancarias.length === 1}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="especialidades">Especialidades</Label>
                 <Textarea
@@ -552,7 +750,7 @@ export default function Proveedores() {
                   <SelectValue placeholder="Categoría" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categorias.map((categoria) => (
+                  {categoriaOpciones.map((categoria) => (
                     <SelectItem key={categoria} value={categoria}>
                       {categoria}
                     </SelectItem>
@@ -590,6 +788,7 @@ export default function Proveedores() {
             <TableHeader>
               <TableRow>
                 <TableHead>Proveedor</TableHead>
+                <TableHead>Cuenta bancaria</TableHead>
                 <TableHead>Especialidades</TableHead>
                 <TableHead>Contacto</TableHead>
                 <TableHead>Ubicación</TableHead>
@@ -612,6 +811,23 @@ export default function Proveedores() {
                         </span>
                       </div>
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {proveedor.cuentasBancarias.length > 0 ? (
+                      <div className="space-y-0.5">
+                        <div className="text-sm font-medium">{proveedor.cuentasBancarias[0].banco}</div>
+                        <code className="text-xs text-gray-600 font-mono">
+                          {proveedor.cuentasBancarias[0].clabe}
+                        </code>
+                        {proveedor.cuentasBancarias.length > 1 && (
+                          <div className="text-xs text-gray-500">
+                            +{proveedor.cuentasBancarias.length - 1} más
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">

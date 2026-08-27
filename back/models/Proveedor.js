@@ -38,6 +38,7 @@ const Proveedor = sequelize.define(
       allowNull: false,
       defaultValue: "activo",
     },
+    cuentasBancarias: { type: DataTypes.JSON, allowNull: true },
   },
   { tableName: "proveedores", timestamps: true }
 );
