@@ -1,7 +1,7 @@
 # Evidencia de estimación en estados de cuenta (+ volumen Docker)
 
 Fecha: 2026-08-27  
-Estado: pendiente revisión del usuario
+Estado: aprobado e implementado
 
 ## Objetivo
 

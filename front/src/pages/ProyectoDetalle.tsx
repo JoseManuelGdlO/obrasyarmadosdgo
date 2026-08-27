@@ -96,7 +96,7 @@ type EstimacionData = {
   montoPagado: number
   factura: string
   retencionAmortizacion: number
-  caratula: string | null
+  evidenciaEstimacion: string | null
   fotos: EstimacionFoto[]
 } & MontosManualesNumeros
 
@@ -231,7 +231,9 @@ const toEstimacionData = (estimacion: Record<string, unknown>): EstimacionData =
   montoPagado: Number(estimacion.montoPagado || 0),
   factura: String(estimacion.factura || ""),
   retencionAmortizacion: Number(estimacion.retencionAmortizacion || 0),
-  caratula: estimacion.caratula ? String(estimacion.caratula) : null,
+  evidenciaEstimacion: estimacion.evidenciaEstimacion
+    ? String(estimacion.evidenciaEstimacion)
+    : null,
   fotos: Array.isArray(estimacion.fotos)
     ? estimacion.fotos.map((foto) => {
         const value = foto as Record<string, unknown>
@@ -267,23 +269,23 @@ const ProyectoDetalle = () => {
   const [form, setForm] = useState<ProyectoForm>(defaultForm)
   const [estimForm, setEstimForm] = useState<EstimacionForm>(emptyEstimacion)
   const [editingEstimId, setEditingEstimId] = useState<string | null>(null)
-  const [caratulaFile, setCaratulaFile] = useState<File | null>(null)
-  const [caratulaPreviewLocal, setCaratulaPreviewLocal] = useState<string | null>(null)
+  const [evidenciaFile, setEvidenciaFile] = useState<File | null>(null)
+  const [evidenciaPreviewLocal, setEvidenciaPreviewLocal] = useState<string | null>(null)
   const [pendingExtraFiles, setPendingExtraFiles] = useState<
     Array<{ id: string; file: File; previewUrl: string }>
   >([])
-  const [quitarCaratula, setQuitarCaratula] = useState(false)
+  const [quitarEvidencia, setQuitarEvidencia] = useState(false)
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
-  const caratulaPreviewRef = useRef<string | null>(null)
+  const evidenciaPreviewRef = useRef<string | null>(null)
   const pendingExtrasRef = useRef(pendingExtraFiles)
-  caratulaPreviewRef.current = caratulaPreviewLocal
+  evidenciaPreviewRef.current = evidenciaPreviewLocal
   pendingExtrasRef.current = pendingExtraFiles
 
   // Solo revocar blobs al desmontar. Revocar en cada cambio de lista
   // invalidaba las previews del medio al agregar más archivos.
   useEffect(
     () => () => {
-      if (caratulaPreviewRef.current) URL.revokeObjectURL(caratulaPreviewRef.current)
+      if (evidenciaPreviewRef.current) URL.revokeObjectURL(evidenciaPreviewRef.current)
       pendingExtrasRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl))
     },
     []
@@ -414,27 +416,27 @@ const ProyectoDetalle = () => {
   }
 
   const clearPhotoLocalState = () => {
-    if (caratulaPreviewRef.current) {
-      URL.revokeObjectURL(caratulaPreviewRef.current)
-      caratulaPreviewRef.current = null
+    if (evidenciaPreviewRef.current) {
+      URL.revokeObjectURL(evidenciaPreviewRef.current)
+      evidenciaPreviewRef.current = null
     }
-    setCaratulaFile(null)
-    setCaratulaPreviewLocal(null)
+    setEvidenciaFile(null)
+    setEvidenciaPreviewLocal(null)
     setPendingExtraFiles((prev) => {
       prev.forEach((item) => URL.revokeObjectURL(item.previewUrl))
       return []
     })
-    setQuitarCaratula(false)
+    setQuitarEvidencia(false)
   }
 
-  const replaceCaratulaPreview = (file: File) => {
+  const replaceEvidenciaPreview = (file: File) => {
     const nextUrl = URL.createObjectURL(file)
-    setCaratulaPreviewLocal((prev) => {
+    setEvidenciaPreviewLocal((prev) => {
       if (prev) URL.revokeObjectURL(prev)
       return nextUrl
     })
-    setCaratulaFile(file)
-    setQuitarCaratula(false)
+    setEvidenciaFile(file)
+    setQuitarEvidencia(false)
   }
 
   const toPendingExtras = (files: File[]) =>
@@ -458,8 +460,8 @@ const ProyectoDetalle = () => {
     for (const key of MONTOS_MANUALES_KEYS) {
       body.append(key, String(Number(estimForm[key] || 0)))
     }
-    if (caratulaFile) body.append("caratula", caratulaFile)
-    if (quitarCaratula) body.append("quitarCaratula", "true")
+    if (evidenciaFile) body.append("evidenciaEstimacion", evidenciaFile)
+    if (quitarEvidencia) body.append("quitarEvidenciaEstimacion", "true")
     return body
   }
 
@@ -591,10 +593,10 @@ const ProyectoDetalle = () => {
   const editingEstimacion = editingEstimId
     ? estimaciones.find((estimacion) => estimacion.id === editingEstimId)
     : null
-  const savedCaratula = editingEstimacion?.caratula || null
+  const savedEvidencia = editingEstimacion?.evidenciaEstimacion || null
   const caratulaSrc =
-    caratulaPreviewLocal ||
-    (!quitarCaratula ? toAbsoluteAssetUrl(savedCaratula) : null)
+    evidenciaPreviewLocal ||
+    (!quitarEvidencia ? toAbsoluteAssetUrl(savedEvidencia) : null)
 
   return (
     <div className="space-y-6">
@@ -918,7 +920,7 @@ const ProyectoDetalle = () => {
                       // Sin carátula aún: primera = carátula local, resto = pendientes al guardar.
                       if (!caratulaSrc) {
                         const [first, ...rest] = files
-                        replaceCaratulaPreview(first)
+                        replaceEvidenciaPreview(first)
                         if (rest.length) {
                           setPendingExtraFiles((prev) => [...prev, ...toPendingExtras(rest)])
                         }
@@ -940,12 +942,12 @@ const ProyectoDetalle = () => {
                     className="max-w-md truncate text-left text-sm text-primary underline-offset-4 hover:underline"
                     onClick={() => setLightboxSrc(caratulaSrc)}
                     title={
-                      caratulaFile?.name ||
-                      (savedCaratula ? getUploadDisplayName(savedCaratula) : "Carátula")
+                      evidenciaFile?.name ||
+                      (savedEvidencia ? getUploadDisplayName(savedEvidencia) : "Carátula")
                     }
                   >
-                    {caratulaFile?.name ||
-                      (savedCaratula ? getUploadDisplayName(savedCaratula) : "Carátula")}
+                    {evidenciaFile?.name ||
+                      (savedEvidencia ? getUploadDisplayName(savedEvidencia) : "Carátula")}
                   </button>
                   <Button
                     type="button"
@@ -953,13 +955,13 @@ const ProyectoDetalle = () => {
                     size="icon"
                     className="h-7 w-7 text-destructive"
                     onClick={() => {
-                      if (caratulaPreviewLocal) {
-                        URL.revokeObjectURL(caratulaPreviewLocal)
-                        setCaratulaFile(null)
-                        setCaratulaPreviewLocal(null)
+                      if (evidenciaPreviewLocal) {
+                        URL.revokeObjectURL(evidenciaPreviewLocal)
+                        setEvidenciaFile(null)
+                        setEvidenciaPreviewLocal(null)
                         return
                       }
-                      setQuitarCaratula(true)
+                      setQuitarEvidencia(true)
                     }}
                     aria-label="Quitar carátula"
                   >
@@ -1176,17 +1178,17 @@ const ProyectoDetalle = () => {
                   <div className="space-y-3">
                     <div className="text-sm">
                       <span className="text-muted-foreground">Carátula: </span>
-                      {estimacion.caratula ? (
+                      {estimacion.evidenciaEstimacion ? (
                         <button
                           type="button"
                           className="max-w-full truncate text-left text-primary underline-offset-4 hover:underline"
-                          title={getUploadDisplayName(estimacion.caratula)}
+                          title={getUploadDisplayName(estimacion.evidenciaEstimacion)}
                           onClick={() => {
-                            const src = toAbsoluteAssetUrl(estimacion.caratula)
+                            const src = toAbsoluteAssetUrl(estimacion.evidenciaEstimacion)
                             if (src) setLightboxSrc(src)
                           }}
                         >
-                          {getUploadDisplayName(estimacion.caratula)}
+                          {getUploadDisplayName(estimacion.evidenciaEstimacion)}
                         </button>
                       ) : (
                         <span className="text-muted-foreground">Sin carátula</span>

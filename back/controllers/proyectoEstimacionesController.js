@@ -74,9 +74,14 @@ const serializeEstimacion = (row) => {
   const json = typeof row.toJSON === "function" ? row.toJSON() : { ...row };
   const estado = json.estadoCuenta || {};
   delete json.estadoCuenta;
+  delete json.caratula;
   for (const field of ESTADO_CUENTA_FIELDS) {
     json[field] = estado[field] != null ? Number(estado[field]) : 0;
   }
+  json.evidenciaEstimacion =
+    estado.evidenciaEstimacion != null && estado.evidenciaEstimacion !== ""
+      ? String(estado.evidenciaEstimacion)
+      : null;
   return json;
 };
 
@@ -158,7 +163,7 @@ const createEstimacion = async (req, res) => {
       numeroFinal = count + 1;
     }
 
-    const uploadedCaratula = getUploadedFile(req, "caratula");
+    const uploadedEvidencia = getUploadedFile(req, "evidenciaEstimacion");
     const estadoCuenta = pickEstadoCuentaFromBody(req.body);
 
     transaction = await sequelize.transaction();
@@ -172,9 +177,6 @@ const createEstimacion = async (req, res) => {
         montoPagado: toDecimal(montoPagado),
         factura: factura ? String(factura).trim() || null : null,
         retencionAmortizacion: toDecimal(retencionAmortizacion),
-        caratula: uploadedCaratula
-          ? buildPublicEstimacionUploadPath(uploadedCaratula.filename)
-          : null,
       },
       { transaction }
     );
@@ -182,6 +184,9 @@ const createEstimacion = async (req, res) => {
       {
         estimacionId: created.id,
         ...estadoCuenta,
+        evidenciaEstimacion: uploadedEvidencia
+          ? buildPublicEstimacionUploadPath(uploadedEvidencia.filename)
+          : null,
       },
       { transaction }
     );
@@ -198,12 +203,22 @@ const createEstimacion = async (req, res) => {
         estimacion = reloaded;
       } else {
         created.setDataValue("fotos", []);
-        created.setDataValue("estadoCuenta", { ...estadoCuenta });
+        created.setDataValue("estadoCuenta", {
+          ...estadoCuenta,
+          evidenciaEstimacion: uploadedEvidencia
+            ? buildPublicEstimacionUploadPath(uploadedEvidencia.filename)
+            : null,
+        });
       }
     } catch (reloadError) {
       logger.warn(`No se pudo recargar la estimación creada: ${reloadError.message}`);
       created.setDataValue("fotos", []);
-      created.setDataValue("estadoCuenta", { ...estadoCuenta });
+      created.setDataValue("estadoCuenta", {
+        ...estadoCuenta,
+        evidenciaEstimacion: uploadedEvidencia
+          ? buildPublicEstimacionUploadPath(uploadedEvidencia.filename)
+          : null,
+      });
     }
     return res.status(201).json({
       message: "Estimación agregada correctamente.",
@@ -288,26 +303,31 @@ const updateEstimacion = async (req, res) => {
     }
     const estadoUpdates = pickEstadoCuentaFromBody(req.body, { partial: true });
 
-    const uploadedCaratula = getUploadedFile(req, "caratula");
-    const previousCaratula = estimacion.caratula;
-    if (uploadedCaratula) {
-      updates.caratula = buildPublicEstimacionUploadPath(uploadedCaratula.filename);
-    } else if (parseTruthyFlag(req.body.quitarCaratula)) {
-      updates.caratula = null;
+    const uploadedEvidencia = getUploadedFile(req, "evidenciaEstimacion");
+    const existingEstado = await ProyectoEstimacionEstadoCuenta.findOne({
+      where: { estimacionId: estimacion.id },
+    });
+    const previousEvidencia = existingEstado?.evidenciaEstimacion || null;
+    if (uploadedEvidencia) {
+      estadoUpdates.evidenciaEstimacion = buildPublicEstimacionUploadPath(
+        uploadedEvidencia.filename
+      );
+    } else if (parseTruthyFlag(req.body.quitarEvidenciaEstimacion)) {
+      estadoUpdates.evidenciaEstimacion = null;
     }
 
     transaction = await sequelize.transaction();
     await estimacion.update(updates, { transaction });
     await upsertEstadoCuenta(estimacion.id, estadoUpdates, transaction);
     await transaction.commit();
-    uploadedPathPersisted = Boolean(uploadedCaratula);
+    uploadedPathPersisted = Boolean(uploadedEvidencia);
 
     if (
-      previousCaratula &&
-      updates.caratula !== undefined &&
-      previousCaratula !== updates.caratula
+      previousEvidencia &&
+      estadoUpdates.evidenciaEstimacion !== undefined &&
+      previousEvidencia !== estadoUpdates.evidenciaEstimacion
     ) {
-      await deleteStoredEstimacionUploadsBestEffort([previousCaratula]);
+      await deleteStoredEstimacionUploadsBestEffort([previousEvidencia]);
     }
     let refreshed = estimacion;
     try {
@@ -352,13 +372,14 @@ const deleteEstimacion = async (req, res) => {
     }
     const estimacion = await ProyectoEstimacion.findOne({
       where: { id, proyectoId },
-      include: [fotosInclude],
+      include: estimacionIncludes,
     });
     if (!estimacion) {
       return res.status(404).json({ message: "Estimación no encontrada." });
     }
+    const estado = estimacion.estadoCuenta;
     const pathsToDelete = [
-      estimacion.caratula,
+      estado?.evidenciaEstimacion || null,
       ...(estimacion.fotos || []).map((foto) => foto.ruta),
     ];
     await estimacion.destroy();

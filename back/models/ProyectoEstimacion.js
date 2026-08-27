@@ -17,7 +17,6 @@ const ProyectoEstimacion = sequelize.define(
       allowNull: false,
       defaultValue: 0,
     },
-    caratula: { type: DataTypes.STRING(512), allowNull: true },
   },
   { tableName: "proyecto_estimaciones", timestamps: true }
 );

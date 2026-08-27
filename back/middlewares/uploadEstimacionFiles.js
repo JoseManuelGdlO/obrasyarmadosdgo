@@ -12,7 +12,7 @@ const ESTIMACION_IMAGE_MAX_SIZE = 2 * 1024 * 1024;
 const IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png"]);
 
 const FIELD_CONFIG = {
-  caratula: { mimeTypes: IMAGE_MIME_TYPES, maxSize: ESTIMACION_IMAGE_MAX_SIZE },
+  evidenciaEstimacion: { mimeTypes: IMAGE_MIME_TYPES, maxSize: ESTIMACION_IMAGE_MAX_SIZE },
   fotos: { mimeTypes: IMAGE_MIME_TYPES, maxSize: ESTIMACION_IMAGE_MAX_SIZE },
 };
 
@@ -53,7 +53,7 @@ const uploadEstimacionFiles = multer({
   fileFilter,
 });
 
-const ESTIMACION_CARATULA_FIELDS = [{ name: "caratula", maxCount: 1 }];
+const ESTIMACION_EVIDENCIA_FIELDS = [{ name: "evidenciaEstimacion", maxCount: 1 }];
 const ESTIMACION_FOTOS_FIELDS = [{ name: "fotos", maxCount: 20 }];
 
 const validateUploadedEstimacionFileSizes = (req) => {
@@ -93,7 +93,7 @@ const cleanupUploadedEstimacionFilesIfPresent = async (req) => {
 
 module.exports = {
   uploadEstimacionFiles,
-  ESTIMACION_CARATULA_FIELDS,
+  ESTIMACION_EVIDENCIA_FIELDS,
   ESTIMACION_FOTOS_FIELDS,
   validateUploadedEstimacionFileSizes,
   cleanupUploadedEstimacionFilesIfPresent,

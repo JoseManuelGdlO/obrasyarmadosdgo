@@ -15,6 +15,7 @@ const ProyectoEstimacionEstadoCuenta = sequelize.define(
     id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
     estimacionId: { type: DataTypes.UUID, allowNull: false, unique: true },
     ...montoAttrs,
+    evidenciaEstimacion: { type: DataTypes.STRING(512), allowNull: true },
   },
   { tableName: "proyecto_estimacion_estados_cuenta", timestamps: true }
 );

@@ -4,6 +4,7 @@ const Proyecto = require("../models/Proyecto");
 const Cliente = require("../models/Cliente");
 const ProyectoEstimacion = require("../models/ProyectoEstimacion");
 const ProyectoEstimacionFoto = require("../models/ProyectoEstimacionFoto");
+const ProyectoEstimacionEstadoCuenta = require("../models/ProyectoEstimacionEstadoCuenta");
 const { logError } = require("../utils/logger");
 const {
   deleteStoredEstimacionUploadsBestEffort,
@@ -144,8 +145,13 @@ const remove = async (req, res) => {
     }
     const estimaciones = await ProyectoEstimacion.findAll({
       where: { proyectoId: row.id },
-      attributes: ["caratula"],
+      attributes: ["id"],
       include: [
+        {
+          model: ProyectoEstimacionEstadoCuenta,
+          as: "estadoCuenta",
+          attributes: ["evidenciaEstimacion"],
+        },
         {
           model: ProyectoEstimacionFoto,
           as: "fotos",
@@ -154,7 +160,7 @@ const remove = async (req, res) => {
       ],
     });
     const estimacionUploadPaths = estimaciones.flatMap((estimacion) => [
-      estimacion.caratula,
+      estimacion.estadoCuenta?.evidenciaEstimacion || null,
       ...(estimacion.fotos || []).map((foto) => foto.ruta),
     ]);
     await row.destroy();
