@@ -54,4 +54,7 @@ module.exports = {
   ORDENES_DELETE: "ordenes.delete",
   CHECKLIST_DIARIO_VIEW: "checklist_diario.view",
   CHECKLIST_DIARIO_CREATE: "checklist_diario.create",
+  COMPRAS_VIEW: "compras.view",
+  COMPRAS_IMPORT: "compras.import",
+  COMPRAS_FACTURAS: "compras.facturas",
 };

@@ -27,6 +27,9 @@ const OrdenTrabajoItem = require("./OrdenTrabajoItem");
 const MovimientoInventario = require("./MovimientoInventario");
 const ChecklistDiario = require("./ChecklistDiario");
 const Notification = require("./Notification");
+const OrdenCompra = require("./OrdenCompra");
+const OrdenCompraPartida = require("./OrdenCompraPartida");
+const OrdenCompraFactura = require("./OrdenCompraFactura");
 
 MaquinaClase.hasMany(MaquinaTipo, {
   foreignKey: "claseId",
@@ -207,6 +210,31 @@ ChecklistDiario.belongsTo(User, { foreignKey: "userId", as: "usuario" });
 User.hasMany(Notification, { foreignKey: "userId", as: "notifications" });
 Notification.belongsTo(User, { foreignKey: "userId", as: "user" });
 
+OrdenCompra.hasMany(OrdenCompraPartida, {
+  foreignKey: "ordenCompraId",
+  as: "partidas",
+  onDelete: "CASCADE",
+});
+OrdenCompraPartida.belongsTo(OrdenCompra, {
+  foreignKey: "ordenCompraId",
+  as: "orden",
+});
+OrdenCompra.hasMany(OrdenCompraFactura, {
+  foreignKey: "ordenCompraId",
+  as: "facturas",
+  onDelete: "CASCADE",
+});
+OrdenCompraFactura.belongsTo(OrdenCompra, {
+  foreignKey: "ordenCompraId",
+  as: "orden",
+});
+User.hasMany(OrdenCompraFactura, { foreignKey: "uploadedBy", as: "facturasSubidas" });
+OrdenCompraFactura.belongsTo(User, { foreignKey: "uploadedBy", as: "usuario" });
+Cliente.hasMany(OrdenCompra, { foreignKey: "clienteId", as: "ordenesCompra" });
+OrdenCompra.belongsTo(Cliente, { foreignKey: "clienteId", as: "cliente" });
+Proyecto.hasMany(OrdenCompra, { foreignKey: "proyectoId", as: "ordenesCompra" });
+OrdenCompra.belongsTo(Proyecto, { foreignKey: "proyectoId", as: "proyectoRef" });
+
 module.exports = {
   sequelize,
   User,
@@ -237,4 +265,7 @@ module.exports = {
   MovimientoInventario,
   ChecklistDiario,
   Notification,
+  OrdenCompra,
+  OrdenCompraPartida,
+  OrdenCompraFactura,
 };

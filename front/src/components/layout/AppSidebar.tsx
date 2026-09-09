@@ -9,7 +9,8 @@ import {
   Building,
   LayoutDashboard,
   Settings,
-  Shield
+  Shield,
+  ShoppingCart
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import logoObras from "@/assets/logo-obras.png"
@@ -34,6 +35,7 @@ const mainItems = [
   { title: "Órdenes de Trabajo", url: "/ordenes", icon: ClipboardList, requiredPermissions: [PERMISSIONS.ORDENES_VIEW] },
   { title: "Asignaciones", url: "/asignaciones", icon: GitBranch, requiredPermissions: [PERMISSIONS.ASIGNACIONES_VIEW] },
   { title: "Checklist Diario", url: "/checklist", icon: ClipboardList },
+  { title: "Compras", url: "/compras", icon: ShoppingCart, requiredPermissions: [PERMISSIONS.COMPRAS_VIEW] },
 ]
 
 const inventoryItems = [
@@ -92,7 +94,10 @@ function SidebarSection({ label, items, currentPath, className }: SectionProps) 
       <SidebarGroupContent>
         <SidebarMenu>
           {items.map((item) => {
-            const active = currentPath === item.url
+            const active =
+              item.url === "/"
+                ? currentPath === "/"
+                : currentPath === item.url || currentPath.startsWith(`${item.url}/`)
             const hasAccess = !item.requiredPermissions || canAny(item.requiredPermissions)
             const itemClassName = "flex items-center gap-3 px-3 py-2 rounded-lg transition-all w-full text-sm"
             const itemStyle = {

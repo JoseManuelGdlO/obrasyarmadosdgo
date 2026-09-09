@@ -110,7 +110,7 @@ const DATOS_ESTIMACION_FIELDS_UI: Array<{ key: DatoEstimacionKey; label: string 
   { key: "periodoEjecucionTrabajos", label: "Periodo de ejecucion de los trabajos" },
   { key: "obra", label: "Obra" },
   { key: "campus", label: "Campus" },
-  { key: "noSirgoc", label: "No. de SIRGOC" },
+  { key: "noSirgoc", label: "No. de SIROC" },
   { key: "proyectoNombreEstimacion", label: "Proyecto" },
   { key: "contratista", label: "Contratista" },
   { key: "rfc", label: "RFC" },
@@ -147,6 +147,69 @@ const datosFormFromData = (estimacion: DatosEstimacionData): DatosEstimacionForm
     DATOS_ESTIMACION_FIELDS.map((key) => [key, estimacion[key] || ""])
   ) as DatosEstimacionForm
 
+const INFORMACION_ESTIMACION_FIELDS = [
+  "infoEstimacionNo",
+  "infoOrdenCompraNo",
+  "infoFecha",
+] as const
+
+type InformacionEstimacionKey = (typeof INFORMACION_ESTIMACION_FIELDS)[number]
+type InformacionEstimacionForm = Record<InformacionEstimacionKey, string>
+type InformacionEstimacionData = Record<InformacionEstimacionKey, string | null>
+
+const INFORMACION_ESTIMACION_FIELDS_UI: Array<{
+  key: InformacionEstimacionKey
+  label: string
+  type: "text" | "number" | "date"
+}> = [
+  { key: "infoEstimacionNo", label: "Estimación No.", type: "text" },
+  { key: "infoOrdenCompraNo", label: "Orden de Compra No.", type: "number" },
+  { key: "infoFecha", label: "Fecha", type: "date" },
+]
+
+const emptyInformacionForm = (): InformacionEstimacionForm =>
+  Object.fromEntries(INFORMACION_ESTIMACION_FIELDS.map((key) => [key, ""])) as InformacionEstimacionForm
+
+const informacionFromRecord = (
+  estimacion: Record<string, unknown>
+): InformacionEstimacionData =>
+  Object.fromEntries(
+    INFORMACION_ESTIMACION_FIELDS.map((key) => {
+      const value = estimacion[key]
+      return [key, value != null && String(value).trim() !== "" ? String(value) : null]
+    })
+  ) as InformacionEstimacionData
+
+const informacionFormFromRecord = (
+  estimacion: Record<string, unknown>
+): InformacionEstimacionForm =>
+  Object.fromEntries(
+    INFORMACION_ESTIMACION_FIELDS.map((key) => {
+      const value = estimacion[key]
+      return [key, value != null ? String(value) : ""]
+    })
+  ) as InformacionEstimacionForm
+
+const informacionFormFromData = (
+  estimacion: InformacionEstimacionData
+): InformacionEstimacionForm =>
+  Object.fromEntries(
+    INFORMACION_ESTIMACION_FIELDS.map((key) => [key, estimacion[key] || ""])
+  ) as InformacionEstimacionForm
+
+const validateInformacionForm = (form: InformacionEstimacionForm): string | null => {
+  if (!form.infoEstimacionNo.trim()) return "Estimación No. es obligatorio."
+  if (!/^[A-Za-z0-9\s\-./]+$/.test(form.infoEstimacionNo.trim())) {
+    return "Estimación No. debe ser alfanumérico."
+  }
+  if (!form.infoOrdenCompraNo.trim()) return "Orden de Compra No. es obligatorio."
+  if (!/^\d+$/.test(form.infoOrdenCompraNo.trim())) {
+    return "Orden de Compra No. debe ser numérico."
+  }
+  if (!form.infoFecha.trim()) return "Fecha es obligatoria."
+  return null
+}
+
 type EstimacionData = {
   id: string
   numero: number
@@ -159,7 +222,8 @@ type EstimacionData = {
   evidenciaEstimacion: string | null
   fotos: EstimacionFoto[]
 } & MontosManualesNumeros &
-  DatosEstimacionData
+  DatosEstimacionData &
+  InformacionEstimacionData
 
 type EstimacionForm = {
   fechaEstimacion: string
@@ -169,7 +233,8 @@ type EstimacionForm = {
   factura: string
   retencionAmortizacion: string
 } & MontosManualesForm &
-  DatosEstimacionForm
+  DatosEstimacionForm &
+  InformacionEstimacionForm
 
 const emptyMontosForm = (): MontosManualesForm =>
   Object.fromEntries(MONTOS_MANUALES_KEYS.map((key) => [key, "0"])) as MontosManualesForm
@@ -265,6 +330,7 @@ const emptyEstimacion: EstimacionForm = {
   retencionAmortizacion: "0",
   ...emptyMontosForm(),
   ...emptyDatosForm(),
+  ...emptyInformacionForm(),
 }
 
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024
@@ -305,6 +371,7 @@ const toEstimacionData = (estimacion: Record<string, unknown>): EstimacionData =
     : [],
   ...montosFromRecord(estimacion),
   ...datosFromRecord(estimacion),
+  ...informacionFromRecord(estimacion),
 })
 
 const toEstimacionForm = (estimacion: Record<string, unknown>): EstimacionForm => ({
@@ -316,6 +383,7 @@ const toEstimacionForm = (estimacion: Record<string, unknown>): EstimacionForm =
   retencionAmortizacion: String(Number(estimacion.retencionAmortizacion || 0)),
   ...montosFormFromRecord(estimacion),
   ...datosFormFromRecord(estimacion),
+  ...informacionFormFromRecord(estimacion),
 })
 
 const formatCurrency = (amount: number) =>
@@ -538,6 +606,9 @@ const ProyectoDetalle = () => {
     for (const key of DATOS_ESTIMACION_FIELDS) {
       body.append(key, estimForm[key] || "")
     }
+    for (const key of INFORMACION_ESTIMACION_FIELDS) {
+      body.append(key, estimForm[key].trim())
+    }
     if (evidenciaFile) body.append("evidenciaEstimacion", evidenciaFile)
     if (quitarEvidencia) body.append("quitarEvidenciaEstimacion", "true")
     return body
@@ -638,6 +709,11 @@ const ProyectoDetalle = () => {
   })
 
   const submitEstim = () => {
+    const infoError = validateInformacionForm(estimForm)
+    if (infoError) {
+      toast.error(infoError)
+      return
+    }
     const body = buildEstimFormData()
     const extras = pendingExtraFiles.map((item) => item.file)
     if (editingEstimId) {
@@ -662,6 +738,7 @@ const ProyectoDetalle = () => {
       retencionAmortizacion: String(estimacion.retencionAmortizacion),
       ...montosFormFromData(estimacion),
       ...datosFormFromData(datosSource),
+      ...informacionFormFromData(estimacion),
     })
   }
 
@@ -1127,6 +1204,33 @@ const ProyectoDetalle = () => {
           </div>
           <Collapsible className="rounded-md border border-border">
             <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left font-medium hover:bg-muted/50 [&[data-state=open]>svg]:rotate-180">
+              <span>Información Estimación</span>
+              <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="border-t border-border px-4 py-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {INFORMACION_ESTIMACION_FIELDS_UI.map((field) => (
+                  <div key={field.key} className="space-y-2">
+                    <Label>{field.label}</Label>
+                    <Input
+                      type={field.type}
+                      min={field.type === "number" ? "0" : undefined}
+                      step={field.type === "number" ? "1" : undefined}
+                      value={estimForm[field.key]}
+                      onChange={(event) =>
+                        setEstimForm((prev) => ({
+                          ...prev,
+                          [field.key]: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+          <Collapsible className="rounded-md border border-border">
+            <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left font-medium hover:bg-muted/50 [&[data-state=open]>svg]:rotate-180">
               <span>Datos Estimación</span>
               <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
             </CollapsibleTrigger>
@@ -1312,6 +1416,34 @@ const ProyectoDetalle = () => {
                         <span className="text-muted-foreground">Sin carátula</span>
                       )}
                     </div>
+                    <Collapsible className="rounded-md border border-border">
+                      <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold hover:bg-muted/50 [&[data-state=open]>svg]:rotate-180">
+                        <span>Información Estimación</span>
+                        <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="border-t border-border px-4 py-3">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Concepto</TableHead>
+                              <TableHead>Valor</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {INFORMACION_ESTIMACION_FIELDS_UI.map((field) => (
+                              <TableRow key={field.key}>
+                                <TableCell>{field.label}</TableCell>
+                                <TableCell className="font-medium">
+                                  {estimacion[field.key]?.trim()
+                                    ? estimacion[field.key]
+                                    : "—"}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </CollapsibleContent>
+                    </Collapsible>
                     <Collapsible className="rounded-md border border-border">
                       <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold hover:bg-muted/50 [&[data-state=open]>svg]:rotate-180">
                         <span>Datos Estimación</span>

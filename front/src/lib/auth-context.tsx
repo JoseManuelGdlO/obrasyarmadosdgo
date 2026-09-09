@@ -72,9 +72,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       token,
       isLoading,
       isAuthenticated: Boolean(user && token),
-      can: (permission) => permissions.includes(permission),
-      canAny: (required) => required.some((permission) => permissions.includes(permission)),
-      canAll: (required) => required.every((permission) => permissions.includes(permission)),
+      can: (permission) =>
+        user?.rol === "admin" || permissions.includes(permission),
+      canAny: (required) =>
+        user?.rol === "admin" || required.some((permission) => permissions.includes(permission)),
+      canAll: (required) =>
+        user?.rol === "admin" || required.every((permission) => permissions.includes(permission)),
       login: async (email, password) => {
         const data = await apiRequest<{
           token: string;

@@ -18,6 +18,9 @@ const {
   ESTIMACION_UPLOADS_DIR,
   ESTIMACION_UPLOADS_ROUTE,
   ensureEstimacionUploadsDir,
+  COMPRAS_UPLOADS_DIR,
+  COMPRAS_UPLOADS_ROUTE,
+  ensureComprasUploadsDir,
 } = require("./config/uploads");
 // Registra modelos y asociaciones Sequelize al iniciar la app.
 require("./models");
@@ -52,6 +55,7 @@ app.use(express.json());
 ensureMachineUploadsDir();
 ensureWorkerUploadsDir();
 ensureEstimacionUploadsDir();
+ensureComprasUploadsDir();
 app.use(
   MACHINE_UPLOADS_ROUTE,
   express.static(path.resolve(MACHINE_UPLOADS_DIR), {
@@ -67,6 +71,12 @@ app.use(
 app.use(
   ESTIMACION_UPLOADS_ROUTE,
   express.static(path.resolve(ESTIMACION_UPLOADS_DIR), {
+    maxAge: "7d",
+  })
+);
+app.use(
+  COMPRAS_UPLOADS_ROUTE,
+  express.static(path.resolve(COMPRAS_UPLOADS_DIR), {
     maxAge: "7d",
   })
 );

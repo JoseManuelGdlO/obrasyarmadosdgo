@@ -34,6 +34,22 @@ const ensureEstimacionUploadsDir = () => {
   }
 };
 
+const COMPRAS_UPLOADS_DIR =
+  process.env.COMPRAS_UPLOADS_DIR || path.resolve(__dirname, "../../uploads/compras");
+
+const COMPRAS_UPLOADS_ROUTE = "/uploads/compras";
+const COMPRAS_IMPORTS_DIR = path.join(COMPRAS_UPLOADS_DIR, "imports");
+const COMPRAS_FACTURAS_DIR = path.join(COMPRAS_UPLOADS_DIR, "facturas");
+
+const ensureComprasUploadsDir = () => {
+  if (!fs.existsSync(COMPRAS_IMPORTS_DIR)) {
+    fs.mkdirSync(COMPRAS_IMPORTS_DIR, { recursive: true });
+  }
+  if (!fs.existsSync(COMPRAS_FACTURAS_DIR)) {
+    fs.mkdirSync(COMPRAS_FACTURAS_DIR, { recursive: true });
+  }
+};
+
 module.exports = {
   MACHINE_UPLOADS_DIR,
   MACHINE_UPLOADS_ROUTE,
@@ -44,4 +60,9 @@ module.exports = {
   ESTIMACION_UPLOADS_DIR,
   ESTIMACION_UPLOADS_ROUTE,
   ensureEstimacionUploadsDir,
+  COMPRAS_UPLOADS_DIR,
+  COMPRAS_UPLOADS_ROUTE,
+  COMPRAS_IMPORTS_DIR,
+  COMPRAS_FACTURAS_DIR,
+  ensureComprasUploadsDir,
 };
