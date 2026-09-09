@@ -65,7 +65,8 @@ Unique: `(fecha, proyecto, proveedor)`.
 | `importeTotal` | DECIMAL | |
 | timestamps | | |
 
-Unique para upsert: `(ordenCompraId, indice, nombreProducto)`.
+Unique para upsert: `(ordenCompraId, indice, nombreProducto)`.  
+Si `indice` viene vacío en el Excel, se trata como `0` para la clave (algunas filas del archivo de referencia no lo traen).
 
 ### `orden_compra_facturas`
 
