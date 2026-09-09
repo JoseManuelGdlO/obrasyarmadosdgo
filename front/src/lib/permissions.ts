@@ -51,6 +51,9 @@ export const PERMISSIONS = {
   ORDENES_CREATE: "ordenes.create",
   ORDENES_EDIT: "ordenes.edit",
   ORDENES_DELETE: "ordenes.delete",
+  COMPRAS_VIEW: "compras.view",
+  COMPRAS_IMPORT: "compras.import",
+  COMPRAS_FACTURAS: "compras.facturas",
 } as const;
 
 export const ALL_PERMISSIONS = Object.values(PERMISSIONS);

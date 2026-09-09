@@ -20,6 +20,8 @@ import GestionUsuarios from "./pages/GestionUsuarios";
 import RolesPermisos from "./pages/RolesPermisos";
 import Nomenclaturas from "./pages/Nomenclaturas";
 import Checklist from "./pages/Checklist";
+import Compras from "./pages/Compras";
+import ComprasFacturas from "./pages/ComprasFacturas";
 import Forbidden from "./pages/Forbidden";
 import Login from "./pages/Login";
 import ChecklistPublico from "./pages/ChecklistPublico";
@@ -167,6 +169,22 @@ const App = () => (
                         }
                       />
                       <Route path="/checklist" element={<Checklist />} />
+                      <Route
+                        path="/compras"
+                        element={
+                          <ProtectedRoute requiredPermissions={[PERMISSIONS.COMPRAS_VIEW]}>
+                            <Compras />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/compras/facturas"
+                        element={
+                          <ProtectedRoute requiredPermissions={[PERMISSIONS.COMPRAS_VIEW]}>
+                            <ComprasFacturas />
+                          </ProtectedRoute>
+                        }
+                      />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </MainLayout>

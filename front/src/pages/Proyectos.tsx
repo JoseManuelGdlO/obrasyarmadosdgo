@@ -8,6 +8,12 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { StatCard } from "@/components/ui/stat-card"
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   Plus,
   Search,
   Filter,
@@ -16,17 +22,44 @@ import {
   MapPin,
   DollarSign,
   Users,
+  ShoppingCart,
 } from "lucide-react"
 import { apiRequest } from "@/lib/api"
 import { filterByProyectoScope, useAuth } from "@/lib/auth-context"
+import { PERMISSIONS } from "@/lib/permissions"
 import ProyectoModal, { ProyectoFormData } from "@/components/modals/ProyectoModal"
+
+type CompraPartida = {
+  id: string
+  indice: number
+  cantidad: number
+  unidad: string | null
+  nombreProducto: string
+  precioUnitario: number
+  importeTotal: number
+}
+
+type CompraOrden = {
+  id: string
+  fecha: string
+  proyecto: string
+  proveedor: string
+  total: number
+  partidas?: CompraPartida[]
+}
+
+const formatMoneyMx = (n: number) =>
+  new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(n || 0)
 
 const Proyectos = () => {
   const navigate = useNavigate()
-  const { proyectoIds } = useAuth()
+  const { proyectoIds, can } = useAuth()
   const [searchTerm, setSearchTerm] = useState("")
   const [modalOpen, setModalOpen] = useState(false)
+  const [comprasOpen, setComprasOpen] = useState(false)
+  const [comprasProyectoNombre, setComprasProyectoNombre] = useState<string | null>(null)
   const queryClient = useQueryClient()
+  const canViewCompras = can(PERMISSIONS.COMPRAS_VIEW)
 
   const { data: projectsResponse } = useQuery({
     queryKey: ["proyectos"],
@@ -36,6 +69,69 @@ const Proyectos = () => {
     queryKey: ["clientes-lite"],
     queryFn: () => apiRequest<{ clientes: Array<{ id: string; nombre: string }> }>("/clientes"),
   })
+
+  const { data: comprasData, isLoading: comprasLoading } = useQuery({
+    queryKey: ["compras-por-proyecto", comprasProyectoNombre],
+    queryFn: () =>
+      apiRequest<{ ordenes: CompraOrden[] }>(
+        `/compras?proyecto=${encodeURIComponent(comprasProyectoNombre || "")}`
+      ),
+    enabled: comprasOpen && !!comprasProyectoNombre && canViewCompras,
+  })
+
+  const comprasFilas = useMemo(() => {
+    const ordenes = comprasData?.ordenes || []
+    const nombreNorm = (comprasProyectoNombre || "").trim().toLowerCase()
+    const rows: Array<{
+      key: string
+      fecha: string
+      proyecto: string
+      proveedor: string
+      indice: number | string
+      cantidad: number | string
+      unidad: string
+      nombreProducto: string
+      precioUnitario: number
+      importeTotal: number
+    }> = []
+    for (const o of ordenes) {
+      // Relación por nombre de proyecto (texto libre en compras)
+      if (nombreNorm && !String(o.proyecto || "").toLowerCase().includes(nombreNorm)) {
+        continue
+      }
+      const partidas = o.partidas || []
+      if (partidas.length === 0) {
+        rows.push({
+          key: o.id,
+          fecha: o.fecha,
+          proyecto: o.proyecto,
+          proveedor: o.proveedor,
+          indice: "—",
+          cantidad: "—",
+          unidad: "—",
+          nombreProducto: "—",
+          precioUnitario: 0,
+          importeTotal: Number(o.total) || 0,
+        })
+        continue
+      }
+      for (const p of partidas) {
+        rows.push({
+          key: p.id,
+          fecha: o.fecha,
+          proyecto: o.proyecto,
+          proveedor: o.proveedor,
+          indice: p.indice,
+          cantidad: p.cantidad,
+          unidad: p.unidad || "—",
+          nombreProducto: p.nombreProducto,
+          precioUnitario: p.precioUnitario,
+          importeTotal: p.importeTotal,
+        })
+      }
+    }
+    return rows
+  }, [comprasData?.ordenes, comprasProyectoNombre])
 
   const clientes = clientsResponse?.clientes || []
   const clientById = useMemo(
@@ -227,6 +323,7 @@ const Proyectos = () => {
                 <TableHead>Máquinas</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Acciones</TableHead>
+                <TableHead>Compras</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -299,12 +396,89 @@ const Proyectos = () => {
                       Gestionar
                     </Button>
                   </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!canViewCompras}
+                      title={!canViewCompras ? "Sin permiso de compras" : undefined}
+                      onClick={() => {
+                        setComprasProyectoNombre(proyecto.nombre)
+                        setComprasOpen(true)
+                      }}
+                    >
+                      <ShoppingCart className="w-4 h-4 mr-1" />
+                      Lista de compras
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog
+        open={comprasOpen}
+        onOpenChange={(open) => {
+          setComprasOpen(open)
+          if (!open) setComprasProyectoNombre(null)
+        }}
+      >
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Compras{comprasProyectoNombre ? ` · ${comprasProyectoNombre}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+          {!canViewCompras ? (
+            <p className="text-sm text-muted-foreground">No tienes permiso para ver compras.</p>
+          ) : comprasLoading ? (
+            <p className="text-sm text-muted-foreground">Cargando compras…</p>
+          ) : comprasFilas.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No hay compras relacionadas con este nombre de proyecto.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Proyecto</TableHead>
+                    <TableHead>Proveedor</TableHead>
+                    <TableHead className="text-center">Índice</TableHead>
+                    <TableHead className="text-right">Cantidad</TableHead>
+                    <TableHead>Unidad</TableHead>
+                    <TableHead>Producto</TableHead>
+                    <TableHead className="text-right">P. unitario</TableHead>
+                    <TableHead className="text-right">Importe</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {comprasFilas.map((row) => (
+                    <TableRow key={row.key}>
+                      <TableCell className="whitespace-nowrap">{row.fecha}</TableCell>
+                      <TableCell>{row.proyecto}</TableCell>
+                      <TableCell>{row.proveedor}</TableCell>
+                      <TableCell className="text-center">{row.indice}</TableCell>
+                      <TableCell className="text-right">{row.cantidad}</TableCell>
+                      <TableCell>{row.unidad}</TableCell>
+                      <TableCell>{row.nombreProducto}</TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        {formatMoneyMx(row.precioUnitario)}
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        {formatMoneyMx(row.importeTotal)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <ProyectoModal
         open={modalOpen}
