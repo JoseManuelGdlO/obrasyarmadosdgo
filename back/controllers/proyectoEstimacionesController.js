@@ -5,6 +5,10 @@ const ProyectoEstimacionFoto = require("../models/ProyectoEstimacionFoto");
 const ProyectoEstimacionEstadoCuenta = require("../models/ProyectoEstimacionEstadoCuenta");
 const { ESTADO_CUENTA_FIELDS } = require("../constants/estadoCuentaFields");
 const { DATOS_ESTIMACION_FIELDS } = require("../constants/datosEstimacionFields");
+const {
+  INFORMACION_ESTIMACION_FIELDS,
+  INFORMACION_ESTIMACION_LABELS,
+} = require("../constants/informacionEstimacionFields");
 const { ESTIMACION_UPLOADS_ROUTE } = require("../config/uploads");
 const {
   cleanupUploadedEstimacionFilesIfPresent,
@@ -106,6 +110,66 @@ const datosFromEstado = (estado) =>
     })
   );
 
+const INFO_ESTIMACION_NO_PATTERN = /^[A-Za-z0-9\s\-./]+$/;
+const INFO_ORDEN_COMPRA_PATTERN = /^\d+$/;
+const INFO_FECHA_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+const parseInformacionFromBody = (body) => {
+  const out = {};
+  const no = body.infoEstimacionNo;
+  if (no === undefined || no === null || String(no).trim() === "") {
+    const err = new Error(`${INFORMACION_ESTIMACION_LABELS.infoEstimacionNo} es obligatorio.`);
+    err.status = 400;
+    throw err;
+  }
+  const estimacionNo = String(no).trim();
+  if (!INFO_ESTIMACION_NO_PATTERN.test(estimacionNo)) {
+    const err = new Error(
+      `${INFORMACION_ESTIMACION_LABELS.infoEstimacionNo} debe ser alfanumérico.`
+    );
+    err.status = 400;
+    throw err;
+  }
+  out.infoEstimacionNo = estimacionNo;
+
+  const orden = body.infoOrdenCompraNo;
+  if (orden === undefined || orden === null || String(orden).trim() === "") {
+    const err = new Error(`${INFORMACION_ESTIMACION_LABELS.infoOrdenCompraNo} es obligatorio.`);
+    err.status = 400;
+    throw err;
+  }
+  const ordenCompraNo = String(orden).trim();
+  if (!INFO_ORDEN_COMPRA_PATTERN.test(ordenCompraNo)) {
+    const err = new Error(
+      `${INFORMACION_ESTIMACION_LABELS.infoOrdenCompraNo} debe ser numérico.`
+    );
+    err.status = 400;
+    throw err;
+  }
+  out.infoOrdenCompraNo = ordenCompraNo;
+
+  const fecha = body.infoFecha;
+  if (fecha === undefined || fecha === null || String(fecha).trim() === "") {
+    const err = new Error(`${INFORMACION_ESTIMACION_LABELS.infoFecha} es obligatoria.`);
+    err.status = 400;
+    throw err;
+  }
+  const fechaStr = String(fecha).trim();
+  if (!INFO_FECHA_PATTERN.test(fechaStr)) {
+    const err = new Error(`${INFORMACION_ESTIMACION_LABELS.infoFecha} debe ser una fecha válida.`);
+    err.status = 400;
+    throw err;
+  }
+  const parsed = new Date(`${fechaStr}T00:00:00`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== fechaStr) {
+    const err = new Error(`${INFORMACION_ESTIMACION_LABELS.infoFecha} debe ser una fecha válida.`);
+    err.status = 400;
+    throw err;
+  }
+  out.infoFecha = fechaStr;
+  return out;
+};
+
 const findLatestDatosForProyecto = async (proyectoId, transaction) => {
   const rows = await ProyectoEstimacion.findAll({
     where: { proyectoId },
@@ -134,6 +198,11 @@ const serializeEstimacion = (row) => {
     json[field] = estado[field] != null ? Number(estado[field]) : 0;
   }
   for (const field of DATOS_ESTIMACION_FIELDS) {
+    const value = estado[field];
+    json[field] =
+      value != null && String(value).trim() !== "" ? String(value) : null;
+  }
+  for (const field of INFORMACION_ESTIMACION_FIELDS) {
     const value = estado[field];
     json[field] =
       value != null && String(value).trim() !== "" ? String(value) : null;
@@ -225,6 +294,7 @@ const createEstimacion = async (req, res) => {
 
     const uploadedEvidencia = getUploadedFile(req, "evidenciaEstimacion");
     const estadoCuenta = pickEstadoCuentaFromBody(req.body);
+    const informacionEstimacion = parseInformacionFromBody(req.body);
     const existingDatos = await findLatestDatosForProyecto(proyectoId);
     const datosEstimacion = existingDatos || pickDatosFromBody(req.body);
 
@@ -247,6 +317,7 @@ const createEstimacion = async (req, res) => {
         estimacionId: created.id,
         ...estadoCuenta,
         ...datosEstimacion,
+        ...informacionEstimacion,
         evidenciaEstimacion: uploadedEvidencia
           ? buildPublicEstimacionUploadPath(uploadedEvidencia.filename)
           : null,
@@ -255,6 +326,15 @@ const createEstimacion = async (req, res) => {
     );
     await transaction.commit();
     persisted = true;
+
+    const fallbackEstadoCuenta = {
+      ...estadoCuenta,
+      ...datosEstimacion,
+      ...informacionEstimacion,
+      evidenciaEstimacion: uploadedEvidencia
+        ? buildPublicEstimacionUploadPath(uploadedEvidencia.filename)
+        : null,
+    };
 
     let estimacion = created;
     try {
@@ -266,24 +346,12 @@ const createEstimacion = async (req, res) => {
         estimacion = reloaded;
       } else {
         created.setDataValue("fotos", []);
-        created.setDataValue("estadoCuenta", {
-          ...estadoCuenta,
-          ...datosEstimacion,
-          evidenciaEstimacion: uploadedEvidencia
-            ? buildPublicEstimacionUploadPath(uploadedEvidencia.filename)
-            : null,
-        });
+        created.setDataValue("estadoCuenta", fallbackEstadoCuenta);
       }
     } catch (reloadError) {
       logger.warn(`No se pudo recargar la estimación creada: ${reloadError.message}`);
       created.setDataValue("fotos", []);
-      created.setDataValue("estadoCuenta", {
-        ...estadoCuenta,
-        ...datosEstimacion,
-        evidenciaEstimacion: uploadedEvidencia
-          ? buildPublicEstimacionUploadPath(uploadedEvidencia.filename)
-          : null,
-      });
+      created.setDataValue("estadoCuenta", fallbackEstadoCuenta);
     }
     return res.status(201).json({
       message: "Estimación agregada correctamente.",
@@ -367,6 +435,7 @@ const updateEstimacion = async (req, res) => {
       updates.retencionAmortizacion = toDecimal(retencionAmortizacion);
     }
     const estadoUpdates = pickEstadoCuentaFromBody(req.body, { partial: true });
+    Object.assign(estadoUpdates, parseInformacionFromBody(req.body));
 
     const uploadedEvidencia = getUploadedFile(req, "evidenciaEstimacion");
     const existingEstado = await ProyectoEstimacionEstadoCuenta.findOne({

@@ -2,6 +2,7 @@ const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 const { ESTADO_CUENTA_FIELDS } = require("../constants/estadoCuentaFields");
 const { DATOS_ESTIMACION_FIELDS } = require("../constants/datosEstimacionFields");
+const { INFORMACION_ESTIMACION_FIELDS } = require("../constants/informacionEstimacionFields");
 
 const montoAttrs = Object.fromEntries(
   ESTADO_CUENTA_FIELDS.map((field) => [
@@ -24,6 +25,9 @@ const ProyectoEstimacionEstadoCuenta = sequelize.define(
     estimacionId: { type: DataTypes.UUID, allowNull: false, unique: true },
     ...montoAttrs,
     ...datosAttrs,
+    infoEstimacionNo: { type: DataTypes.STRING(120), allowNull: true },
+    infoOrdenCompraNo: { type: DataTypes.STRING(40), allowNull: true },
+    infoFecha: { type: DataTypes.DATEONLY, allowNull: true },
     evidenciaEstimacion: { type: DataTypes.STRING(512), allowNull: true },
   },
   { tableName: "proyecto_estimacion_estados_cuenta", timestamps: true }

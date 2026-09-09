@@ -27,7 +27,7 @@ En **Proyectos → lista → Gestionar → Agregar estimación**, agregar un mó
 | `periodoEjecucionTrabajos` | Periodo de ejecucion de los trabajos |
 | `obra` | Obra |
 | `campus` | Campus |
-| `noSirgoc` | No. de SIRGOC |
+| `noSirgoc` | No. de SIROC |
 | `proyectoNombreEstimacion` | Proyecto |
 | `contratista` | Contratista |
 | `rfc` | RFC |
