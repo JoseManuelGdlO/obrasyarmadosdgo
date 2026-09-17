@@ -30,6 +30,10 @@ const Notification = require("./Notification");
 const OrdenCompra = require("./OrdenCompra");
 const OrdenCompraPartida = require("./OrdenCompraPartida");
 const OrdenCompraFactura = require("./OrdenCompraFactura");
+const NominaPeriodo = require("./NominaPeriodo");
+const NominaPeriodoLinea = require("./NominaPeriodoLinea");
+const NominaLineaConcepto = require("./NominaLineaConcepto");
+const NominaPagoExtra = require("./NominaPagoExtra");
 
 MaquinaClase.hasMany(MaquinaTipo, {
   foreignKey: "claseId",
@@ -235,6 +239,25 @@ OrdenCompra.belongsTo(Cliente, { foreignKey: "clienteId", as: "cliente" });
 Proyecto.hasMany(OrdenCompra, { foreignKey: "proyectoId", as: "ordenesCompra" });
 OrdenCompra.belongsTo(Proyecto, { foreignKey: "proyectoId", as: "proyectoRef" });
 
+NominaPeriodo.hasMany(NominaPeriodoLinea, {
+  foreignKey: "periodoId",
+  as: "lineas",
+  onDelete: "CASCADE",
+});
+NominaPeriodoLinea.belongsTo(NominaPeriodo, { foreignKey: "periodoId", as: "periodo" });
+Trabajador.hasMany(NominaPeriodoLinea, { foreignKey: "trabajadorId", as: "nominaLineas" });
+NominaPeriodoLinea.belongsTo(Trabajador, { foreignKey: "trabajadorId", as: "trabajador" });
+NominaPeriodoLinea.hasMany(NominaLineaConcepto, {
+  foreignKey: "lineaId",
+  as: "conceptos",
+  onDelete: "CASCADE",
+});
+NominaLineaConcepto.belongsTo(NominaPeriodoLinea, { foreignKey: "lineaId", as: "linea" });
+Trabajador.hasMany(NominaPagoExtra, { foreignKey: "trabajadorId", as: "nominaExtras" });
+NominaPagoExtra.belongsTo(Trabajador, { foreignKey: "trabajadorId", as: "trabajador" });
+User.hasMany(NominaPagoExtra, { foreignKey: "creadoPor", as: "nominaExtrasCreados" });
+NominaPagoExtra.belongsTo(User, { foreignKey: "creadoPor", as: "creador" });
+
 module.exports = {
   sequelize,
   User,
@@ -268,4 +291,8 @@ module.exports = {
   OrdenCompra,
   OrdenCompraPartida,
   OrdenCompraFactura,
+  NominaPeriodo,
+  NominaPeriodoLinea,
+  NominaLineaConcepto,
+  NominaPagoExtra,
 };

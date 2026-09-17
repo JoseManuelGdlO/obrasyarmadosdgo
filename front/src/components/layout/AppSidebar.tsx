@@ -10,7 +10,8 @@ import {
   LayoutDashboard,
   Settings,
   Shield,
-  ShoppingCart
+  ShoppingCart,
+  Wallet
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import logoObras from "@/assets/logo-obras.png"
@@ -36,6 +37,7 @@ const mainItems = [
   { title: "Asignaciones", url: "/asignaciones", icon: GitBranch, requiredPermissions: [PERMISSIONS.ASIGNACIONES_VIEW] },
   { title: "Checklist Diario", url: "/checklist", icon: ClipboardList },
   { title: "Compras", url: "/compras", icon: ShoppingCart, requiredPermissions: [PERMISSIONS.COMPRAS_VIEW] },
+  { title: "Nómina", url: "/nomina", icon: Wallet, requiredPermissions: [PERMISSIONS.NOMINA_VIEW] },
 ]
 
 const inventoryItems = [

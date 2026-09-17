@@ -124,6 +124,19 @@ const buildPayload = (body, { partial = false } = {}) => {
   if (body.experiencia !== undefined) payload.experiencia = trimOrNull(body.experiencia);
   if (body.avatar !== undefined) payload.avatar = trimOrNull(body.avatar);
 
+  if (body.sueldoBase !== undefined) {
+    if (body.sueldoBase === null || body.sueldoBase === "") {
+      payload.sueldoBase = null;
+    } else {
+      const n = Number(body.sueldoBase);
+      if (Number.isNaN(n) || n < 0) {
+        errors.push("El sueldo base debe ser un número mayor o igual a 0.");
+      } else {
+        payload.sueldoBase = Number(n.toFixed(2));
+      }
+    }
+  }
+
   if (body.fechaIngreso !== undefined) {
     const fecha = normalizeDateOnly(body.fechaIngreso);
     if (fecha === null && body.fechaIngreso !== null && body.fechaIngreso !== "") {

@@ -23,6 +23,7 @@ const ordenesTrabajoRoutes = require("./ordenesTrabajoRoutes");
 const movimientosInventarioRoutes = require("./movimientosInventarioRoutes");
 const checklistsDiariosRoutes = require("./checklistsDiariosRoutes");
 const comprasRoutes = require("./comprasRoutes");
+const nominaRoutes = require("./nominaRoutes");
 const dashboardRoutes = require("./dashboardRoutes");
 const notificationsRoutes = require("./notificationsRoutes");
 const publicRoutes = require("./publicRoutes");
@@ -59,6 +60,7 @@ router.use("/nomenclaturas", nomenclaturasRoutes);
 router.use("/ordenes-trabajo", ordenesTrabajoRoutes);
 router.use("/checklists-diarios", checklistsDiariosRoutes);
 router.use("/compras", comprasRoutes);
+router.use("/nomina", nominaRoutes);
 router.use("/dashboard", dashboardRoutes);
 router.use("/notifications", notificationsRoutes);
 

@@ -45,6 +45,7 @@ type TrabajadorBackend = {
   fechaBaja?: string | null;
   experiencia?: string | null;
   avatar?: string | null;
+  sueldoBase?: number | null;
   estado: EstadoBackend;
 };
 
@@ -60,6 +61,7 @@ type TrabajadorVM = {
   fechaBaja: string;
   experiencia: string;
   avatar: string;
+  sueldoBase: string;
   estado: EstadoUi;
 };
 
@@ -116,6 +118,10 @@ const mapTrabajador = (t: TrabajadorBackend): TrabajadorVM => ({
   fechaBaja: t.fechaBaja || "",
   experiencia: t.experiencia || "",
   avatar: t.avatar || "",
+  sueldoBase:
+    t.sueldoBase != null && Number.isFinite(Number(t.sueldoBase))
+      ? String(t.sueldoBase)
+      : "",
   estado: estadoToUi(t.estado),
 });
 
@@ -128,6 +134,7 @@ type TrabajadorFormData = {
   especialidad: string;
   fechaIngreso: string;
   experiencia: string;
+  sueldoBase: string;
   avatarPath: string;
   avatarFile: File | null;
   removeAvatar: boolean;
@@ -143,6 +150,7 @@ const defaultForm: TrabajadorFormData = {
   especialidad: "",
   fechaIngreso: "",
   experiencia: "",
+  sueldoBase: "",
   avatarPath: "",
   avatarFile: null,
   removeAvatar: false,
@@ -156,6 +164,8 @@ const appendPayloadToFormData = (
   Object.entries(payload).forEach(([key, value]) => {
     if (value !== null && value !== undefined) {
       body.append(key, String(value));
+    } else if (key === "sueldoBase") {
+      body.append(key, "");
     }
   });
 };
@@ -206,6 +216,7 @@ export default function Trabajadores() {
     especialidad: formData.especialidad.trim() || null,
     fechaIngreso: formData.fechaIngreso || null,
     experiencia: formData.experiencia.trim() || null,
+    sueldoBase: formData.sueldoBase.trim(),
     estado: estadoToBackend(formData.estado),
   });
 
@@ -307,6 +318,7 @@ export default function Trabajadores() {
       especialidad: t.especialidad,
       fechaIngreso: t.fechaIngreso,
       experiencia: t.experiencia,
+      sueldoBase: t.sueldoBase,
       avatarPath: toAbsoluteAssetUrl(t.avatar) || "",
       avatarFile: null,
       removeAvatar: false,
@@ -475,6 +487,18 @@ export default function Trabajadores() {
                   placeholder="Ej: 8 años"
                   value={formData.experiencia}
                   onChange={(e) => setFormData({ ...formData, experiencia: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sueldoBase">Sueldo base</Label>
+                <Input
+                  id="sueldoBase"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={formData.sueldoBase}
+                  onChange={(e) => setFormData({ ...formData, sueldoBase: e.target.value })}
                 />
               </div>
               <div className="space-y-2">

@@ -50,6 +50,36 @@ export async function apiRequest<T>(
   return payload as T;
 }
 
+export async function apiDownload(
+  path: string,
+  options: { method?: Method; token?: string | null; fallbackFilename?: string } = {}
+): Promise<void> {
+  const { method = "GET", fallbackFilename = "download.bin" } = options;
+  const token = options.token ?? tokenStorage.get();
+  const headers: Record<string, string> = {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+
+  const response = await fetch(`${API_BASE_URL}${path}`, { method, headers });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload?.message || "Error al descargar el archivo");
+  }
+
+  const disposition = response.headers.get("Content-Disposition") || "";
+  const match = /filename="?([^"]+)"?/i.exec(disposition);
+  const filename = match?.[1] || fallbackFilename;
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export const toAbsoluteAssetUrl = (assetPath: string | null | undefined) => {
   if (!assetPath) return null;
   if (/^https?:\/\//i.test(assetPath)) return assetPath;

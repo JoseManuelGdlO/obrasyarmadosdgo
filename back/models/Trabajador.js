@@ -28,6 +28,7 @@ const Trabajador = sequelize.define(
       defaultValue: false,
     },
     fechaBaja: { type: DataTypes.DATEONLY, allowNull: true },
+    sueldoBase: { type: DataTypes.DECIMAL(14, 2), allowNull: true },
   },
   { tableName: "trabajadores", timestamps: true }
 );
