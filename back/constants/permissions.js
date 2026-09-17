@@ -57,4 +57,7 @@ module.exports = {
   COMPRAS_VIEW: "compras.view",
   COMPRAS_IMPORT: "compras.import",
   COMPRAS_FACTURAS: "compras.facturas",
+  NOMINA_VIEW: "nomina.view",
+  NOMINA_CREATE: "nomina.create",
+  NOMINA_PAY: "nomina.pay",
 };
