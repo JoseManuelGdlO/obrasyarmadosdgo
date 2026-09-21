@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { CheckCircle2, Download, Plus, Search, Wallet } from "lucide-react";
+import { CheckCircle2, ChevronDown, Download, Plus, Search, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +27,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { apiDownload, apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -122,14 +127,28 @@ const formatMoneyCell = (n: number) => (n ? formatMoney(n) : "—");
 type ConceptoCampo = {
   monto: string;
   libre: string;
+  precio: string;
+  horas: string;
 };
 
 type ConceptosCampos = Record<string, ConceptoCampo>;
 
 const emptyCamposForTipo = (tipo: "percepcion" | "deduccion"): ConceptosCampos =>
   Object.fromEntries(
-    CONCEPTOS_POR_TIPO[tipo].map((nombre) => [nombre, { monto: "", libre: "" }])
+    CONCEPTOS_POR_TIPO[tipo].map((nombre) => [
+      nombre,
+      { monto: "", libre: "", precio: "", horas: "" },
+    ])
   );
+
+const calcProductoMonto = (precio: string, cantidad: string) => {
+  const p = Number(precio);
+  const c = Number(cantidad);
+  if (!Number.isFinite(p) || !Number.isFinite(c)) return NaN;
+  return Number((p * c).toFixed(2));
+};
+
+const CONCEPTOS_PRECIO_CANTIDAD = new Set(["Horas extras", "Faltas"]);
 
 const Nomina = () => {
   const { can } = useAuth();
@@ -158,6 +177,8 @@ const Nomina = () => {
   );
   const [guardandoConceptos, setGuardandoConceptos] = useState(false);
   const [descargando, setDescargando] = useState(false);
+  const [percepcionesOpen, setPercepcionesOpen] = useState(false);
+  const [deduccionesOpen, setDeduccionesOpen] = useState(false);
 
   const listQuery = useMemo(() => {
     const params = new URLSearchParams();
@@ -222,14 +243,16 @@ const Nomina = () => {
         method: "PATCH",
         body,
       }),
-    onSuccess: (res) => {
+    onSuccess: (res, variables) => {
       queryClient.invalidateQueries({ queryKey: ["nomina-periodos"] });
       queryClient.invalidateQueries({ queryKey: ["nomina-periodo", selectedId] });
       if (lineaActiva && res.linea.id === lineaActiva.id) {
         setLineaActiva(res.linea);
         setSueldoEdit(String(res.linea.sueldoBase));
       }
-      toast.success("Línea actualizada");
+      if ("estadoPago" in variables.body) {
+        toast.success("Línea actualizada");
+      }
     },
     onError: (err: Error) => toast.error(err.message || "No se pudo actualizar la línea"),
   });
@@ -307,6 +330,8 @@ const Nomina = () => {
     setSueldoEdit(String(linea.sueldoBase ?? 0));
     setCamposPercepcion(emptyCamposForTipo("percepcion"));
     setCamposDeduccion(emptyCamposForTipo("deduccion"));
+    setPercepcionesOpen(false);
+    setDeduccionesOpen(false);
     setConceptosOpen(true);
   };
 
@@ -330,13 +355,41 @@ const Nomina = () => {
       [];
     for (const clave of CONCEPTOS_POR_TIPO[tipo]) {
       const campo = campos[clave];
-      if (!campo || !campo.monto.trim()) continue;
-      const monto = Number(campo.monto);
-      if (!Number.isFinite(monto) || monto < 0) {
-        toast.error(`Monto inválido en ${clave}`);
-        return null;
+      if (!campo) continue;
+
+      let monto: number;
+      if (CONCEPTOS_PRECIO_CANTIDAD.has(clave)) {
+        const tienePrecio = campo.precio.trim() !== "";
+        const tieneCantidad = campo.horas.trim() !== "";
+        if (!tienePrecio && !tieneCantidad) continue;
+        if (!tienePrecio || !tieneCantidad) {
+          toast.error(
+            clave === "Horas extras"
+              ? "En Horas extras indica precio y cantidad de horas"
+              : "En Faltas indica precio y cantidad de faltas"
+          );
+          return null;
+        }
+        monto = calcProductoMonto(campo.precio, campo.horas);
+        if (!Number.isFinite(monto) || monto < 0) {
+          toast.error(
+            clave === "Horas extras"
+              ? "Precio u horas inválidos en Horas extras"
+              : "Precio o cantidad inválidos en Faltas"
+          );
+          return null;
+        }
+        if (monto === 0) continue;
+      } else {
+        if (!campo.monto.trim()) continue;
+        monto = Number(campo.monto);
+        if (!Number.isFinite(monto) || monto < 0) {
+          toast.error(`Monto inválido en ${clave}`);
+          return null;
+        }
+        if (monto === 0) continue;
       }
-      if (monto === 0) continue;
+
       const concepto = clave === "Otros" ? campo.libre.trim() : clave;
       if (!concepto) {
         toast.error(
@@ -351,20 +404,39 @@ const Nomina = () => {
 
   const submitBalance = async () => {
     if (!periodoDetalle || !lineaActiva) return;
+
+    const sueldo = Number(sueldoEdit);
+    if (!Number.isFinite(sueldo) || sueldo < 0) {
+      toast.error("Sueldo inválido");
+      return;
+    }
+
     const percepcionesPendientes = collectPendientes("percepcion", camposPercepcion);
     if (percepcionesPendientes === null) return;
     const deduccionesPendientes = collectPendientes("deduccion", camposDeduccion);
     if (deduccionesPendientes === null) return;
 
     const pendientes = [...percepcionesPendientes, ...deduccionesPendientes];
-    if (pendientes.length === 0) {
-      toast.error("Indica al menos un monto mayor a 0");
+    const sueldoCambio = Number(lineaActiva.sueldoBase) !== sueldo;
+
+    if (!sueldoCambio && pendientes.length === 0) {
+      toast.error("Cambia el sueldo o indica al menos un monto mayor a 0");
       return;
     }
 
     setGuardandoConceptos(true);
     try {
       let lastLinea: Linea | null = null;
+
+      if (sueldoCambio) {
+        const resSueldo = await updateLineaMutation.mutateAsync({
+          periodoId: periodoDetalle.id,
+          lineaId: lineaActiva.id,
+          body: { sueldoBase: sueldo },
+        });
+        lastLinea = resSueldo.linea;
+      }
+
       for (const item of pendientes) {
         const res = await addConceptoMutation.mutateAsync({
           periodoId: periodoDetalle.id,
@@ -373,18 +445,33 @@ const Nomina = () => {
         });
         lastLinea = res.linea;
       }
-      if (lastLinea) setLineaActiva(lastLinea);
+
+      if (lastLinea) {
+        setLineaActiva(lastLinea);
+        setSueldoEdit(String(lastLinea.sueldoBase));
+      }
       queryClient.invalidateQueries({ queryKey: ["nomina-periodos"] });
       queryClient.invalidateQueries({ queryKey: ["nomina-periodo", selectedId] });
       setCamposPercepcion(emptyCamposForTipo("percepcion"));
       setCamposDeduccion(emptyCamposForTipo("deduccion"));
-      toast.success(
-        pendientes.length === 1
-          ? "Balance agregado"
-          : `Balance agregado (${pendientes.length} conceptos)`
-      );
+
+      if (sueldoCambio && pendientes.length === 0) {
+        toast.success("Sueldo base guardado");
+      } else if (sueldoCambio) {
+        toast.success(
+          pendientes.length === 1
+            ? "Sueldo y balance guardados"
+            : `Sueldo y balance guardados (${pendientes.length} conceptos)`
+        );
+      } else {
+        toast.success(
+          pendientes.length === 1
+            ? "Balance agregado"
+            : `Balance agregado (${pendientes.length} conceptos)`
+        );
+      }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "No se pudo agregar el balance");
+      toast.error(err instanceof Error ? err.message : "No se pudo guardar");
     } finally {
       setGuardandoConceptos(false);
     }
@@ -397,26 +484,75 @@ const Nomina = () => {
   ) => (
     <div className="space-y-3 rounded-md border p-3">
       <Label className="text-sm font-semibold">{titulo}</Label>
-      {CONCEPTOS_POR_TIPO[tipo].map((nombre) => (
-        <div key={nombre} className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">{nombre}</Label>
-          {nombre === "Otros" && (
+      {CONCEPTOS_POR_TIPO[tipo].map((nombre) => {
+        if (CONCEPTOS_PRECIO_CANTIDAD.has(nombre)) {
+          const precio = campos[nombre]?.precio || "";
+          const cantidad = campos[nombre]?.horas || "";
+          const total = calcProductoMonto(precio, cantidad);
+          const totalLabel =
+            precio.trim() && cantidad.trim() && Number.isFinite(total)
+              ? formatMoney(total)
+              : "—";
+          const cantidadLabel = nombre === "Horas extras" ? "Horas" : "Cantidad de faltas";
+          const totalPrefix =
+            nombre === "Horas extras" ? "Total percepción" : "Total deducción";
+          return (
+            <div key={nombre} className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">{nombre}</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-muted-foreground">
+                    {nombre === "Horas extras" ? "Precio / hora" : "Precio / falta"}
+                  </Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={precio}
+                    onChange={(e) => updateCampo(tipo, nombre, { precio: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-muted-foreground">{cantidadLabel}</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0"
+                    value={cantidad}
+                    onChange={(e) => updateCampo(tipo, nombre, { horas: e.target.value })}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {totalPrefix}: <span className="font-medium text-foreground">{totalLabel}</span>
+              </p>
+            </div>
+          );
+        }
+
+        return (
+          <div key={nombre} className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">{nombre}</Label>
+            {nombre === "Otros" && (
+              <Input
+                placeholder={`Describe ${tipo === "percepcion" ? "la percepción" : "la deducción"}`}
+                value={campos[nombre]?.libre || ""}
+                onChange={(e) => updateCampo(tipo, nombre, { libre: e.target.value })}
+              />
+            )}
             <Input
-              placeholder={`Describe ${tipo === "percepcion" ? "la percepción" : "la deducción"}`}
-              value={campos[nombre]?.libre || ""}
-              onChange={(e) => updateCampo(tipo, nombre, { libre: e.target.value })}
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              value={campos[nombre]?.monto || ""}
+              onChange={(e) => updateCampo(tipo, nombre, { monto: e.target.value })}
             />
-          )}
-          <Input
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="0.00"
-            value={campos[nombre]?.monto || ""}
-            onChange={(e) => updateCampo(tipo, nombre, { monto: e.target.value })}
-          />
-        </div>
-      ))}
+          </div>
+        );
+      })}
     </div>
   );
 
@@ -746,36 +882,14 @@ const Nomina = () => {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Sueldo base (periodo)</Label>
-                <div className="flex gap-2">
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={sueldoEdit}
-                    disabled={!canCreate || !isBorrador}
-                    onChange={(e) => setSueldoEdit(e.target.value)}
-                  />
-                  {canCreate && isBorrador && (
-                    <Button
-                      variant="outline"
-                      disabled={updateLineaMutation.isPending}
-                      onClick={() => {
-                        const n = Number(sueldoEdit);
-                        if (!Number.isFinite(n) || n < 0) {
-                          toast.error("Sueldo inválido");
-                          return;
-                        }
-                        updateLineaMutation.mutate({
-                          periodoId: periodoDetalle.id,
-                          lineaId: lineaActiva.id,
-                          body: { sueldoBase: n },
-                        });
-                      }}
-                    >
-                      Guardar
-                    </Button>
-                  )}
-                </div>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={sueldoEdit}
+                  disabled={!canCreate || !isBorrador}
+                  onChange={(e) => setSueldoEdit(e.target.value)}
+                />
               </div>
 
               <div>
@@ -847,9 +961,47 @@ const Nomina = () => {
               </div>
 
               {canCreate && isBorrador && (
-                <div className="space-y-4 border-t pt-3">
-                  {renderCamposForm("percepcion", "Percepciones", camposPercepcion)}
-                  {renderCamposForm("deduccion", "Deducciones", camposDeduccion)}
+                <div className="space-y-3 border-t pt-3">
+                  <Collapsible open={percepcionesOpen} onOpenChange={setPercepcionesOpen}>
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="flex w-full items-center justify-between"
+                      >
+                        <span>Percepciones</span>
+                        <ChevronDown
+                          className={`h-4 w-4 shrink-0 transition-transform ${
+                            percepcionesOpen ? "rotate-180" : ""
+                          }`}
+                        />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2">
+                      {renderCamposForm("percepcion", "Percepciones", camposPercepcion)}
+                    </CollapsibleContent>
+                  </Collapsible>
+
+                  <Collapsible open={deduccionesOpen} onOpenChange={setDeduccionesOpen}>
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="flex w-full items-center justify-between"
+                      >
+                        <span>Deducciones</span>
+                        <ChevronDown
+                          className={`h-4 w-4 shrink-0 transition-transform ${
+                            deduccionesOpen ? "rotate-180" : ""
+                          }`}
+                        />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2">
+                      {renderCamposForm("deduccion", "Deducciones", camposDeduccion)}
+                    </CollapsibleContent>
+                  </Collapsible>
+
                   <Button
                     className="w-full"
                     disabled={guardandoConceptos}
