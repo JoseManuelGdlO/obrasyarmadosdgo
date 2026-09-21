@@ -147,6 +147,7 @@ const Compras = () => {
   const [empresa, setEmpresa] = useState("");
   const [proyectoId, setProyectoId] = useState("");
   const [proyecto, setProyecto] = useState("");
+  const [proveedorId, setProveedorId] = useState("");
   const [proveedor, setProveedor] = useState("");
   const [partidasForm, setPartidasForm] = useState<PartidaForm[]>([emptyPartida(1)]);
   const [page, setPage] = useState(1);
@@ -156,6 +157,7 @@ const Compras = () => {
   const canFacturas = can(PERMISSIONS.COMPRAS_FACTURAS);
   const canViewClientes = can(PERMISSIONS.CLIENTES_VIEW);
   const canViewProyectos = can(PERMISSIONS.PROYECTOS_VIEW);
+  const canViewProveedores = can(PERMISSIONS.PROVEEDORES_VIEW);
 
   const totalForm = useMemo(
     () => partidasForm.reduce((sum, p) => sum + calcImporte(p.cantidad, p.precioUnitario), 0),
@@ -186,12 +188,29 @@ const Compras = () => {
     enabled: nuevaOpen && (canViewProyectos || canImport),
   });
 
+  const { data: proveedoresData } = useQuery({
+    queryKey: ["proveedores-lite-compras"],
+    queryFn: () =>
+      apiRequest<{
+        proveedores: Array<{ id: string; nombre: string; estado: string }>;
+      }>("/proveedores"),
+    enabled: nuevaOpen && (canViewProveedores || canImport),
+  });
+
   const clientes = clientesData?.clientes || [];
   const proyectosEmpresa = useMemo(() => {
     const all = proyectosData?.proyectos || [];
     if (!clienteId) return [];
     return all.filter((p) => p.clienteId === clienteId);
   }, [proyectosData?.proyectos, clienteId]);
+
+  const proveedoresActivos = useMemo(() => {
+    const all = proveedoresData?.proveedores || [];
+    return all
+      .filter((p) => p.estado === "activo")
+      .slice()
+      .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  }, [proveedoresData?.proveedores]);
 
   const ordenes = useMemo(() => data?.ordenes || [], [data?.ordenes]);
 
@@ -291,6 +310,7 @@ const Compras = () => {
     setEmpresa("");
     setProyectoId("");
     setProyecto("");
+    setProveedorId("");
     setProveedor("");
     setPartidasForm([emptyPartida(1)]);
     setNuevaGestionKey(null);
@@ -435,8 +455,8 @@ const Compras = () => {
       toast.error("Completa fecha, empresa, proyecto y proveedor");
       return;
     }
-    if (!clienteId || !proyectoId) {
-      toast.error("Selecciona empresa y proyecto de las listas");
+    if (!clienteId || !proyectoId || !proveedorId) {
+      toast.error("Selecciona empresa, proyecto y proveedor de las listas");
       return;
     }
     const partidas = partidasForm
@@ -824,13 +844,38 @@ const Compras = () => {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="compra-proveedor">Proveedor</Label>
-                <Input
-                  id="compra-proveedor"
-                  value={proveedor}
-                  onChange={(e) => setProveedor(e.target.value)}
-                  placeholder="Nombre del proveedor"
-                />
+                <Label>Proveedor</Label>
+                <Select
+                  value={proveedorId || undefined}
+                  onValueChange={(value) => {
+                    const selected = proveedoresActivos.find((p) => p.id === value);
+                    setProveedorId(value);
+                    setProveedor(selected?.nombre || "");
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        proveedoresActivos.length > 0
+                          ? "Selecciona proveedor"
+                          : "No hay proveedores activos"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {proveedoresActivos.length === 0 ? (
+                      <SelectItem value="__none" disabled>
+                        Da de alta proveedores en el módulo Proveedores
+                      </SelectItem>
+                    ) : (
+                      proveedoresActivos.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.nombre}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
