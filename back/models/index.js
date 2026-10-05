@@ -34,6 +34,7 @@ const NominaPeriodo = require("./NominaPeriodo");
 const NominaPeriodoLinea = require("./NominaPeriodoLinea");
 const NominaLineaConcepto = require("./NominaLineaConcepto");
 const NominaPagoExtra = require("./NominaPagoExtra");
+const NominaGestionConcepto = require("./NominaGestionConcepto");
 
 MaquinaClase.hasMany(MaquinaTipo, {
   foreignKey: "claseId",
@@ -295,4 +296,5 @@ module.exports = {
   NominaPeriodoLinea,
   NominaLineaConcepto,
   NominaPagoExtra,
+  NominaGestionConcepto,
 };

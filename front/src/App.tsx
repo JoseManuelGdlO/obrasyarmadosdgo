@@ -23,6 +23,7 @@ import Checklist from "./pages/Checklist";
 import Compras from "./pages/Compras";
 import ComprasFacturas from "./pages/ComprasFacturas";
 import Nomina from "./pages/Nomina";
+import NominaGestionConceptos from "./pages/NominaGestionConceptos";
 import NominaExtras from "./pages/NominaExtras";
 import Forbidden from "./pages/Forbidden";
 import Login from "./pages/Login";
@@ -192,6 +193,14 @@ const App = () => (
                         element={
                           <ProtectedRoute requiredPermissions={[PERMISSIONS.NOMINA_VIEW]}>
                             <Nomina />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/nomina/conceptos"
+                        element={
+                          <ProtectedRoute requiredPermissions={[PERMISSIONS.NOMINA_VIEW]}>
+                            <NominaGestionConceptos />
                           </ProtectedRoute>
                         }
                       />
