@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { ArrowLeft, Plus, Pencil, Trash2, X, DollarSign, FileText, ListChecks, ChevronDown } from "lucide-react"
+import { ArrowLeft, Plus, Pencil, Trash2, X, DollarSign, FileText, ListChecks, ChevronDown, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -385,6 +385,61 @@ const toEstimacionForm = (estimacion: Record<string, unknown>): EstimacionForm =
   ...datosFormFromRecord(estimacion),
   ...informacionFormFromRecord(estimacion),
 })
+
+const csvCell = (value: string) => {
+  const text = value.replace(/\r?\n/g, " ")
+  if (/[";\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`
+  return text
+}
+
+const downloadEstimacionCsv = (estimacion: EstimacionData, proyectoNombre: string) => {
+  const rows: Array<[string, string, string]> = [["Sección", "Concepto", "Valor"]]
+  const push = (seccion: string, concepto: string, valor: string | number | null | undefined) => {
+    const text =
+      valor == null || String(valor).trim() === ""
+        ? ""
+        : typeof valor === "number"
+          ? valor.toFixed(2)
+          : String(valor)
+    rows.push([seccion, concepto, text])
+  }
+
+  push("General", "Número", String(estimacion.numero))
+  push("General", "Fecha estimación", estimacion.fechaEstimacion)
+  push("General", "Monto estimación", estimacion.montoEstimacion)
+  push("General", "Fecha pago", estimacion.fechaPago)
+  push("General", "Monto pagado", estimacion.montoPagado)
+  push("General", "Factura", estimacion.factura)
+  push("General", "Retención / amortización", estimacion.retencionAmortizacion)
+
+  for (const field of INFORMACION_ESTIMACION_FIELDS_UI) {
+    push("Información Estimación", field.label, estimacion[field.key])
+  }
+  for (const field of DATOS_ESTIMACION_FIELDS_UI) {
+    push("Datos Estimación", field.label, estimacion[field.key])
+  }
+  for (const modulo of MODULOS_MONTOS) {
+    for (const field of modulo.fields) {
+      push(modulo.title, field.label, estimacion[field.key])
+    }
+  }
+
+  const csv = `\uFEFF${rows.map((row) => row.map(csvCell).join(";")).join("\n")}`
+  const slug = (proyectoNombre || "proyecto")
+    .trim()
+    .replace(/[^\w\-áéíóúñÁÉÍÓÚÑ ]+/gi, "")
+    .replace(/\s+/g, "_")
+    .slice(0, 40)
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = url
+  link.download = `estimacion_${estimacion.numero}_${slug || "proyecto"}.csv`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("es-CO", {
@@ -1386,16 +1441,30 @@ const ProyectoDetalle = () => {
           ) : (
             estimaciones.map((estimacion) => (
               <Collapsible key={estimacion.id} className="rounded-md border border-border">
-                <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left font-medium hover:bg-muted/50 [&[data-state=open]>svg]:rotate-180">
-                  <span className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
-                    <span>Estimación #{estimacion.numero}</span>
-                    <span className="text-sm font-normal text-muted-foreground">
-                      {estimacion.fechaEstimacion || "Sin fecha"} ·{" "}
-                      {formatCurrency(estimacion.montoEstimacion)}
+                <div className="flex items-center gap-2 pr-2">
+                  <CollapsibleTrigger className="flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3 text-left font-medium hover:bg-muted/50 [&[data-state=open]>svg]:rotate-180">
+                    <span className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
+                      <span>Estimación #{estimacion.numero}</span>
+                      <span className="text-sm font-normal text-muted-foreground">
+                        {estimacion.fechaEstimacion || "Sin fecha"} ·{" "}
+                        {formatCurrency(estimacion.montoEstimacion)}
+                      </span>
                     </span>
-                  </span>
-                  <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                </CollapsibleTrigger>
+                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                  </CollapsibleTrigger>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() =>
+                      downloadEstimacionCsv(estimacion, proyecto?.nombre || "")
+                    }
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Descargar Excel
+                  </Button>
+                </div>
                 <CollapsibleContent className="border-t border-border px-4 py-3">
                   <div className="space-y-3">
                     <div className="text-sm">

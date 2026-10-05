@@ -5,6 +5,27 @@ const controller = require("../controllers/nominaController");
 
 const router = express.Router();
 
+router.get(
+  "/gestion-conceptos",
+  requirePermission(P.NOMINA_VIEW),
+  controller.listGestionConceptos
+);
+router.post(
+  "/gestion-conceptos",
+  requirePermission(P.NOMINA_CREATE),
+  controller.createGestionConcepto
+);
+router.patch(
+  "/gestion-conceptos/:id",
+  requirePermission(P.NOMINA_CREATE),
+  controller.updateGestionConcepto
+);
+router.delete(
+  "/gestion-conceptos/:id",
+  requirePermission(P.NOMINA_CREATE),
+  controller.deleteGestionConcepto
+);
+
 router.get("/periodos", requirePermission(P.NOMINA_VIEW), controller.listPeriodos);
 router.post("/periodos", requirePermission(P.NOMINA_CREATE), controller.createPeriodo);
 router.get("/periodos/:id", requirePermission(P.NOMINA_VIEW), controller.getPeriodo);

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { CheckCircle2, ChevronDown, Download, Plus, Search, Wallet } from "lucide-react";
+import { CheckCircle2, ChevronDown, Download, ListChecks, Plus, Search, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,7 +53,19 @@ type Linea = {
   neto: number;
   estadoPago: "pendiente" | "pagado";
   pagadoEn?: string | null;
-  trabajador?: { id: string; nombre: string; cargo?: string | null };
+  trabajador?: {
+    id: string;
+    nombre: string;
+    cargo?: string | null;
+    puesto?: string | null;
+    departamento?: string | null;
+    especialidad?: string | null;
+    telefono?: string | null;
+    email?: string | null;
+    fechaIngreso?: string | null;
+    experiencia?: string | null;
+    estado?: string | null;
+  };
   conceptos?: Concepto[];
 };
 
@@ -66,6 +78,18 @@ type Periodo = {
   totalNeto: number;
   trabajadoresCount?: number;
   lineas?: Linea[];
+};
+
+type CatalogoValor = { etiqueta: string; valor: number | null };
+
+type CatalogoConcepto = {
+  id: string;
+  nombre: string;
+  tipo: "percepcion" | "deduccion";
+  modo: "monto" | "precio_cantidad";
+  activo: boolean;
+  orden: number;
+  valores?: CatalogoValor[];
 };
 
 const formatMoney = (n: number) =>
@@ -89,11 +113,6 @@ const CONCEPTOS_POR_TIPO = {
   ],
 } as const;
 
-const CONCEPTOS_FIJOS = {
-  percepcion: CONCEPTOS_POR_TIPO.percepcion.filter((c) => c !== "Otros"),
-  deduccion: CONCEPTOS_POR_TIPO.deduccion.filter((c) => c !== "Otros"),
-};
-
 const CONCEPTO_HEADER_LABEL: Record<string, string> = {
   Bono: "Bono",
   "Horas extras": "Horas extras",
@@ -108,11 +127,12 @@ const CONCEPTO_HEADER_LABEL: Record<string, string> = {
 const montoConceptoColumna = (
   linea: Linea,
   tipo: "percepcion" | "deduccion",
-  nombre: string
+  nombre: string,
+  nombresTipo: readonly string[]
 ) => {
   const conceptos = (linea.conceptos || []).filter((c) => c.tipo === tipo);
   if (nombre === "Otros") {
-    const fijos = new Set(CONCEPTOS_FIJOS[tipo] as readonly string[]);
+    const fijos = new Set(nombresTipo.filter((item) => item !== "Otros"));
     return conceptos
       .filter((c) => !fijos.has(c.concepto))
       .reduce((acc, c) => acc + (Number(c.monto) || 0), 0);
@@ -129,17 +149,31 @@ type ConceptoCampo = {
   libre: string;
   precio: string;
   horas: string;
+  opcion: string;
 };
 
 type ConceptosCampos = Record<string, ConceptoCampo>;
 
+const emptyCampo = (): ConceptoCampo => ({
+  monto: "",
+  libre: "",
+  precio: "",
+  horas: "",
+  opcion: "",
+});
+
+const emptyCamposForNombres = (nombres: readonly string[]): ConceptosCampos =>
+  Object.fromEntries(nombres.map((nombre) => [nombre, emptyCampo()]));
+
 const emptyCamposForTipo = (tipo: "percepcion" | "deduccion"): ConceptosCampos =>
-  Object.fromEntries(
-    CONCEPTOS_POR_TIPO[tipo].map((nombre) => [
-      nombre,
-      { monto: "", libre: "", precio: "", horas: "" },
-    ])
-  );
+  emptyCamposForNombres(CONCEPTOS_POR_TIPO[tipo]);
+
+const cantidadEntera = (raw: string) => {
+  if (raw.trim() === "") return "";
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return raw.replace(/\D/g, "");
+  return String(Math.trunc(n));
+};
 
 const calcProductoMonto = (precio: string, cantidad: string) => {
   const p = Number(precio);
@@ -149,6 +183,23 @@ const calcProductoMonto = (precio: string, cantidad: string) => {
 };
 
 const CONCEPTOS_PRECIO_CANTIDAD = new Set(["Horas extras", "Faltas"]);
+
+const esSueldoBase = (nombre: string) => nombre.trim().toLowerCase() === "sueldo base";
+
+const datosTrabajador = (trabajador?: Linea["trabajador"]) => {
+  if (!trabajador) return [];
+  const puesto = trabajador.cargo || trabajador.puesto || "";
+  return [
+    ["Cargo", puesto],
+    ["Departamento", trabajador.departamento || ""],
+    ["Especialidad", trabajador.especialidad || ""],
+    ["Teléfono", trabajador.telefono || ""],
+    ["Email", trabajador.email || ""],
+    ["Fecha de ingreso", trabajador.fechaIngreso || ""],
+    ["Experiencia", trabajador.experiencia || ""],
+    ["Estado", trabajador.estado || ""],
+  ] as const;
+};
 
 const Nomina = () => {
   const { can } = useAuth();
@@ -169,6 +220,7 @@ const Nomina = () => {
   const [conceptosOpen, setConceptosOpen] = useState(false);
   const [lineaActiva, setLineaActiva] = useState<Linea | null>(null);
   const [sueldoEdit, setSueldoEdit] = useState("");
+  const [sueldoCargo, setSueldoCargo] = useState("");
   const [camposPercepcion, setCamposPercepcion] = useState<ConceptosCampos>(() =>
     emptyCamposForTipo("percepcion")
   );
@@ -192,6 +244,58 @@ const Nomina = () => {
     queryKey: ["nomina-periodos", listQuery],
     queryFn: () => apiRequest<{ periodos: Periodo[] }>(`/nomina/periodos${listQuery}`),
   });
+
+  const { data: catalogoData } = useQuery({
+    queryKey: ["nomina-gestion-conceptos"],
+    queryFn: () =>
+      apiRequest<{ conceptos: CatalogoConcepto[] }>("/nomina/gestion-conceptos"),
+  });
+
+  const conceptosPorTipo = useMemo(() => {
+    const activos = (catalogoData?.conceptos || [])
+      .filter((c) => c.activo)
+      .slice()
+      .sort(
+        (a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre, "es")
+      );
+    if (activos.length === 0) {
+      return {
+        percepcion: [...CONCEPTOS_POR_TIPO.percepcion],
+        deduccion: [...CONCEPTOS_POR_TIPO.deduccion],
+      };
+    }
+    return {
+      percepcion: activos
+        .filter((c) => c.tipo === "percepcion" && !esSueldoBase(c.nombre))
+        .map((c) => c.nombre),
+      deduccion: activos.filter((c) => c.tipo === "deduccion").map((c) => c.nombre),
+    };
+  }, [catalogoData?.conceptos]);
+
+  const valoresPorNombre = useMemo(() => {
+    const map = new Map<string, CatalogoValor[]>();
+    for (const concepto of catalogoData?.conceptos || []) {
+      if (!concepto.activo || !concepto.valores?.length) continue;
+      map.set(concepto.nombre, concepto.valores);
+    }
+    return map;
+  }, [catalogoData?.conceptos]);
+
+  const sueldoBaseOpciones = useMemo(
+    () =>
+      (catalogoData?.conceptos || []).find(
+        (concepto) => concepto.activo && esSueldoBase(concepto.nombre)
+      )?.valores || [],
+    [catalogoData?.conceptos]
+  );
+
+  const precioCantidad = useMemo(() => {
+    const activos = (catalogoData?.conceptos || []).filter((c) => c.activo);
+    if (activos.length === 0) return CONCEPTOS_PRECIO_CANTIDAD;
+    return new Set(
+      activos.filter((c) => c.modo === "precio_cantidad").map((c) => c.nombre)
+    );
+  }, [catalogoData?.conceptos]);
 
   const { data: detailData, isLoading: detailLoading } = useQuery({
     queryKey: ["nomina-periodo", selectedId],
@@ -327,9 +431,26 @@ const Nomina = () => {
 
   const openConceptos = (linea: Linea) => {
     setLineaActiva(linea);
-    setSueldoEdit(String(linea.sueldoBase ?? 0));
-    setCamposPercepcion(emptyCamposForTipo("percepcion"));
-    setCamposDeduccion(emptyCamposForTipo("deduccion"));
+    const opciones =
+      (catalogoData?.conceptos || []).find(
+        (concepto) => concepto.activo && esSueldoBase(concepto.nombre)
+      )?.valores || [];
+    const puestos = [linea.trabajador?.cargo, linea.trabajador?.puesto]
+      .map((valor) => String(valor || "").trim().toLowerCase())
+      .filter(Boolean);
+    const porPuesto = opciones.find((item) =>
+      puestos.includes(item.etiqueta.trim().toLowerCase())
+    );
+    const porMonto = opciones.find(
+      (item) => item.valor != null && Number(item.valor) === Number(linea.sueldoBase ?? 0)
+    );
+    const elegida = porPuesto || porMonto;
+    setSueldoCargo(elegida?.etiqueta || "");
+    setSueldoEdit(
+      elegida?.valor != null ? String(elegida.valor) : String(linea.sueldoBase ?? 0)
+    );
+    setCamposPercepcion(emptyCamposForNombres(conceptosPorTipo.percepcion));
+    setCamposDeduccion(emptyCamposForNombres(conceptosPorTipo.deduccion));
     setPercepcionesOpen(false);
     setDeduccionesOpen(false);
     setConceptosOpen(true);
@@ -353,30 +474,34 @@ const Nomina = () => {
   ): { tipo: "percepcion" | "deduccion"; concepto: string; monto: number }[] | null => {
     const pendientes: { tipo: "percepcion" | "deduccion"; concepto: string; monto: number }[] =
       [];
-    for (const clave of CONCEPTOS_POR_TIPO[tipo]) {
+    for (const clave of conceptosPorTipo[tipo]) {
+      if (esSueldoBase(clave)) continue;
       const campo = campos[clave];
       if (!campo) continue;
 
       let monto: number;
-      if (CONCEPTOS_PRECIO_CANTIDAD.has(clave)) {
+        if (precioCantidad.has(clave)) {
         const tienePrecio = campo.precio.trim() !== "";
         const tieneCantidad = campo.horas.trim() !== "";
         if (!tienePrecio && !tieneCantidad) continue;
         if (!tienePrecio || !tieneCantidad) {
+          toast.error(`En ${clave} indica precio y cantidad`);
+          return null;
+        }
+        if (
+          (clave === "Horas extras" || clave === "Faltas") &&
+          !/^\d+$/.test(campo.horas.trim())
+        ) {
           toast.error(
             clave === "Horas extras"
-              ? "En Horas extras indica precio y cantidad de horas"
-              : "En Faltas indica precio y cantidad de faltas"
+              ? "Las horas deben ser un número entero"
+              : "La cantidad de faltas debe ser un número entero"
           );
           return null;
         }
         monto = calcProductoMonto(campo.precio, campo.horas);
         if (!Number.isFinite(monto) || monto < 0) {
-          toast.error(
-            clave === "Horas extras"
-              ? "Precio u horas inválidos en Horas extras"
-              : "Precio o cantidad inválidos en Faltas"
-          );
+          toast.error(`Precio o cantidad inválidos en ${clave}`);
           return null;
         }
         if (monto === 0) continue;
@@ -390,7 +515,8 @@ const Nomina = () => {
         if (monto === 0) continue;
       }
 
-      const concepto = clave === "Otros" ? campo.libre.trim() : clave;
+      const concepto =
+        clave === "Otros" ? (campo.opcion || campo.libre).trim() : clave;
       if (!concepto) {
         toast.error(
           `Describe el concepto en Otros (${tipo === "percepcion" ? "percepción" : "deducción"})`
@@ -452,8 +578,8 @@ const Nomina = () => {
       }
       queryClient.invalidateQueries({ queryKey: ["nomina-periodos"] });
       queryClient.invalidateQueries({ queryKey: ["nomina-periodo", selectedId] });
-      setCamposPercepcion(emptyCamposForTipo("percepcion"));
-      setCamposDeduccion(emptyCamposForTipo("deduccion"));
+      setCamposPercepcion(emptyCamposForNombres(conceptosPorTipo.percepcion));
+      setCamposDeduccion(emptyCamposForNombres(conceptosPorTipo.deduccion));
 
       if (sueldoCambio && pendientes.length === 0) {
         toast.success("Sueldo base guardado");
@@ -484,8 +610,9 @@ const Nomina = () => {
   ) => (
     <div className="space-y-3 rounded-md border p-3">
       <Label className="text-sm font-semibold">{titulo}</Label>
-      {CONCEPTOS_POR_TIPO[tipo].map((nombre) => {
-        if (CONCEPTOS_PRECIO_CANTIDAD.has(nombre)) {
+      {conceptosPorTipo[tipo].map((nombre) => {
+        const opciones = valoresPorNombre.get(nombre) || [];
+        if (precioCantidad.has(nombre)) {
           const precio = campos[nombre]?.precio || "";
           const cantidad = campos[nombre]?.horas || "";
           const total = calcProductoMonto(precio, cantidad);
@@ -493,35 +620,74 @@ const Nomina = () => {
             precio.trim() && cantidad.trim() && Number.isFinite(total)
               ? formatMoney(total)
               : "—";
-          const cantidadLabel = nombre === "Horas extras" ? "Horas" : "Cantidad de faltas";
-          const totalPrefix =
-            nombre === "Horas extras" ? "Total percepción" : "Total deducción";
+          const cantidadLabel =
+            nombre === "Horas extras"
+              ? "Horas"
+              : nombre === "Faltas"
+                ? "Cantidad de faltas"
+                : "Cantidad";
+          const precioLabel =
+            nombre === "Horas extras"
+              ? "Precio / hora"
+              : nombre === "Faltas"
+                ? "Precio / falta"
+                : "Precio";
+          const totalPrefix = tipo === "percepcion" ? "Total percepción" : "Total deducción";
           return (
             <div key={nombre} className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">{nombre}</Label>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-[11px] text-muted-foreground">
-                    {nombre === "Horas extras" ? "Precio / hora" : "Precio / falta"}
-                  </Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={precio}
-                    onChange={(e) => updateCampo(tipo, nombre, { precio: e.target.value })}
-                  />
+                  <Label className="text-[11px] text-muted-foreground">{precioLabel}</Label>
+                  {opciones.length > 0 ? (
+                    <Select
+                      value={campos[nombre]?.opcion || undefined}
+                      onValueChange={(etiqueta) => {
+                        const elegida = opciones.find((item) => item.etiqueta === etiqueta);
+                        updateCampo(tipo, nombre, {
+                          opcion: etiqueta,
+                          precio: elegida ? String(elegida.valor) : "",
+                        });
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {opciones.map((item) => (
+                          <SelectItem key={item.etiqueta} value={item.etiqueta}>
+                            {item.etiqueta} · {formatMoney(item.valor)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={precio}
+                      onChange={(e) => updateCampo(tipo, nombre, { precio: e.target.value })}
+                    />
+                  )}
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[11px] text-muted-foreground">{cantidadLabel}</Label>
                   <Input
                     type="number"
                     min="0"
-                    step="0.01"
+                    step={nombre === "Horas extras" || nombre === "Faltas" ? "1" : "0.01"}
                     placeholder="0"
                     value={cantidad}
-                    onChange={(e) => updateCampo(tipo, nombre, { horas: e.target.value })}
+                    onChange={(e) =>
+                      updateCampo(tipo, nombre, {
+                        horas:
+                          nombre === "Horas extras" || nombre === "Faltas"
+                            ? cantidadEntera(e.target.value)
+                            : e.target.value,
+                      })
+                    }
                   />
                 </div>
               </div>
@@ -535,21 +701,46 @@ const Nomina = () => {
         return (
           <div key={nombre} className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">{nombre}</Label>
-            {nombre === "Otros" && (
+            {nombre === "Otros" && opciones.length === 0 && (
               <Input
                 placeholder={`Describe ${tipo === "percepcion" ? "la percepción" : "la deducción"}`}
                 value={campos[nombre]?.libre || ""}
                 onChange={(e) => updateCampo(tipo, nombre, { libre: e.target.value })}
               />
             )}
-            <Input
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              value={campos[nombre]?.monto || ""}
-              onChange={(e) => updateCampo(tipo, nombre, { monto: e.target.value })}
-            />
+            {opciones.length > 0 ? (
+              <Select
+                value={campos[nombre]?.opcion || undefined}
+                onValueChange={(etiqueta) => {
+                  const elegida = opciones.find((item) => item.etiqueta === etiqueta);
+                  updateCampo(tipo, nombre, {
+                    opcion: etiqueta,
+                    monto: elegida ? String(elegida.valor) : "",
+                    libre: nombre === "Otros" ? etiqueta : campos[nombre]?.libre || "",
+                  });
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona un valor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {opciones.map((item) => (
+                    <SelectItem key={item.etiqueta} value={item.etiqueta}>
+                      {item.etiqueta} · {formatMoney(item.valor)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value={campos[nombre]?.monto || ""}
+                onChange={(e) => updateCampo(tipo, nombre, { monto: e.target.value })}
+              />
+            )}
           </div>
         );
       })}
@@ -569,6 +760,12 @@ const Nomina = () => {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link to="/nomina/conceptos">
+              <ListChecks className="mr-2 h-4 w-4" />
+              Gestión de Conceptos
+            </Link>
+          </Button>
           <Button variant="outline" asChild>
             <Link to="/nomina/extras">
               <Wallet className="mr-2 h-4 w-4" />
@@ -768,13 +965,13 @@ const Nomina = () => {
                         Sueldo base
                       </TableHead>
                       <TableHead
-                        colSpan={CONCEPTOS_POR_TIPO.percepcion.length}
+                        colSpan={conceptosPorTipo.percepcion.length}
                         className="text-center border-b"
                       >
                         Percepciones
                       </TableHead>
                       <TableHead
-                        colSpan={CONCEPTOS_POR_TIPO.deduccion.length}
+                        colSpan={conceptosPorTipo.deduccion.length}
                         className="text-center border-b"
                       >
                         Deducciones
@@ -788,7 +985,7 @@ const Nomina = () => {
                       <TableHead rowSpan={2} className="align-bottom" />
                     </TableRow>
                     <TableRow>
-                      {CONCEPTOS_POR_TIPO.percepcion.map((nombre) => (
+                      {conceptosPorTipo.percepcion.map((nombre) => (
                         <TableHead
                           key={`p-${nombre}`}
                           className="text-right text-xs whitespace-nowrap font-medium"
@@ -797,7 +994,7 @@ const Nomina = () => {
                           {CONCEPTO_HEADER_LABEL[nombre] || nombre}
                         </TableHead>
                       ))}
-                      {CONCEPTOS_POR_TIPO.deduccion.map((nombre) => (
+                      {conceptosPorTipo.deduccion.map((nombre) => (
                         <TableHead
                           key={`d-${nombre}`}
                           className="text-right text-xs whitespace-nowrap font-medium"
@@ -811,26 +1008,49 @@ const Nomina = () => {
                   <TableBody>
                     {(periodoDetalle.lineas || []).map((linea) => (
                       <TableRow key={linea.id}>
-                        <TableCell className="whitespace-nowrap">
-                          {linea.trabajador?.nombre || "—"}
+                        <TableCell className="whitespace-nowrap align-top">
+                          <div className="font-medium">{linea.trabajador?.nombre || "—"}</div>
+                          <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                            {datosTrabajador(linea.trabajador)
+                              .filter(([, valor]) => valor)
+                              .map(([etiqueta, valor]) => (
+                                <div key={etiqueta}>
+                                  {etiqueta}: {valor}
+                                </div>
+                              ))}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right whitespace-nowrap">
                           {formatMoney(linea.sueldoBase)}
                         </TableCell>
-                        {CONCEPTOS_POR_TIPO.percepcion.map((nombre) => (
+                        {conceptosPorTipo.percepcion.map((nombre) => (
                           <TableCell
                             key={`${linea.id}-p-${nombre}`}
                             className="text-right whitespace-nowrap text-sm"
                           >
-                            {formatMoneyCell(montoConceptoColumna(linea, "percepcion", nombre))}
+                            {formatMoneyCell(
+                              montoConceptoColumna(
+                                linea,
+                                "percepcion",
+                                nombre,
+                                conceptosPorTipo.percepcion
+                              )
+                            )}
                           </TableCell>
                         ))}
-                        {CONCEPTOS_POR_TIPO.deduccion.map((nombre) => (
+                        {conceptosPorTipo.deduccion.map((nombre) => (
                           <TableCell
                             key={`${linea.id}-d-${nombre}`}
                             className="text-right whitespace-nowrap text-sm"
                           >
-                            {formatMoneyCell(montoConceptoColumna(linea, "deduccion", nombre))}
+                            {formatMoneyCell(
+                              montoConceptoColumna(
+                                linea,
+                                "deduccion",
+                                nombre,
+                                conceptosPorTipo.deduccion
+                              )
+                            )}
                           </TableCell>
                         ))}
                         <TableCell className="text-right font-medium whitespace-nowrap">
@@ -880,16 +1100,63 @@ const Nomina = () => {
           </DialogHeader>
           {lineaActiva && periodoDetalle && (
             <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2 rounded-md border p-3 text-sm">
+                {datosTrabajador(lineaActiva.trabajador).map(([etiqueta, valor]) => (
+                  <div key={etiqueta}>
+                    <p className="text-[11px] text-muted-foreground">{etiqueta}</p>
+                    <p>{valor || "—"}</p>
+                  </div>
+                ))}
+              </div>
               <div className="space-y-2">
                 <Label>Sueldo base (periodo)</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={sueldoEdit}
-                  disabled={!canCreate || !isBorrador}
-                  onChange={(e) => setSueldoEdit(e.target.value)}
-                />
+                {sueldoBaseOpciones.length > 0 ? (
+                  <>
+                    <Select
+                      value={sueldoCargo || undefined}
+                      disabled={!canCreate || !isBorrador}
+                      onValueChange={(etiqueta) => {
+                        setSueldoCargo(etiqueta);
+                        const elegida = sueldoBaseOpciones.find(
+                          (item) => item.etiqueta === etiqueta
+                        );
+                        if (elegida?.valor != null) setSueldoEdit(String(elegida.valor));
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona un cargo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sueldoBaseOpciones.map((item) => (
+                          <SelectItem key={item.etiqueta} value={item.etiqueta}>
+                            {item.etiqueta}
+                            {item.valor != null ? ` · ${formatMoney(item.valor)}` : " · Sin sueldo"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {sueldoBaseOpciones.find((item) => item.etiqueta === sueldoCargo)?.valor ==
+                      null && (
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={sueldoEdit}
+                        disabled={!canCreate || !isBorrador}
+                        onChange={(e) => setSueldoEdit(e.target.value)}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={sueldoEdit}
+                    disabled={!canCreate || !isBorrador}
+                    onChange={(e) => setSueldoEdit(e.target.value)}
+                  />
+                )}
               </div>
 
               <div>
