@@ -52,6 +52,26 @@ const normalizeInt = (value, { min = 0 } = {}) => {
   return num < min ? min : num;
 };
 
+const normalizeTelefonos = (value) => {
+  if (!Array.isArray(value)) {
+    return { error: "Los teléfonos deben ser una lista." };
+  }
+  const telefonos = [];
+  const vistos = new Set();
+  for (const item of value) {
+    const numero = String(item || "").trim();
+    if (!numero) continue;
+    if (!/^\d+$/.test(numero)) {
+      return { error: "Cada teléfono solo puede contener números." };
+    }
+    const key = numero.toLowerCase();
+    if (vistos.has(key)) continue;
+    vistos.add(key);
+    telefonos.push(numero);
+  }
+  return { telefonos };
+};
+
 const CLABE_RE = /^\d{18}$/;
 
 const normalizeCuentasBancarias = (value) => {
@@ -112,6 +132,15 @@ const buildPayload = (body, { partial = false } = {}) => {
   if (body.contactoPrincipal !== undefined)
     payload.contactoPrincipal = trimOrNull(body.contactoPrincipal);
   if (body.telefono !== undefined) payload.telefono = trimOrNull(body.telefono);
+  if (body.telefonos !== undefined) {
+    const result = normalizeTelefonos(body.telefonos);
+    if (result.error) {
+      errors.push(result.error);
+    } else {
+      payload.telefonos = result.telefonos;
+      payload.telefono = result.telefonos[0] || null;
+    }
+  }
   if (body.email !== undefined) payload.email = trimOrNull(body.email);
   if (body.direccion !== undefined) payload.direccion = trimOrNull(body.direccion);
   if (body.ciudad !== undefined) payload.ciudad = trimOrNull(body.ciudad);
