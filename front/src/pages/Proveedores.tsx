@@ -37,6 +37,7 @@ type ProveedorBackend = {
   contacto?: string | null;
   contactoPrincipal?: string | null;
   telefono?: string | null;
+  telefonos?: string[] | null;
   email?: string | null;
   direccion?: string | null;
   ciudad?: string | null;
@@ -56,6 +57,7 @@ type ProveedorVM = {
   categoria: string;
   contactoPrincipal: string;
   telefono: string;
+  telefonos: string[];
   email: string;
   direccion: string;
   ciudad: string;
@@ -67,6 +69,23 @@ type ProveedorVM = {
   costoPromedio: number;
   estado: "Activo" | "Inactivo" | "En Evaluación";
   cuentasBancarias: CuentaBancaria[];
+};
+
+const soloDigitos = (value: string) => value.replace(/\D/g, "");
+
+const normalizeTelefonosFromApi = (telefono: unknown, telefonos: unknown): string[] => {
+  const extras = Array.isArray(telefonos)
+    ? telefonos.map((item) => soloDigitos(String(item || ""))).filter(Boolean)
+    : [];
+  const principal = soloDigitos(String(telefono || ""));
+  const todos = principal ? [principal, ...extras] : extras;
+  const vistos = new Set<string>();
+  return todos.filter((numero) => {
+    const key = numero.toLowerCase();
+    if (vistos.has(key)) return false;
+    vistos.add(key);
+    return true;
+  });
 };
 
 const emptyCuenta = (): CuentaBancaria => ({ banco: "", numeroCuenta: "", clabe: "" });
@@ -158,6 +177,7 @@ const mapProveedor = (p: ProveedorBackend): ProveedorVM => ({
   categoria: p.categoria || "general",
   contactoPrincipal: p.contactoPrincipal || p.contacto || "",
   telefono: p.telefono || "",
+  telefonos: normalizeTelefonosFromApi(p.telefono, p.telefonos),
   email: p.email || "",
   direccion: p.direccion || "",
   ciudad: p.ciudad || "",
@@ -176,6 +196,7 @@ const defaultForm = {
   categoria: "",
   contactoPrincipal: "",
   telefono: "",
+  telefonos: [""] as string[],
   email: "",
   direccion: "",
   ciudad: "",
@@ -226,7 +247,8 @@ export default function Proveedores() {
     categoria: resolveCategoria() || "general",
     contactoPrincipal: formData.contactoPrincipal.trim() || null,
     contacto: formData.contactoPrincipal.trim() || null,
-    telefono: formData.telefono.trim() || null,
+    telefono: formData.telefonos.map((numero) => numero.trim()).filter(Boolean)[0] || null,
+    telefonos: formData.telefonos.map((numero) => numero.trim()).filter(Boolean),
     email: formData.email.trim() || null,
     direccion: formData.direccion.trim() || null,
     ciudad: formData.ciudad.trim() || null,
@@ -334,7 +356,8 @@ export default function Proveedores() {
       nombre: p.nombre,
       categoria: p.categoria,
       contactoPrincipal: p.contactoPrincipal,
-      telefono: p.telefono,
+      telefono: p.telefonos[0] || p.telefono,
+      telefonos: p.telefonos.length > 0 ? [...p.telefonos] : [p.telefono || ""],
       email: p.email,
       direccion: p.direccion,
       ciudad: p.ciudad,
@@ -502,14 +525,57 @@ export default function Proveedores() {
                     onChange={(e) => setFormData({ ...formData, contactoPrincipal: e.target.value })}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="telefono">Teléfono</Label>
-                  <Input
-                    id="telefono"
-                    placeholder="+52 555 1234"
-                    value={formData.telefono}
-                    onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                  />
+                <div className="space-y-2 md:col-span-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="telefono">Teléfonos</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setFormData((prev) => ({ ...prev, telefonos: [...prev.telefonos, ""] }))
+                      }
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Agregar teléfono
+                    </Button>
+                  </div>
+                  {formData.telefonos.map((numero, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <Input
+                        id={index === 0 ? "telefono" : undefined}
+                        inputMode="numeric"
+                        placeholder={index === 0 ? "5512345678" : "Otro teléfono"}
+                        value={numero}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            telefonos: prev.telefonos.map((item, i) =>
+                              i === index ? soloDigitos(e.target.value) : item
+                            ),
+                          }))
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Quitar teléfono ${index + 1}`}
+                        disabled={formData.telefonos.length === 1}
+                        onClick={() =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            telefonos:
+                              prev.telefonos.length <= 1
+                                ? [""]
+                                : prev.telefonos.filter((_, i) => i !== index),
+                          }))
+                        }
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
@@ -849,11 +915,13 @@ export default function Proveedores() {
                   <TableCell>
                     <div className="space-y-1">
                       <div className="text-sm font-medium">{proveedor.contactoPrincipal || "—"}</div>
-                      {proveedor.telefono && (
-                        <div className="flex items-center gap-1 text-sm text-gray-600">
-                          <Phone className="h-3 w-3" />
-                          {proveedor.telefono}
-                        </div>
+                      {(proveedor.telefonos.length > 0 ? proveedor.telefonos : proveedor.telefono ? [proveedor.telefono] : []).map(
+                        (numero) => (
+                          <div key={numero} className="flex items-center gap-1 text-sm text-gray-600">
+                            <Phone className="h-3 w-3" />
+                            {numero}
+                          </div>
+                        )
                       )}
                       {proveedor.email && (
                         <div className="flex items-center gap-1 text-sm text-gray-600">

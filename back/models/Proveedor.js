@@ -12,6 +12,7 @@ const Proveedor = sequelize.define(
     contacto: { type: DataTypes.STRING, allowNull: true },
     contactoPrincipal: { type: DataTypes.STRING, allowNull: true },
     telefono: { type: DataTypes.STRING, allowNull: true },
+    telefonos: { type: DataTypes.JSON, allowNull: true },
     email: { type: DataTypes.STRING, allowNull: true },
     direccion: { type: DataTypes.STRING, allowNull: true },
     ciudad: { type: DataTypes.STRING, allowNull: true },
