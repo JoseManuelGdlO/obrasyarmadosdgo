@@ -9,14 +9,15 @@ const resolveProyectoScopeForRol = async (rol) => {
   if (!rol || rol === "admin") {
     return null;
   }
+  const wanted = String(rol).trim();
   const rows = await RoleProyecto.findAll({
-    where: { rol },
-    attributes: ["proyectoId"],
+    attributes: ["rol", "proyectoId"],
   });
-  if (rows.length === 0) {
+  const matched = rows.filter((row) => String(row.rol).trim() === wanted);
+  if (matched.length === 0) {
     return null;
   }
-  return new Set(rows.map((row) => row.proyectoId));
+  return new Set(matched.map((row) => row.proyectoId));
 };
 
 const hasProyectoAccess = (req, proyectoId) => {

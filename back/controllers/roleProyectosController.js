@@ -24,17 +24,19 @@ const listRoleProyectos = async (_req, res) => {
 
 const syncRoleProyectos = async (req, res) => {
   try {
-    const rol = decodeURIComponent(req.params.rol || "").trim();
+    const rolParam = decodeURIComponent(String(req.params.rol || "")).trim();
     const { proyectoIds } = req.body;
 
-    if (!rol) {
+    if (!rolParam) {
       return res.status(400).json({ message: "Rol es obligatorio." });
     }
 
-    const roleExists = await Role.findOne({ where: { nombre: rol, activo: true } });
+    const roles = await Role.findAll({ where: { activo: true } });
+    const roleExists = roles.find((role) => String(role.nombre).trim() === rolParam);
     if (!roleExists) {
       return res.status(400).json({ message: "Rol inválido." });
     }
+    const rol = roleExists.nombre;
 
     if (!Array.isArray(proyectoIds)) {
       return res.status(400).json({ message: "proyectoIds debe ser un arreglo." });
@@ -54,7 +56,16 @@ const syncRoleProyectos = async (req, res) => {
 
     const tx = await sequelize.transaction();
     try {
-      await RoleProyecto.destroy({ where: { rol }, transaction: tx });
+      const existing = await RoleProyecto.findAll({
+        attributes: ["id", "rol"],
+        transaction: tx,
+      });
+      const staleIds = existing
+        .filter((row) => String(row.rol).trim() === rolParam)
+        .map((row) => row.id);
+      if (staleIds.length > 0) {
+        await RoleProyecto.destroy({ where: { id: staleIds }, transaction: tx });
+      }
       if (uniqueIds.length > 0) {
         await RoleProyecto.bulkCreate(
           uniqueIds.map((proyectoId) => ({ rol, proyectoId })),

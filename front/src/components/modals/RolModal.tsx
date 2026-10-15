@@ -32,11 +32,13 @@ export default function RolModal({
   initialData,
 }: RolModalProps) {
   const [form, setForm] = useState<RolFormData>(defaultForm);
+  const [nombreError, setNombreError] = useState("");
   const isEdit = useMemo(() => Boolean(initialData), [initialData]);
 
   useEffect(() => {
     if (open) {
       setForm({ ...defaultForm, ...(initialData || {}) });
+      setNombreError("");
     }
   }, [open, initialData]);
 
@@ -50,17 +52,30 @@ export default function RolModal({
           className="space-y-4"
           onSubmit={(event) => {
             event.preventDefault();
-            onSubmit(form);
+            const nombre = form.nombre.trim();
+            if (!nombre) {
+              setNombreError("El nombre del rol es obligatorio.");
+              return;
+            }
+            setNombreError("");
+            onSubmit({ ...form, nombre });
           }}
         >
           <div className="space-y-2">
             <Label>Nombre del rol</Label>
             <Input
               value={form.nombre}
-              onChange={(e) => setForm((prev) => ({ ...prev, nombre: e.target.value }))}
+              onChange={(e) => {
+                setNombreError("");
+                setForm((prev) => ({ ...prev, nombre: e.target.value }));
+              }}
+              onBlur={() =>
+                setForm((prev) => ({ ...prev, nombre: prev.nombre.trim() }))
+              }
               placeholder="Ej: supervisor"
               required
             />
+            {nombreError ? <p className="text-sm text-destructive">{nombreError}</p> : null}
           </div>
           <div className="space-y-2">
             <Label>Descripción</Label>
