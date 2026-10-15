@@ -1,4 +1,3 @@
-const { Op } = require("sequelize");
 const Role = require("../models/Role");
 const User = require("../models/User");
 const RolePermission = require("../models/RolePermission");
@@ -23,11 +22,13 @@ const listRoles = async (_req, res) => {
 
 const createRole = async (req, res) => {
   try {
-    const { nombre, descripcion, activo } = req.body;
+    const nombre = String(req.body.nombre || "").trim();
+    const { descripcion, activo } = req.body;
     if (!nombre) {
       return res.status(400).json({ message: "El nombre del rol es obligatorio." });
     }
-    const existing = await Role.findOne({ where: { nombre } });
+    const roles = await Role.findAll();
+    const existing = roles.find((role) => String(role.nombre).trim() === nombre);
     if (existing) {
       return res.status(409).json({ message: "El rol ya existe." });
     }
@@ -56,14 +57,18 @@ const updateRole = async (req, res) => {
     }
     const updates = {};
     if (nombre !== undefined) {
-      if (!nombre) {
+      const nombreLimpio = String(nombre).trim();
+      if (!nombreLimpio) {
         return res.status(400).json({ message: "El nombre no puede estar vacío." });
       }
-      const other = await Role.findOne({ where: { nombre, id: { [Op.ne]: id } } });
+      const roles = await Role.findAll();
+      const other = roles.find(
+        (item) => item.id !== id && String(item.nombre).trim() === nombreLimpio
+      );
       if (other) {
         return res.status(409).json({ message: "El nombre del rol ya está en uso." });
       }
-      updates.nombre = nombre;
+      updates.nombre = nombreLimpio;
     }
     if (descripcion !== undefined) updates.descripcion = descripcion || null;
     if (activo !== undefined) updates.activo = Boolean(activo);
