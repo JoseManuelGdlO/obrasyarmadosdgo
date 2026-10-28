@@ -19,8 +19,13 @@ import {
   MapPin,
   UserCheck,
   X,
+  Trash2,
 } from "lucide-react"
+import { toast } from "sonner"
 import { apiRequest } from "@/lib/api"
+import { useAuth } from "@/lib/auth-context"
+import { PERMISSIONS } from "@/lib/permissions"
+import ConfirmDeleteButton from "@/components/common/ConfirmDeleteButton"
 import ClienteModal, { ClienteFormData } from "@/components/modals/ClienteModal"
 
 type ClienteFilters = {
@@ -71,6 +76,8 @@ const Clientes = () => {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingClientId, setEditingClientId] = useState<string | null>(null)
   const queryClient = useQueryClient()
+  const { can } = useAuth()
+  const canDeleteClientes = can(PERMISSIONS.CLIENTES_DELETE)
 
   const { data } = useQuery({
     queryKey: ["clientes"],
@@ -106,6 +113,14 @@ const Clientes = () => {
       setEditingClientId(null)
       queryClient.invalidateQueries({ queryKey: ["clientes"] })
     },
+  })
+  const deleteCliente = useMutation({
+    mutationFn: (id: string) => apiRequest(`/clientes/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      toast.success("Cliente eliminado")
+      queryClient.invalidateQueries({ queryKey: ["clientes"] })
+    },
+    onError: (err: Error) => toast.error(err.message || "Error eliminando cliente"),
   })
 
   const filterOptions = useMemo(
@@ -478,6 +493,20 @@ const Clientes = () => {
                       >
                         Ver Detalles
                       </Button>
+                      <ConfirmDeleteButton
+                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                        title="¿Eliminar cliente?"
+                        description={
+                          cliente.totalProyectos > 0
+                            ? `Se eliminará a "${cliente.nombre}" y también sus ${cliente.totalProyectos} proyecto${cliente.totalProyectos === 1 ? "" : "s"} asociados. Esta acción no se puede deshacer.`
+                            : `Esta acción eliminará a "${cliente.nombre}" permanentemente.`
+                        }
+                        requireDoubleConfirm={cliente.totalProyectos > 0}
+                        disabled={!canDeleteClientes || deleteCliente.isPending}
+                        onConfirm={() => deleteCliente.mutate(cliente.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </ConfirmDeleteButton>
                     </div>
                   </TableCell>
                 </TableRow>
