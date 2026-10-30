@@ -87,6 +87,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
             </div>
             
             <div className="flex items-center gap-4">
+              <span
+                className="text-xs text-muted-foreground tabular-nums"
+                title="Versión de la aplicación"
+              >
+                v{__APP_VERSION__}
+              </span>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground relative">
